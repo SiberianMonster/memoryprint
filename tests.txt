@@ -1,0 +1,88 @@
+1. Registration
+resp=requests.post("http://127.0.0.1:8080/api/user/register",data=json.dumps({"username":"test1","password":"test123","email":"test@mail.ru"}))
+b'{"status":"new user added successfully"}
+
+2. Username taken
+resp=requests.post("http://127.0.0.1:8080/api/user/register",data=json.dumps({"username":"test1","password":"test123","email":"test@mail.ru"}))
+b'{"status":"username already taken"}{"status":"sql database error"}'
+
+3. Empty Password
+resp=requests.post("http://127.0.0.1:8080/api/user/register",data=json.dumps({"username":"test22","password":"","email":"test@mail.ru"}))
+b'{"status":"incorrect credentials error"}'
+
+4. Login
+resp=requests.post("http://127.0.0.1:8080/api/user/login",data=json.dumps({"username":"test1","password":"test123"}))
+b'{"status":"user logged in successfully"}'
+
+5. Forbidden endpoint
+resp=requests.get("http://127.0.0.1:8080/api/admin/users", headers={'Authorization': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHBpcnkiOjE2OTIwMzMzNDMsInVzZXJfaWQiOjR9.jPdKrRXPjjFQPzfLNxh_j7M4BSHWEqgjHnBqXq_tvPU'})
+b'{"status":"user unauthorized"}'
+
+6. Update Password
+resp=requests.post("http://127.0.0.1:8080/api/user/updatepassword",data=json.dumps({"username":"test1","password":"test1234"}),headers={'Authorization': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHBpcnkiOjE2OTIwMzM2MTEsInVzZXJfaWQiOjR9.ToiBpqBOz-Vg_qrH3H7egND9bmvK-w72aAhzDnZAVR8'})
+b'{"status":"user password updated successfully"}'
+
+7. List users
+resp=requests.get("http://127.0.0.1:8080/api/admin/users",headers={'Authorization': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHBpcnkiOjE2OTIwMzM2MTEsInVzZXJfaWQiOjR9.ToiBpqBOz-Vg_qrH3H7egND9bmvK-w72aAhzDnZAVR8'})
+b'[{"username":"test2","password":"ccc765bd0c9fadd52a7cb1699858d2577679409f193656c01de9732ca3f83787","email":"test@mail.ru","category":"CUSTOMER","status":"ACTIVE"},{"username":"test1","password":"60f0f5b140de3e082d7695a1639b9d26d1f02c8feb77fa8cff72d6ca7e892fd3","email":"test@mail.ru","category":"ADMIN","status":"false"}]\n'
+
+8. Delete User
+resp=requests.post("http://127.0.0.1:8080/api/admin/deleteuser","4",headers={'Authorization': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHBpcnkiOjE2OTIwMzM2MTEsInVzZXJfaWQiOjR9.ToiBpqBOz-Vg_qrH3H7egND9bmvK-w72aAhzDnZAVR8'})
+b'{"status":"user deleted successfully"}'
+
+9. Wrong Password
+resp=requests.post("http://127.0.0.1:8080/api/user/login",data=json.dumps({"username":"test2","password":"test1234"}))
+b'{"status":"sql database error"}'
+
+10. Update User category
+resp=requests.post("http://127.0.0.1:8080/api/admin/updateusercategory",data=json.dumps({"username":"test2","category":"CUSTOMER"}),headers={'Authorization': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHBpcnkiOjE2OTIwMzUyODgsInVzZXJfaWQiOjl9.ZwR2tDEkwVxsT3pWkMFa5Q0TraYcQC2C7X790uZAJyQ'})
+b'{"status":"user category updated successfully"}'
+
+11. Update User Status
+resp=requests.post("http://127.0.0.1:8080/api/admin/updateuserstatus",data=json.dumps({"username":"test2","status":"DISACTIVATED"}),headers={'Authorization': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHBpcnkiOjE2OTIwMzUyODgsInVzZXJfaWQiOjl9.ZwR2tDEkwVxsT3pWkMFa5Q0TraYcQC2C7X790uZAJyQ'})
+b'{"status":"user status updated successfully"}'
+
+12. Create Order
+resp=requests.post("http://127.0.0.1:8080/api/user/createorder",data=json.dumps({"link":"orderlink"}),headers={'Authorization': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHBpcnkiOjE2OTIwODkyNzIsInVzZXJfaWQiOjl9.XMVeSr1T3mCeMQmF303Nnds6qYJPddK_rAha4iOn0oM'})
+b'{"status":"order created successfully"}'
+
+13. Retrieve all orders
+resp=requests.get("http://127.0.0.1:8080/api/admin/orders",headers={'Authorization': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHBpcnkiOjE2OTIwODkyNzIsInVzZXJfaWQiOjl9.XMVeSr1T3mCeMQmF303Nnds6qYJPddK_rAha4iOn0oM'})
+b'[{"order_id":3,"link":"orderlink","status":"SUBMITTED","uploaded_at":"2023-08-15T11:49:10Z","last_updated_at":"2023-08-15T11:49:10Z","users_id":9,"user_email":"1test@mail.ru","pa_id":0}]\n'
+
+14. Retrieve user orders
+resp=requests.get("http://127.0.0.1:8080/api/user/orders",headers={'Authorization': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHBpcnkiOjE2OTIwODkyNzIsInVzZXJfaWQiOjl9.XMVeSr1T3mCeMQmF303Nnds6qYJPddK_rAha4iOn0oM'})
+b'[{"link":"orderlink","status":"SUBMITTED"}]\n'
+
+15. Assign Print Agency
+resp=requests.post("http://127.0.0.1:8080/api/admin/assignprintagent",data=json.dumps({"pa_id":8,"order_id":3}),headers={'Authorization': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHBpcnkiOjE2OTIwODkyNzIsInVzZXJfaWQiOjl9.XMVeSr1T3mCeMQmF303Nnds6qYJPddK_rAha4iOn0oM'})
+b'{"status":"printing agency assigned successfully"}'
+
+16. Update Order Status
+resp=requests.post("http://127.0.0.1:8080/api/admin/updateorderstatus",data=json.dumps({"status":"PAID","order_id":3}),headers={'Authorization': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHBpcnkiOjE2OTIwODkyNzIsInVzZXJfaWQiOjl9.XMVeSr1T3mCeMQmF303Nnds6qYJPddK_rAha4iOn0oM'})
+b'{"status":"order status updated successfully"}'
+
+17. Deleted Order
+resp=requests.post("http://127.0.0.1:8080/api/admin/deleteorder","3",headers={'Authorization': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHBpcnkiOjE2OTIwODkyNzIsInVzZXJfaWQiOjl9.XMVeSr1T3mCeMQmF303Nnds6qYJPddK_rAha4iOn0oM'})
+b'{"status":"order deleted successfully"}'
+
+18. Upload Photo
+resp=requests.post("http://127.0.0.1:8080/api/user/uploadphoto","photo_link",headers={'Authorization': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHBpcnkiOjE2OTIwODkyNzIsInVzZXJfaWQiOjl9.XMVeSr1T3mCeMQmF303Nnds6qYJPddK_rAha4iOn0oM'})
+b'{"status":"photo added successfully"}'
+
+19. Add new Project
+resp=requests.post("http://127.0.0.1:8080/api/user/createproject",data=json.dumps({"page_number":10,"name":"default","cover_image":"default_link"}),headers={'Authorization': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHBpcnkiOjE2OTIwODkyNzIsInVzZXJfaWQiOjl9.XMVeSr1T3mCeMQmF303Nnds6qYJPddK_rAha4iOn0oM'})
+b'{"status":"project added successfully"}'
+
+20. Retrieve User Projects
+resp=requests.get("http://127.0.0.1:8080/api/user/projects",headers={'Authorization': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHBpcnkiOjE2OTIwODkyNzIsInVzZXJfaWQiOjl9.XMVeSr1T3mCeMQmF303Nnds6qYJPddK_rAha4iOn0oM'})
+b'[{"order_id":7,"name":"default","cover_image":"d","status":"EDITED","last_edited_at":"2023-08-15T18:44:30Z"}]\n'
+
+21. Retrieve User Photos
+resp=requests.get("http://127.0.0.1:8080/api/user/photos",headers={'Authorization': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHBpcnkiOjE2OTIwODkyNzIsInVzZXJfaWQiOjl9.XMVeSr1T3mCeMQmF303Nnds6qYJPddK_rAha4iOn0oM'})
+b'["photo_link","photo_link"]\n'
+
+22. Added new Editor
+resp=requests.post("http://127.0.0.1:8080/api/user/addneweditor",data=json.dumps({"email":"newemail2.ru","project_id":7}),headers={'Authorization': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHBpcnkiOjE2OTIwODkyNzIsInVzZXJfaWQiOjl9.XMVeSr1T3mCeMQmF303Nnds6qYJPddK_rAha4iOn0oM'})
+b'{"status":"project editor added successfully"}'
+
