@@ -159,3 +159,19 @@ func HandleVerificationError(rw http.ResponseWriter, resp map[string]string) {
     }
     rw.Write(jsonResp)
 }
+
+func HandlePromocodeError(rw http.ResponseWriter, resp map[string]string, err error) {
+
+    if err != nil {
+
+        rw.WriteHeader(http.StatusBadRequest)
+        resp["status"] = err.Error() 
+        jsonResp, err := json.Marshal(resp)
+        if err != nil {
+                log.Printf("Error happened in JSON marshal. Err: %s", err)
+                return
+        }
+        rw.Write(jsonResp)
+    }
+
+}

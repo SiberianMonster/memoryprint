@@ -3,17 +3,21 @@ package userhandlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/SiberianMonster/memoryprint/internal/config"
+	"github.com/SiberianMonster/memoryprint/internal/emailutils"
 	"github.com/SiberianMonster/memoryprint/internal/models"
-	"github.com/SiberianMonster/memoryprint/internal/tokenizer"
 	"github.com/SiberianMonster/memoryprint/internal/userstorage"
 	"github.com/SiberianMonster/memoryprint/internal/projectstorage"
 	"github.com/SiberianMonster/memoryprint/internal/handlersfunc"
 	"github.com/SiberianMonster/memoryprint/internal/authservice"
+	"fmt"
 	"log"
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 func Register(rw http.ResponseWriter, r *http.Request) {
@@ -22,6 +26,7 @@ func Register(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
 
 	resp := make(map[string]string)
+	log.Printf("Register user")
 	
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
@@ -42,7 +47,7 @@ func Register(rw http.ResponseWriter, r *http.Request) {
 	// не забываем освободить ресурс
 	defer cancel()
 
-	if !userstorage.CheckUser(ctx, config.DB, user) {
+	if userstorage.CheckUser(ctx, config.DB, user) {
 		handlersfunc.HandleUsernameAlreadyTaken(rw, resp)
 		return
 	}
@@ -65,17 +70,18 @@ func Register(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send verification mail
-	from := "elena.valchuk@gmail.com"
+	from := "support@memoryprint.ru"
 	to := []string{user.Email}
-	subject := "Email Verification for Bookite"
+	subject := "Email Verification for MemoryPrint"
 	mailType := emailutils.MailConfirmation
 	mailData := &emailutils.MailData{
 		Username: user.Username,
 		Code: 	emailutils.GenerateRandomString(8),
 	}
 
+	ms := &emailutils.SGMailService{config.YandexApiKey, config.MailVerifCodeExpiration, config.PassResetCodeExpiration, config.MailVerifTemplateID, config.PassResetTemplateID, config.DesignerOrderTemplateID}
 	mailReq := emailutils.NewMail(from, to, subject, mailType, mailData)
-	err = emailutils.SendMail(mailReq)
+	err = emailutils.SendMail(mailReq, ms)
 	if err != nil {
 		log.Printf("unable to send mail", "error", err)
 		handlersfunc.HandleMailSendError(rw, resp)
@@ -109,14 +115,14 @@ func Register(rw http.ResponseWriter, r *http.Request) {
 
 func Login(rw http.ResponseWriter, r *http.Request) {
 
-	var user models.User
-	var valid bool
+	var user *models.User
 
 	resp := make(map[string]string)
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
 		handlersfunc.HandleDecodeError(rw, resp, err)
 	}
+	log.Printf("Login user")
 	log.Println(user)
 
 	if user.Email == "" || user.Password == "" {
@@ -130,13 +136,13 @@ func Login(rw http.ResponseWriter, r *http.Request) {
 	// не забываем освободить ресурс
 	defer cancel()
 
-	dbUser, err := userstorage.CheckCredentials(ctx, config.DB, user)
+	dbUser, err := userstorage.CheckCredentials(ctx, config.DB, *user)
 
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw, resp)
 		return
 	}
-	valid, err = authservice.Authenticate(user, dbUser); 
+	_, err = authservice.Authenticate(user, &dbUser); 
 	if err != nil {
 		handlersfunc.HandlePermissionError(rw, resp)
 		return
@@ -144,13 +150,13 @@ func Login(rw http.ResponseWriter, r *http.Request) {
 
 	log.Println(dbUser.Username)
 
-	accessToken, err := authservice.GenerateAccessToken(dbUser)
+	accessToken, err := authservice.GenerateAccessToken(&dbUser)
 	if err != nil {
 		log.Printf("Error happened when generating jwt token received value. Err: %s", err)
 		handlersfunc.HandleJWTError(rw, resp)
 		return
 	}
-	refreshToken, err := authservice.GenerateRefreshToken(dbUser)
+	refreshToken, err := authservice.GenerateRefreshToken(&dbUser)
 	if err != nil {
 		log.Printf("Error happened when generating jwt token received value. Err: %s", err)
 		handlersfunc.HandleJWTError(rw, resp)
@@ -163,7 +169,6 @@ func Login(rw http.ResponseWriter, r *http.Request) {
 	resp["username"] = dbUser.Username
 	resp["accesstoken"] = accessToken
 	resp["refreshtoken"] = refreshToken
-	resp["userID"] = dbUser.UserID
 
 	jsonResp, err := json.Marshal(resp)
 	if err != nil {
@@ -181,6 +186,7 @@ func ViewUsers(rw http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
 	users, err := userstorage.RetrieveUsers(ctx, config.DB)
+	log.Printf("Admin view users")
 
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw, resp)
@@ -206,6 +212,7 @@ func DeleteUser(rw http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	aByteToInt, _ := strconv.Atoi(string(userNumBytes))
 	userID := uint(aByteToInt)
+	log.Printf("Delete user %d", userID)
 
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
@@ -292,14 +299,12 @@ func UpdateUserStatus(rw http.ResponseWriter, r *http.Request) {
 
 }
 
-func verify(actualVerificationData *models.VerificationData, verificationData *models.VerificationData) (bool, error) {
+func verify(ctx context.Context, storeDB *pgxpool.Pool, actualVerificationData *models.VerificationData, verificationData *models.VerificationData) (bool, error) {
 
 	// check for expiration
 	if actualVerificationData.ExpiresAt.Before(time.Now()) {
 		log.Println("verification data provided is expired")
-		ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
-		defer cancel()
-		err := ah.repo.DeleteVerificationData(ctx, actualVerificationData.Email, actualVerificationData.Type)
+		err := userstorage.DeleteVerificationData(ctx, storeDB, actualVerificationData.Email, actualVerificationData.Type)
 		log.Println("unable to delete verification data from db", "error", err)
 		return false, errors.New("Confirmation code has expired. Please try generating a new code")
 	}
@@ -316,6 +321,7 @@ func verify(actualVerificationData *models.VerificationData, verificationData *m
 func VerifyMail(rw http.ResponseWriter, r *http.Request) {
 
 	rw.Header().Set("Content-Type", "application/json")
+	resp := make(map[string]string)
 
 	var verificationData models.VerificationData
 
@@ -325,10 +331,13 @@ func VerifyMail(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	defer r.Body.Close()
+	log.Println(verificationData)
 	verificationData.Type = emailutils.MailConfirmation
 
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
+
+	log.Printf("Verification for email %s", verificationData.Email)
 
 	actualVerificationData, err := userstorage.GetVerificationData(ctx, config.DB, verificationData.Email, verificationData.Type)
 	if err != nil {
@@ -337,7 +346,7 @@ func VerifyMail(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	valid, err := verify(actualVerificationData, &verificationData)
+	valid, err := verify(ctx, config.DB, actualVerificationData, &verificationData)
 	if !valid {
 		handlersfunc.HandleVerificationError(rw, resp)
 		return
@@ -352,7 +361,7 @@ func VerifyMail(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	// delete the VerificationData from db
-	err = userstorage.DeleteVerificationData(ctx, config.DB, verificationData.Type)
+	err = userstorage.DeleteVerificationData(ctx, config.DB, verificationData.Email, verificationData.Type)
 	if err != nil {
 		log.Printf("unable to delete the verification data", "error", err)
 	}
@@ -373,6 +382,7 @@ func VerifyMail(rw http.ResponseWriter, r *http.Request) {
 func VerifyPasswordReset(rw http.ResponseWriter, r *http.Request) {
 
 	rw.Header().Set("Content-Type", "application/json")
+	resp := make(map[string]string)
 
 	var verificationData models.VerificationData
 
@@ -382,9 +392,11 @@ func VerifyPasswordReset(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	defer r.Body.Close()
-	verificationData.Type = emailutils.PassReset
+	verificationData.Type = emailutils.MailPassReset
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
+
+	log.Printf("Password reset for email %s", verificationData.Email)
 
 	actualVerificationData, err := userstorage.GetVerificationData(ctx, config.DB, verificationData.Email, verificationData.Type)
 	if err != nil {
@@ -393,17 +405,12 @@ func VerifyPasswordReset(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	valid, err := verify(actualVerificationData, &verificationData)
+	valid, err := verify(ctx, config.DB, actualVerificationData, &verificationData)
 	if !valid {
 		handlersfunc.HandleVerificationError(rw, resp)
 		return
 	}
 
-	respData := struct{
-		Code string
-	}{
-		Code: verificationData.Code,
-	}
 
 	log.Printf("password reset code verification succeeded")
 
@@ -418,9 +425,10 @@ func VerifyPasswordReset(rw http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateUsername handles username update request
-func (ah *AuthHandler) UpdateUsername(rw http.ResponseWriter, r *http.Request) {
+func UpdateUsername(rw http.ResponseWriter, r *http.Request) {
 
 	rw.Header().Set("Content-Type", "application/json")
+	resp := make(map[string]string)
 
 	var UserParams models.User
 
@@ -433,8 +441,9 @@ func (ah *AuthHandler) UpdateUsername(rw http.ResponseWriter, r *http.Request) {
 
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
+	log.Printf("Update username %d", UserParams.ID)
 
-	err = userstorage.UpdateUsername(ctx, config.DB, UserParams.Username, UserParams.UserID)
+	err = userstorage.UpdateUsername(ctx, config.DB, UserParams.Username, UserParams.ID)
 	if err != nil {
 		log.Printf("unable to update username", "error", err)
 		handlersfunc.HandleDatabaseServerError(rw, resp)
@@ -457,9 +466,9 @@ func (ah *AuthHandler) UpdateUsername(rw http.ResponseWriter, r *http.Request) {
 func ResetPassword(rw http.ResponseWriter, r *http.Request) {
 
 	rw.Header().Set("Content-Type", "application/json")
+	resp := make(map[string]string)
 
 	var user models.User
-	var pwdHash string
 	passResetReq := &models.PasswordResetReq{}
 	err := json.NewDecoder(r.Body).Decode(&passResetReq)
 	if err != nil {
@@ -473,6 +482,7 @@ func ResetPassword(rw http.ResponseWriter, r *http.Request) {
 
 
 	userID := handlersfunc.UserIDContextReader(r)
+	log.Printf("Password reset %d", userID)
 	user, err = userstorage.GetUserData(ctx, config.DB, userID)
 	if err != nil {
 		log.Printf("unable to retrieve the user from db", "error", err)
@@ -480,7 +490,7 @@ func ResetPassword(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	verificationData, err := userstorage.GetVerificationData(ctx, config.DB, user.Email, emailutils.PassReset)
+	verificationData, err := userstorage.GetVerificationData(ctx, config.DB, user.Email, emailutils.MailPassReset)
 	if err != nil {
 		log.Printf("unable to retrieve the verification data from db", "error", err)
 		handlersfunc.HandleDatabaseServerError(rw, resp)
@@ -499,14 +509,14 @@ func ResetPassword(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pwdHash, err = userstorage.Hash(fmt.Sprintf("%s:password", user.Password), config.Key)
+	user.Password, err = userstorage.Hash(fmt.Sprintf("%s:password", passResetReq.Password), config.Key)
 	if err != nil {
 		log.Printf("Error happened when hashing received value. Err: %s", err)
 		handlersfunc.HandleDatabaseServerError(rw, resp)
 		return
 	}
-	tokenHash = emailutils.GenerateRandomString(15)
-	err = userstorage.UpdatePassword(ctx, config.DB, user, pwdHash, tokenHash)
+	user.TokenHash = emailutils.GenerateRandomString(15)
+	_, err = userstorage.UpdatePassword(ctx, config.DB, user)
 	if err != nil {
 		log.Printf("unable to update user password in db", "error", err)
 		handlersfunc.HandleDatabaseServerError(rw, resp)

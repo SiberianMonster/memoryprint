@@ -1,16 +1,20 @@
 package emailutils
 
 import (
+	"bytes"
+	"crypto/tls"
+	"fmt"
 	"log"
 	"math/rand"
+	"html/template"
+	"net/smtp"
 	"strings"
 
-	"github.com/sendgrid/sendgrid-go"
-	"github.com/sendgrid/sendgrid-go/helpers/mail"
 	"github.com/SiberianMonster/memoryprint/internal/config"
 )
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
 
 // GenerateRandomString generate a string of random characters of given length
 func GenerateRandomString(n int) string {
@@ -25,17 +29,16 @@ func GenerateRandomString(n int) string {
 
 // MailService represents the interface for our mail service.
 type MailService interface {
-	CreateMail(mailReq *Mail) []byte
+	CreateMail(mailReq *Mail) error
 	SendMail(mailReq *Mail) error
-	NewMail(from string, to []string, subject string, mailType MailType, data *MailData) *Mail
+	NewMail(from string, to []string, subject string, mailType int, data *MailData) *Mail
 }
-
-type MailType int
 
 // List of Mail Types we are going to send.
 const (
-	MailConfirmation MailType = iota + 1
-	PassReset
+	MailConfirmation int = 1
+	MailDesignerOrder int = 2
+	MailPassReset int = 3
 )
 
 // MailData represents the data to be sent to the template of the mail.
@@ -50,73 +53,149 @@ type Mail struct {
 	to    []string
 	subject string
 	body string
-	mtype MailType
+	mtype int
 	data *MailData
+}
+
+func (mail *Mail) BuildMessage() string {
+	message := ""
+	message += fmt.Sprintf("From: %s\r\n", mail.from)
+	if len(mail.to) > 0 {
+		message += fmt.Sprintf("To: %s\r\n", strings.Join(mail.to, ";"))
+	}
+
+	message += fmt.Sprintf("Subject: %s\r\n", mail.subject)
+	message += "MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n\n"
+	message += "\r\n" + mail.body
+
+	return message
+}
+
+func (r *Mail) ParseTemplate(templateFileName string, data interface{}) error {
+	t, err := template.ParseFiles(templateFileName)
+	if err != nil {
+		return err
+	}
+	buf := new(bytes.Buffer)
+	if err = t.Execute(buf, data); err != nil {
+		return err
+	}
+	r.body = buf.String()
+	return nil
 }
 
 // SGMailService is the sendgrid implementation of our MailService.
 type SGMailService struct {
-	SendGridApiKey             string
+	YandexApiKey             string
 	MailVerifCodeExpiration    int		// in hours
 	PassResetCodeExpiration    int		// in minutes
 	MailVerifTemplateID        string
 	PassResetTemplateID        string
+	DesignerOrderTemplateID    string
 }
 
 // NewSGMailService returns a new instance of SGMailService
-func NewSGMailService(SendGridApiKey string, MailVerifCodeExpiration int, PassResetCodeExpiration int, MailVerifTemplateID string, PassResetTemplateID string) *SGMailService {
-	return &SGMailService{config.SendGridApiKey, config.MailVerifCodeExpiration, config.PassResetCodeExpiration, config.MailVerifTemplateID, config.PassResetTemplateID}
+func NewSGMailService() *SGMailService {
+	return &SGMailService{config.SendGridApiKey, config.MailVerifCodeExpiration, config.PassResetCodeExpiration, config.MailVerifTemplateID, config.PassResetTemplateID, config.DesignerOrderTemplateID}
 }
 
 
 // CreateMail takes in a mail request and constructs a sendgrid mail type.
-func (ms *SGMailService) CreateMail(mailReq *Mail) []byte {
+func CreateMail(mailReq *Mail, ms *SGMailService) error {
 
-	m := mail.NewV3Mail()
-
-	from := mail.NewEmail("memoryprint", mailReq.from)
-	m.SetFrom(from)
-
+	var err error
 	if mailReq.mtype == MailConfirmation {
-		m.SetTemplateID(ms.MailVerifTemplateID)
-	} else if mailReq.mtype == PassReset {
-		m.SetTemplateID(ms.PassResetTemplateID)
+		err = mailReq.ParseTemplate("confirm_mail.html", mailReq.data)
+	} else if mailReq.mtype == MailPassReset {
+		err = mailReq.ParseTemplate("password_reset.html", mailReq.data)
+	} else if mailReq.mtype == MailDesignerOrder {
+		err = mailReq.ParseTemplate("confirm_mail.html", mailReq.data)
 	}
 
-	p := mail.NewPersonalization()
-
-	tos := make([]*mail.Email, 0)
-	for _, to := range mailReq.to {
-		tos = append(tos, mail.NewEmail("user", to))
+	if err != nil{
+		return err
 	}
 
-	p.AddTos(tos...)
-
-	p.SetDynamicTemplateData("Username", mailReq.data.Username)
-	p.SetDynamicTemplateData("Code", mailReq.data.Code)
-
-	m.AddPersonalizations(p)
-	return mail.GetRequestBody(m)
+	return nil
 }
 
 // SendMail creates a sendgrid mail from the given mail request and sends it.
-func (ms *SGMailService) SendMail(mailReq *Mail) error {
+func SendMail(mailReq *Mail, ms *SGMailService) error {
 
-	request := sendgrid.GetRequest(ms.SendGridApiKey, "/v3/mail/send", "https://api.sendgrid.com")
-	request.Method = "POST"
-	var Body = ms.CreateMail(mailReq)
-	request.Body = Body
-	response, err := sendgrid.API(request)
-	if err != nil {
+	var auth smtp.Auth
+	auth = smtp.PlainAuth("", mailReq.from, ms.YandexApiKey, "smtp.yandex.com")
+
+	err := CreateMail(mailReq, ms)
+	if err != nil{
 		log.Printf("unable to send mail", "error", err)
 		return err
-	} 
-	log.Printf("mail sent successfully", "sent status code", response.StatusCode)
+	}
+	msg := mailReq.BuildMessage()
+	addr := "smtp.yandex.com:465"
+
+	tlsconfig := &tls.Config{
+		InsecureSkipVerify: true,
+		ServerName:         "smtp.yandex.com",
+	}
+
+	conn, err := tls.Dial("tcp", addr, tlsconfig)
+	if err != nil {
+		log.Printf("failed to create conn")
+		return err
+	}
+
+	client, err := smtp.NewClient(conn,  "smtp.yandex.com")
+	if err != nil {
+		log.Printf("failed to create client")
+		return err
+	}
+
+	// step 1: Use Auth
+	if err = client.Auth(auth); err != nil {
+		log.Printf("failed to create auth")
+		return err
+	}
+
+	// step 2: add all from and to
+	if err = client.Mail(mailReq.from); err != nil {
+		log.Printf("failed to create sender")
+		return err
+	}
+
+	for _, k := range mailReq.to {
+		if err = client.Rcpt(k); err != nil {
+			log.Printf("failed to create recepient")
+			return err
+		}
+	}
+
+	// Data
+	w, err := client.Data()
+	if err != nil {
+		log.Printf("failed to create data")
+		return err
+	}
+
+	_, err = w.Write([]byte(msg))
+	if err != nil {
+		log.Printf("failed to write msg")
+		return err
+	}
+
+	err = w.Close()
+	if err != nil {
+		log.Printf("failed to close conn")
+		return err
+	}
+
+	client.Quit()
+
+	log.Printf("mail sent successfully")
 	return nil
 }
 
 // NewMail returns a new mail request.
-func (ms *SGMailService) NewMail(from string, to []string, subject string, mailType MailType, data *MailData) *Mail {
+func NewMail(from string, to []string, subject string, mailType int, data *MailData) *Mail {
 	return &Mail{
 		from: 	 from,
 		to:  	 to,

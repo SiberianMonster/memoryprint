@@ -39,15 +39,19 @@ type VerificationDataType int
 
 const (
 	MailConfirmation VerificationDataType = iota + 1
-	PassReset
+	MailDesignerOrder VerificationDataType = iota + 2
+	MailPassReset VerificationDataType = iota + 3
 )
+
+
 
 // VerificationData represents the type for the data stored for verification.
 type VerificationData struct {
-	Email     string    `json:"email" validate:"required" sql:"email"`
-	Code      string    `json:"code" validate:"required" sql:"code"`
-	ExpiresAt time.Time `json:"expiresat" sql:"expiresat"`
-	Type      VerificationDataType    `json:"type" sql:"type"`
+	ID uint `json:"id"`
+	Email     string    `json:"email"`
+	Code      string    `json:"code"`
+	ExpiresAt time.Time `json:"expires_at"`
+	Type      int    `json:"type"`
 }
 
 
@@ -84,16 +88,26 @@ type Photo struct {
 type UserOrder struct {
 	Link string `json:"link"`
 	Status string `json:"status"`
+	Pagesnum int `json:"pagesnum"`
+	Covertype string `json:"covertype"`
+	Bindingtype string `json:"bindingtype"`
+	Papertype string `json:"papertype"`
+	PromooffersID    uint     `json:"promooffers_id"`
   }
 
 type AdminOrder struct {
 	OrderID    uint     `json:"order_id"`
 	Link string `json:"link"`
 	Status string `json:"status"`
+	Pagesnum int `json:"pagesnum"`
+	Covertype string `json:"covertype"`
+	Bindingtype string `json:"bindingtype"`
+	Papertype string `json:"papertype"`
 	UploadedAt string `json:"uploaded_at"`
 	LastUpdatedAt string `json:"last_updated_at"`
 	UsersID    uint     `json:"users_id"`
 	UserEmail string `json:"user_email"`
+	PromooffersID    uint     `json:"promooffers_id"`
 	PaID    uint     `json:"pa_id"`
   }
 
@@ -111,14 +125,22 @@ type ProjectEditorObj struct {
 type ProjectObj struct {
 	ProjectID    uint     `json:"project_id"`
 	Name string `json:"name"`
+	PageNumber int `json:"page_number"`
 	CoverImage string `json:"cover_image"`
+	Orientation string `json:"orientation"`
+	Category string `json:"category"`
 	Status string `json:"status"`
 	LastEditedAt string `json:"last_edited_at"`
   }
 
-type NewProjectObj struct {
+type DesignerProjectObj struct {
+	ProjectID    uint     `json:"project_id"`
 	Name string `json:"name"`
 	PageNumber int `json:"page_number"`
+	CoverImage string `json:"cover_image"`
+	Orientation string `json:"orientation"`
+	Description string `json:"description"`
+	Photos []Photo `json:"photos"`
   }
 
 type Page struct {
@@ -155,4 +177,24 @@ type ProjectSession struct {
 	Decorations []Decoration `json:"decorations"`
 	Background []Background `json:"background"`
 	Layout []Layout `json:"layout"`
+  }
+
+type Prices struct {
+	PricesID uint `json:"prices_id"`
+	Price    float64 `json:"price"`
+	Pagesnum int `json:"pagesnum"`
+	Priceperpage    float64 `json:"priceperpage"`
+	Covertype    string `json:"covertype"`
+	Bindingtype    string `json:"bindingtype"`
+	Papertype    string `json:"papertype"`
+}
+
+
+type PromoOffer struct {
+	PromooffersID    uint     `json:"promooffers_id"`
+	Discount float64 `json:"discount"`
+	ISOnetime bool `json:"is_onetime"`
+	ISUsed bool `json:"is_used"`
+	ExpiresAt string `json:"expires_at"`
+	
   }

@@ -5,9 +5,7 @@ import (
 	"encoding/json"
 	"github.com/SiberianMonster/memoryprint/internal/config"
 	"github.com/SiberianMonster/memoryprint/internal/models"
-	"github.com/SiberianMonster/memoryprint/internal/tokenizer"
 	"github.com/SiberianMonster/memoryprint/internal/userstorage"
-	"github.com/SiberianMonster/memoryprint/internal/projectstorage"
 	"github.com/SiberianMonster/memoryprint/internal/handlersfunc"
 	"github.com/SiberianMonster/memoryprint/internal/authservice"
 	"github.com/SiberianMonster/memoryprint/internal/emailutils"
@@ -15,6 +13,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 // RefreshToken handles refresh token request
@@ -29,6 +28,7 @@ func RefreshToken(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleDecodeError(rw, resp, err)
 		return
 	}
+	log.Printf("User %d requested token refresh", user.ID)
 
 	accessToken, err := authservice.GenerateAccessToken(&user)
 	if err != nil {
@@ -54,14 +54,6 @@ func Greet(rw http.ResponseWriter, r *http.Request) {
 
 	rw.Header().Set("Content-Type", "application/json")
 	resp := make(map[string]string)
-
-	userNumBytes, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		handlersfunc.HandleWrongBytesInput(rw, resp)
-	}
-	defer r.Body.Close()
-	aByteToInt, _ := strconv.Atoi(string(userNumBytes))
-	userID := uint(aByteToInt)
 
 	rw.WriteHeader(http.StatusOK)
 	resp["status"] = "successfully greeted user"
@@ -89,6 +81,8 @@ func GeneratePassResetCode(rw http.ResponseWriter, r *http.Request) {
 	aByteToInt, _ := strconv.Atoi(string(userNumBytes))
 	userID := uint(aByteToInt)
 
+	log.Printf("Generating pass reset code for user %d", userID)
+
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	// не забываем освободить ресурс
 	defer cancel()
@@ -101,17 +95,18 @@ func GeneratePassResetCode(rw http.ResponseWriter, r *http.Request) {
 
 
 	// Send verification mail
-	from := "elena.valchuk@gmail.com"
+	from := "support@memoryprint.ru"
 	to := []string{user.Email}
 	subject := "Password Reset for MemoryPrint"
-	mailType := emailutils.PassReset 
+	mailType := emailutils.MailPassReset 
 	mailData := &emailutils.MailData{
 		Username: user.Username,
 		Code: 	emailutils.GenerateRandomString(8),
 	}
 
+	ms := &emailutils.SGMailService{config.YandexApiKey, config.MailVerifCodeExpiration, config.PassResetCodeExpiration, config.MailVerifTemplateID, config.PassResetTemplateID, config.DesignerOrderTemplateID}
 	mailReq := emailutils.NewMail(from, to, subject, mailType, mailData)
-	err = emailutils.SendMail(mailReq)
+	err = emailutils.SendMail(mailReq, ms)
 	if err != nil {
 		handlersfunc.HandleMailSendError(rw, resp)
 		return
@@ -121,7 +116,7 @@ func GeneratePassResetCode(rw http.ResponseWriter, r *http.Request) {
 	verificationData := &models.VerificationData{
 		Email: user.Email,
 		Code:  mailData.Code,
-		Type:  emailutils.PassReset,
+		Type:  emailutils.MailPassReset,
 		ExpiresAt: time.Now().Add(time.Minute * time.Duration(config.PassResetCodeExpiration)),
 	}
 

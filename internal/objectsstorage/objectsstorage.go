@@ -19,7 +19,7 @@ var err error
 func CheckUserOwnsPhoto(ctx context.Context, storeDB *pgxpool.Pool, userID uint, photoID uint) bool {
 
 	var checkPhoto bool
-	err := storeDB.QueryRow(ctx, "SELECT CASE WHEN EXISTS (SELECT * FROM photos WHERE photo_id = ($1) AND users_id = ($2)) THEN 'TRUE' ELSE 'FALSE' END;", photoID, userID).Scan(&checkPhoto)
+	err := storeDB.QueryRow(ctx, "SELECT CASE WHEN EXISTS (SELECT * FROM photos WHERE photos_id = ($1) AND users_id = ($2)) THEN 'TRUE' ELSE 'FALSE' END;", photoID, userID).Scan(&checkPhoto)
 	if err != nil && err != pgx.ErrNoRows {
 		log.Printf("Error happened when checking if user can edit photo in db. Err: %s", err)
 		return false
@@ -43,7 +43,7 @@ func AddPhoto(ctx context.Context, storeDB *pgxpool.Pool, photoLink string, user
 		log.Printf("Error happened when inserting a new photo entry into pgx table. Err: %s", err)
 		return userID, err
 	}
-	err = storeDB.QueryRow(ctx, "SELECT photo_id FROM photos WHERE link=($1);", photoLink).Scan(&photoID)
+	err = storeDB.QueryRow(ctx, "SELECT photos_id FROM photos WHERE link=($1);", photoLink).Scan(&photoID)
 	if err != nil {
 		log.Printf("Error happened when retrieving usersid from the db. Err: %s", err)
 		return photoID, err
@@ -57,7 +57,7 @@ func AddPhoto(ctx context.Context, storeDB *pgxpool.Pool, photoLink string, user
 func RetrievePhoto(ctx context.Context, storeDB *pgxpool.Pool, photoID uint) (string, error) {
 
 	var photo string
-	err := storeDB.QueryRow(ctx, "SELECT link FROM photos WHERE photo_id = ($1);", photoID).Scan(&photo)
+	err := storeDB.QueryRow(ctx, "SELECT link FROM photos WHERE photos_id = ($1);", photoID).Scan(&photo)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		log.Printf("Error happened when retrieving photo from pgx table. Err: %s", err)
 		return "", err
@@ -71,7 +71,7 @@ func RetrievePhoto(ctx context.Context, storeDB *pgxpool.Pool, photoID uint) (st
 func RetrieveDecoration(ctx context.Context, storeDB *pgxpool.Pool, objID uint) (string, error) {
 
 	var link string
-	err := storeDB.QueryRow(ctx, "SELECT link FROM decorations WHERE decoration_id = ($1);", objID).Scan(&link)
+	err := storeDB.QueryRow(ctx, "SELECT link FROM decorations WHERE decorations_id = ($1);", objID).Scan(&link)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		log.Printf("Error happened when retrieving decoration from pgx table. Err: %s", err)
 		return "", err
@@ -85,7 +85,7 @@ func RetrieveDecoration(ctx context.Context, storeDB *pgxpool.Pool, objID uint) 
 func RetrieveLayout(ctx context.Context, storeDB *pgxpool.Pool, objID uint) (string, error) {
 
 	var link string
-	err := storeDB.QueryRow(ctx, "SELECT link FROM layouts WHERE layout_id = ($1);", objID).Scan(&link)
+	err := storeDB.QueryRow(ctx, "SELECT link FROM layouts WHERE layouts_id = ($1);", objID).Scan(&link)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		log.Printf("Error happened when retrieving decoration from pgx table. Err: %s", err)
 		return "", err
@@ -99,7 +99,7 @@ func RetrieveLayout(ctx context.Context, storeDB *pgxpool.Pool, objID uint) (str
 func RetrieveBackground(ctx context.Context, storeDB *pgxpool.Pool, objID uint) (string, error) {
 
 	var link string
-	err := storeDB.QueryRow(ctx, "SELECT link FROM backgrounds WHERE background_id = ($1);", objID).Scan(&link)
+	err := storeDB.QueryRow(ctx, "SELECT link FROM backgrounds WHERE backgrounds_id = ($1);", objID).Scan(&link)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		log.Printf("Error happened when retrieving background from pgx table. Err: %s", err)
 		return "", err
@@ -112,7 +112,7 @@ func RetrieveBackground(ctx context.Context, storeDB *pgxpool.Pool, objID uint) 
 // DeletePhoto function performs the operation of deleting photos by id from pgx database with a query.
 func DeletePhoto(ctx context.Context, storeDB *pgxpool.Pool, photoID uint) (uint, error) {
 
-	_, err = storeDB.Exec(ctx, "DELETE FROM photos WHERE photo_id=($1);",
+	_, err = storeDB.Exec(ctx, "DELETE FROM photos WHERE photos_id=($1);",
 		photoID,
 	)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
@@ -158,7 +158,7 @@ func RetrieveUserPhotos(ctx context.Context, storeDB *pgxpool.Pool, userID uint)
 func RetrieveAllBackgrounds(ctx context.Context, storeDB *pgxpool.Pool) ([]models.Background, error) {
 
 	var backgroundslice []models.Background
-	rows, err := storeDB.Query(ctx, "SELECT background_id, link, category FROM backgrounds;")
+	rows, err := storeDB.Query(ctx, "SELECT backgrounds_id, link, category FROM backgrounds;")
 	if err != nil {
 		log.Printf("Error happened when retrieving orders from pgx table. Err: %s", err)
 		return nil, err
@@ -188,7 +188,7 @@ func RetrieveAllBackgrounds(ctx context.Context, storeDB *pgxpool.Pool) ([]model
 func RetrieveAllLayouts(ctx context.Context, storeDB *pgxpool.Pool) ([]models.Layout, error) {
 
 	var layoutslice []models.Layout
-	rows, err := storeDB.Query(ctx, "SELECT layout_id, link, category FROM layouts;")
+	rows, err := storeDB.Query(ctx, "SELECT layouts_id, link, category FROM layouts;")
 	if err != nil {
 		log.Printf("Error happened when retrieving layouts from pgx table. Err: %s", err)
 		return nil, err
@@ -218,7 +218,7 @@ func RetrieveAllLayouts(ctx context.Context, storeDB *pgxpool.Pool) ([]models.La
 func RetrieveAllDecorations(ctx context.Context, storeDB *pgxpool.Pool) ([]models.Decoration, error) {
 
 	var decorationslice []models.Decoration
-	rows, err := storeDB.Query(ctx, "SELECT decoration_id, link, type, category FROM decorations;")
+	rows, err := storeDB.Query(ctx, "SELECT decorations_id, link, type, category FROM decorations;")
 	if err != nil {
 		log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
 		return nil, err

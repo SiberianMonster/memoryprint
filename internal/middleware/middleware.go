@@ -29,7 +29,6 @@ func MiddlewareValidateAccessToken(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Content-Type", "application/json")
-		userID := handlersfunc.UserIDContextReader(r)
 		resp := make(map[string]string)
 
 		log.Println("validating access token")
@@ -41,13 +40,18 @@ func MiddlewareValidateAccessToken(h http.Handler) http.Handler {
 			return
 			}
 
-		_, err = authservice.ValidateAccessToken(token)
+		userEmail, err := authservice.ValidateAccessToken(token)
 		if err != nil {
 			log.Printf("Error happened when validating jwt access token. Err: %s", err)
 			handlersfunc.HandleJWTError(w, resp)
 			return
 		}
-		
+		userID, err := userstorage.GetUserID(context.Background(), config.DB, userEmail)
+		if err != nil {
+			log.Printf("Error happened when getting user ID by email. Err: %s", err)
+			handlersfunc.HandleDatabaseServerError(w, resp)
+			return
+		}
 		
 		ctx := context.WithValue(r.Context(), config.UserIDKey, userID)
 		r = r.WithContext(ctx)
@@ -66,17 +70,23 @@ func MiddlewareValidateRefreshToken(h http.Handler) http.Handler {
 
 		log.Println("validating refresh token")
 		token, err := extractToken(r)
-		userID := handlersfunc.UserIDContextReader(r)
 		if err != nil {
 			log.Printf("Error happened when extracting jwt access token. Err: %s", err)
 			handlersfunc.HandleJWTError(w, resp)
 			return
 		}
 
-		_, customKey, err := authservice.ValidateRefreshToken(token)
+		userEmail, customKey, err := authservice.ValidateRefreshToken(token)
 		if err != nil {
 			log.Printf("Error happened when validating jwt refresh token. Err: %s", err)
 			handlersfunc.HandleJWTError(w, resp)
+			return
+		}
+
+		userID, err := userstorage.GetUserID(context.Background(), config.DB, userEmail)
+		if err != nil {
+			log.Printf("Error happened when getting user ID by email. Err: %s", err)
+			handlersfunc.HandleDatabaseServerError(w, resp)
 			return
 		}
 
@@ -100,30 +110,6 @@ func MiddlewareValidateRefreshToken(h http.Handler) http.Handler {
 	})
 }
 
-
-// MiddlerwareValidateVerificationData validates whether the request contains the email 
-// and confirmation code that are required for the verification
-func MiddlewareValidateVerificationData(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		
-		w.Header().Set("Content-Type", "application/json")
-		resp := make(map[string]string)
-
-		verificationData := &models.VerificationData{}
-
-		err := json.NewDecoder(r.Body).Decode(&verificationData)
-		if err != nil {
-			handlersfunc.HandleDecodeError(w, resp, err)
-			return
-		}
-
-		// add the ValidationData to context
-		ctx := context.WithValue(r.Context(), config.VerificationDataKey, *verificationData)
-		r = r.WithContext(ctx)
-
-		h.ServeHTTP(w, r)
-	})
-}
 
 
 func AdminHandler(h http.Handler) http.Handler {

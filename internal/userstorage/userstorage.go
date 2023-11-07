@@ -12,6 +12,7 @@ import (
 	"github.com/SiberianMonster/memoryprint/internal/models"
 	"log"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -25,22 +26,22 @@ func Hash(value, key string) (string, error) {
 	return fmt.Sprintf("%x", mac.Sum(nil)), err
 }
 
-func CheckUser(ctx context.Context, storeDB *pgxpool.Pool, u models.User) (uint, error) {
+func CheckUser(ctx context.Context, storeDB *pgxpool.Pool, u models.User) bool {
 
-	var userID uint
-	err := storeDB.QueryRow(ctx, "SELECT users_id FROM users WHERE email = ($1);", u.Email).Scan(&userID)
+	var userBool bool
+	err := storeDB.QueryRow(ctx, "SELECT EXISTS (SELECT users_id FROM users WHERE email = ($1));", u.Email).Scan(&userBool)
 	if err != nil {
 		log.Printf("Error happened when checking if user is in db. Err: %s", err)
-		return userID, err
+		return userBool
 	}
 
-	return userID, nil
+	return userBool
 }
 
 func GetUserData(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (models.User, error) {
 
 	var dbUser models.User
-	err := storeDB.QueryRow(ctx, "SELECT * FROM users WHERE users_id = ($1);", userID).Scan(&dbUser)
+	err := storeDB.QueryRow(ctx, "SELECT username, email FROM users WHERE users_id = ($1);", userID).Scan(&dbUser.Username, &dbUser.Email)
 	if err != nil {
 		log.Printf("Error happened when checking if user is in db. Err: %s", err)
 		return dbUser, err
@@ -49,9 +50,22 @@ func GetUserData(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (model
 	return dbUser, nil
 }
 
+func GetUserID(ctx context.Context, storeDB *pgxpool.Pool, userEmail string) (uint, error) {
+
+	var userID uint
+	err := storeDB.QueryRow(ctx, "SELECT users_id FROM users WHERE email = ($1);", userEmail).Scan(&userID)
+	if err != nil {
+		log.Printf("Error happened when checking if user is in db. Err: %s", err)
+		return userID, err
+	}
+
+	return userID, nil
+}
+
 func CreateUser(ctx context.Context, storeDB *pgxpool.Pool, u models.User) (uint, error) {
 
 	var userID uint
+	t := time.Now()
 	pwdHash, err := Hash(fmt.Sprintf("%s:password", u.Password), config.Key)
 	if err != nil {
 		log.Printf("Error happened when hashing received value. Err: %s", err)
@@ -59,7 +73,7 @@ func CreateUser(ctx context.Context, storeDB *pgxpool.Pool, u models.User) (uint
 	}
 	tokenHash := emailutils.GenerateRandomString(15)
 
-	_, err = storeDB.Exec(ctx, "INSERT INTO users (username, password, email, tokenhash, category, status, isverified) VALUES ($1, $2, $3, $4, $5, $6, $7);",
+	_, err = storeDB.Exec(ctx, "INSERT INTO users (username, password, email, tokenhash, category, status, isverified, last_edited_at, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);",
 		u.Username,
 		pwdHash,
 		u.Email,
@@ -67,6 +81,8 @@ func CreateUser(ctx context.Context, storeDB *pgxpool.Pool, u models.User) (uint
 		u.Category,
 		u.Status,
 		models.UnverifiedStatus,
+		t,
+		t,
 	)
 	if err != nil {
 		log.Printf("Error happened when inserting a new user entry into pgx table. Err: %s", err)
@@ -94,11 +110,11 @@ func CheckCredentials(ctx context.Context, storeDB *pgxpool.Pool, u models.User)
 	return dbUser, nil
 }
 
-func CheckUserCategory(ctx context.Context, storeDB *pgxpool.Pool, user_id uint) (string, error) {
+func CheckUserCategory(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (string, error) {
 
 	var userCategory string
 	
-	err = storeDB.QueryRow(ctx, "SELECT category FROM users WHERE users_id=($1);", user_id).Scan(&userCategory)
+	err = storeDB.QueryRow(ctx, "SELECT category FROM users WHERE users_id=($1);", userID).Scan(&userCategory)
 	if err != nil {
 		log.Printf("Error happened when retrieving user category from the db. Err: %s", err)
 		return userCategory, err
@@ -108,40 +124,40 @@ func CheckUserCategory(ctx context.Context, storeDB *pgxpool.Pool, user_id uint)
 
 
 // UpdatePassword updates the user password
-func UpdatePassword(ctx context.Context, storeDB *pgxpool.Pool, user models.User, password string, tokenHash string) (uint, error) {
+func UpdatePassword(ctx context.Context, storeDB *pgxpool.Pool, user models.User) (uint, error) {
 
-	userID, err := CheckUser(ctx, storeDB, user)
-	if err != nil {
-		return userID, nil
+	if !CheckUser(ctx, storeDB, user) {
+		return user.ID, nil
 	}
+	t := time.Now()
 	pwdHash, err := Hash(fmt.Sprintf("%s:password", user.Password), config.Key)
 	if err != nil {
 		log.Printf("Error happened when hashing received value. Err: %s", err)
-		return userID, err
+		return user.ID, err
 	}
 
-	_, err = storeDB.Exec(ctx, "UPDATE users SET password = ($1), tokenhash = ($2) WHERE users_id = ($3);",
+	_, err = storeDB.Exec(ctx, "UPDATE users SET password = ($1), tokenhash = ($2), last_edited_at = ($3) WHERE users_id = ($4);",
 		pwdHash,
 		user.TokenHash,
-		userID,
+		t,
+		user.ID,
 	)
 	if err != nil {
 		log.Printf("Error happened when updating user credentials into pgx table. Err: %s", err)
-		return userID, err
+		return user.ID, err
 	}
-	err = storeDB.QueryRow(ctx, "SELECT users_id FROM users WHERE username=($1);", user.Username).Scan(&userID)
+	err = storeDB.QueryRow(ctx, "SELECT users_id FROM users WHERE username=($1);", user.Username).Scan(&user.ID)
 	if err != nil {
 		log.Printf("Error happened when retrieving usersid from the db. Err: %s", err)
-		return userID, err
+		return user.ID, err
 	}
-	return userID, nil
+	return user.ID, nil
 }
 
 func UpdateUserCategory(ctx context.Context, storeDB *pgxpool.Pool, u models.User) (uint, error) {
 
-	userID, err := CheckUser(ctx, storeDB, u)
-	if err != nil {
-		return userID, nil
+	if !CheckUser(ctx, storeDB, u) {
+		return u.ID, nil
 	}
 
 	_, err = storeDB.Exec(ctx, "UPDATE users SET category = ($1) WHERE username = ($2);",
@@ -150,21 +166,20 @@ func UpdateUserCategory(ctx context.Context, storeDB *pgxpool.Pool, u models.Use
 	)
 	if err != nil {
 		log.Printf("Error happened when updating user category into pgx table. Err: %s", err)
-		return userID, err
+		return u.ID, err
 	}
-	err = storeDB.QueryRow(ctx, "SELECT users_id FROM users WHERE username=($1);", u.Username).Scan(&userID)
+	err = storeDB.QueryRow(ctx, "SELECT users_id FROM users WHERE username=($1);", u.Username).Scan(&u.ID)
 	if err != nil {
 		log.Printf("Error happened when retrieving usersid from the db. Err: %s", err)
-		return userID, err
+		return u.ID, err
 	}
-	return userID, nil
+	return u.ID, nil
 }
 
 func UpdateUserStatus(ctx context.Context, storeDB *pgxpool.Pool, u models.User) (uint, error) {
 
-	userID, err := CheckUser(ctx, storeDB, u)
-	if err != nil {
-		return userID, nil
+	if !CheckUser(ctx, storeDB, u) {
+		return u.ID, nil
 	}
 
 	_, err = storeDB.Exec(ctx, "UPDATE users SET status = ($1) WHERE username = ($2);",
@@ -173,21 +188,23 @@ func UpdateUserStatus(ctx context.Context, storeDB *pgxpool.Pool, u models.User)
 	)
 	if err != nil {
 		log.Printf("Error happened when updating user status into pgx table. Err: %s", err)
-		return userID, err
+		return u.ID, err
 	}
-	err = storeDB.QueryRow(ctx, "SELECT users_id FROM users WHERE username=($1);", u.Username).Scan(&userID)
+	err = storeDB.QueryRow(ctx, "SELECT users_id FROM users WHERE username=($1);", u.Username).Scan(&u.ID)
 	if err != nil {
 		log.Printf("Error happened when retrieving usersid from the db. Err: %s", err)
-		return userID, err
+		return u.ID, err
 	}
-	return userID, nil
+	return u.ID, nil
 }
 
 // UpdateUserVerificationStatus updates user verification status to true
 func UpdateUserVerificationStatus(ctx context.Context, storeDB *pgxpool.Pool, email string) error {
 
-	_, err = storeDB.Exec(ctx, "UPDATE users SET isverified = ($1) WHERE email = ($2);",
+	t := time.Now()
+	_, err = storeDB.Exec(ctx, "UPDATE users SET isverified = ($1), last_edited_at = ($2) WHERE email = ($3);",
 		models.VerifiedStatus,
+		t,
 		email,
 	)
 	if err != nil {
@@ -259,7 +276,7 @@ func RetrieveUsers(ctx context.Context, storeDB *pgxpool.Pool) ([]models.User, e
 func StoreVerificationData(ctx context.Context, storeDB *pgxpool.Pool, verificationData *models.VerificationData) error {
 
 
-	_, err = storeDB.Exec(ctx, "INSERT INTO verifications (email, code, expiresat, type) VALUES ($1, $2, $3, $4);",
+	_, err = storeDB.Exec(ctx, "INSERT INTO verifications (email, code, expires_at, type) VALUES ($1, $2, $3, $4);",
 		verificationData.Email,
 		verificationData.Code,
 		verificationData.ExpiresAt,
@@ -275,10 +292,11 @@ func StoreVerificationData(ctx context.Context, storeDB *pgxpool.Pool, verificat
 }
 
 // GetMailVerificationCode retrieves the stored verification code.
-func GetVerificationData(ctx context.Context, storeDB *pgxpool.Pool, email string, verificationDataType models.VerificationDataType) (*models.VerificationData, error) {
+func GetVerificationData(ctx context.Context, storeDB *pgxpool.Pool, email string, verificationDataType int) (*models.VerificationData, error) {
 	
 	var verificationData models.VerificationData
-	err = storeDB.QueryRow(ctx, "SELECT * FROM verifications WHERE where email = $1 and type = $2", email, verificationDataType).Scan(&verificationData)
+
+	err = storeDB.QueryRow(ctx, "SELECT * FROM verifications WHERE email = $1 and type = $2", email, verificationDataType).Scan(&verificationData.ID, &verificationData.Email, &verificationData.Code, &verificationData.ExpiresAt, &verificationData.Type)
 	if err != nil {
 		log.Printf("Error happened when retrieving verifications from the db. Err: %s", err)
 		return &verificationData, err
@@ -288,9 +306,9 @@ func GetVerificationData(ctx context.Context, storeDB *pgxpool.Pool, email strin
 }
 
 // DeleteMailVerificationData deletes a used verification data
-func DeleteVerificationData(ctx context.Context, storeDB *pgxpool.Pool, email string, verificationDataType models.VerificationDataType) error {
+func DeleteVerificationData(ctx context.Context, storeDB *pgxpool.Pool, email string, verificationDataType int) error {
 
-	_, err = storeDB.Exec(ctx, "DELETE FROM verifications WHERE where email = $1 and type = $2", email, verificationDataType)
+	_, err = storeDB.Exec(ctx, "DELETE FROM verifications WHERE email = $1 and type = $2", email, verificationDataType)
 	if err != nil {
 		log.Printf("Error happened when deleting verifications from the db. Err: %s", err)
 		return err
