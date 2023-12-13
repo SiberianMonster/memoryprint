@@ -20,7 +20,7 @@ func UserIDContextReader(r *http.Request) (uint) {
 }
 
 func HandleWrongCredentialsError(rw http.ResponseWriter, resp map[string]string) {
-    rw.WriteHeader(http.StatusBadRequest)
+    rw.WriteHeader(http.StatusNoContent)
     resp["status"] = "incorrect credentials error"
     jsonResp, err := json.Marshal(resp)
     if err != nil {
@@ -31,7 +31,7 @@ func HandleWrongCredentialsError(rw http.ResponseWriter, resp map[string]string)
 }
 
 func HandlePermissionError(rw http.ResponseWriter, resp map[string]string) {
-    rw.WriteHeader(http.StatusBadRequest)
+    rw.WriteHeader(http.StatusUnauthorized)
     resp["status"] = "action not permitted"
     jsonResp, err := json.Marshal(resp)
     if err != nil {

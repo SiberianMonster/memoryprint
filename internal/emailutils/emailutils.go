@@ -39,12 +39,18 @@ const (
 	MailConfirmation int = 1
 	MailDesignerOrder int = 2
 	MailPassReset int = 3
+	MailViewerInvitationNew int = 4
+	MailViewerInvitationExist int = 5
 )
 
 // MailData represents the data to be sent to the template of the mail.
 type MailData struct {
 	Username string
 	Code	 string
+	OwnerName string
+	OwnerEmail	 string
+	UserEmail	 string
+	TempPass	 string
 }
 
 // Mail represents a email request
@@ -92,11 +98,13 @@ type SGMailService struct {
 	MailVerifTemplateID        string
 	PassResetTemplateID        string
 	DesignerOrderTemplateID    string
+	ViewerInvitationNewTemplateID    string
+	ViewerInvitationExistTemplateID    string
 }
 
 // NewSGMailService returns a new instance of SGMailService
 func NewSGMailService() *SGMailService {
-	return &SGMailService{config.SendGridApiKey, config.MailVerifCodeExpiration, config.PassResetCodeExpiration, config.MailVerifTemplateID, config.PassResetTemplateID, config.DesignerOrderTemplateID}
+	return &SGMailService{config.SendGridApiKey, config.MailVerifCodeExpiration, config.PassResetCodeExpiration, config.MailVerifTemplateID, config.PassResetTemplateID, config.DesignerOrderTemplateID, config.ViewerInvitationNewTemplateID, config.ViewerInvitationExistTemplateID}
 }
 
 
@@ -110,6 +118,14 @@ func CreateMail(mailReq *Mail, ms *SGMailService) error {
 		err = mailReq.ParseTemplate("password_reset.html", mailReq.data)
 	} else if mailReq.mtype == MailDesignerOrder {
 		err = mailReq.ParseTemplate("confirm_mail.html", mailReq.data)
+	
+	} else if mailReq.mtype == MailViewerInvitationNew {
+		err = mailReq.ParseTemplate("viewer_invitation.html", mailReq.data)
+	
+	
+	} else if mailReq.mtype == MailViewerInvitationExist {
+		err = mailReq.ParseTemplate("viewer_invitation_exist.html", mailReq.data)
+	
 	}
 
 	if err != nil{
@@ -204,3 +220,4 @@ func NewMail(from string, to []string, subject string, mailType int, data *MailD
 		data: 	 data,
 	}
 }
+

@@ -115,7 +115,7 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 
 	// orders table
 	_, err = db.Exec(ctx,
-		"CREATE TABLE IF NOT EXISTS orders (orders_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, link varchar NOT NULL, status varchar NOT NULL, pagesnum int, covertype varchar, bindingtype varchar, papertype varchar, created_at timestamp NOT NULL, last_updated_at timestamp NOT NULL, promooffers_id int REFERENCES promooffers(promooffers_id), users_id int REFERENCES users(users_id))")
+		"CREATE TABLE IF NOT EXISTS orders (orders_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, link varchar NOT NULL, status varchar NOT NULL, pagesnum int, covertype varchar, bindingtype varchar, papertype varchar, created_at timestamp NOT NULL, last_updated_at timestamp NOT NULL, promooffers_id int, users_id int REFERENCES users(users_id))")
 	if err != nil {
 		log.Printf("Error happened when creating orders table. Err: %s", err)
 		return nil, false
@@ -160,11 +160,20 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 
 	// projects table
 	_, err = db.Exec(ctx,
-		"CREATE TABLE IF NOT EXISTS projects (projects_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, name varchar, orientation varchar NOT NULL, cover_image varchar, status varchar NOT NULL, is_template boolean, category varchar, last_edited_at timestamp NOT NULL, last_editor int, created_at timestamp NOT NULL, users_id int REFERENCES users(users_id))")
+		"CREATE TABLE IF NOT EXISTS projects (projects_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, name varchar, orientation varchar NOT NULL, cover_image varchar, status varchar NOT NULL, last_edited_at timestamp NOT NULL, last_editor int, created_at timestamp NOT NULL, covertype varchar, bindingtype varchar, papertype varchar, promooffers_id int, users_id int REFERENCES users(users_id))")
 	if err != nil {
 		log.Printf("Error happened when creating photobooks table. Err: %s", err)
 		return nil, false
 
+	}
+
+	// templates table
+	_, err = db.Exec(ctx,
+			"CREATE TABLE IF NOT EXISTS templates (templates_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, name varchar, orientation varchar NOT NULL, cover_image varchar, status varchar NOT NULL, category varchar, hardcopy varchar, last_edited_at timestamp NOT NULL, last_editor int, created_at timestamp NOT NULL, users_id int REFERENCES users(users_id))")
+	if err != nil {
+			log.Printf("Error happened when creating photobooks table. Err: %s", err)
+			return nil, false
+	
 	}
 
 	// photoalbums table
@@ -178,7 +187,7 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 
 	// pages table
 	_, err = db.Exec(ctx,
-		"CREATE TABLE IF NOT EXISTS pages (pages_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, number int NOT NULL, last_edited_at timestamp NOT NULL, projects_id int REFERENCES projects(projects_id))")
+		"CREATE TABLE IF NOT EXISTS pages (pages_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, number int NOT NULL, is_template boolean NOT NULL, last_edited_at timestamp NOT NULL, projects_id int REFERENCES projects(projects_id))")
 	if err != nil {
 		log.Printf("Error happened when creating pages table. Err: %s", err)
 		return nil, false
@@ -275,6 +284,25 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 			return nil, false
 	
 	}
+
+	// mapping decorations uploaded by users and users 
+	_, err = db.Exec(ctx,
+			"CREATE TABLE IF NOT EXISTS users_has_decoration (users_id int NOT NULL, decorations_id int NOT NULL, is_favourite boolean NOT NULL, is_personal boolean NOT NULL)")
+	if err != nil {
+			log.Printf("Error happened when creating users_edit_albums table. Err: %s", err)
+			return nil, false
+	
+	}
+
+	// mapping backgrounds uploaded by users and users 
+	_, err = db.Exec(ctx,
+			"CREATE TABLE IF NOT EXISTS users_has_backgrounds (users_id int NOT NULL, backgrounds_id int NOT NULL, is_favourite boolean NOT NULL, is_personal boolean NOT NULL)")
+	if err != nil {
+			log.Printf("Error happened when creating users_edit_albums table. Err: %s", err)
+			return nil, false
+	
+	}
+
 
 	// pass default settings
 	

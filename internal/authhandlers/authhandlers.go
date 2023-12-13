@@ -22,13 +22,14 @@ func RefreshToken(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
 	resp := make(map[string]string)
 
-	var user models.User
-	err := json.NewDecoder(r.Body).Decode(&user)
+	userID := handlersfunc.UserIDContextReader(r)
+
+	log.Printf("User %d requested token refresh", userID)
+	user, err := userstorage.GetUserData(context.Background(), config.DB, userID)
 	if err != nil {
-		handlersfunc.HandleDecodeError(rw, resp, err)
-		return
+			handlersfunc.HandleWrongCredentialsError(rw, resp)
+			return
 	}
-	log.Printf("User %d requested token refresh", user.ID)
 
 	accessToken, err := authservice.GenerateAccessToken(&user)
 	if err != nil {
@@ -104,7 +105,7 @@ func GeneratePassResetCode(rw http.ResponseWriter, r *http.Request) {
 		Code: 	emailutils.GenerateRandomString(8),
 	}
 
-	ms := &emailutils.SGMailService{config.YandexApiKey, config.MailVerifCodeExpiration, config.PassResetCodeExpiration, config.MailVerifTemplateID, config.PassResetTemplateID, config.DesignerOrderTemplateID}
+	ms := &emailutils.SGMailService{config.YandexApiKey, config.MailVerifCodeExpiration, config.PassResetCodeExpiration, config.MailVerifTemplateID, config.PassResetTemplateID, config.DesignerOrderTemplateID, config.ViewerInvitationNewTemplateID, config.ViewerInvitationExistTemplateID}
 	mailReq := emailutils.NewMail(from, to, subject, mailType, mailData)
 	err = emailutils.SendMail(mailReq, ms)
 	if err != nil {

@@ -26,6 +26,8 @@ const (
 	MailVerifTemplateID   = "d-5ecbea6e38764af3b703daf03f139b48"
 	PassResetTemplateID   = "d-3fc222d11809441abaa8ed459bb44319"
 	DesignerOrderTemplateID   = "d-5ecbea6e38764af3b703daf03f139b48"
+	ViewerInvitationNewTemplateID   = "d-5ecbea6e38764af3b703daf03f139b48"
+	ViewerInvitationExistTemplateID   = "d-5ecbea6e38764af3b703daf03f139b48"
 	AccessTokenPrivateKeyPath = "./auth-private.pem"
 	AccessTokenPublicKeyPath = "./auth-public.pem"
 	RefreshTokenPrivateKeyPath = "./refresh-private.pem"

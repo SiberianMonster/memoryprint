@@ -46,21 +46,24 @@ func CheckUserHasProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 }
 
 // CreateProject function performs the operation of creating a new photobook project in pgx database with a query.
-func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, pageNumber int, orientation string, coverImage string, projectname string) (uint, error) {
+func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, pageNumber int, orientation string, coverImage string, projectname string, covertype string, bindingtype string, papertype string, promooffersID uint) (uint, error) {
 
 	t := time.Now()
 	var pID uint
 	var email string
-	err := storeDB.QueryRow(ctx, "INSERT INTO projects (name, created_at, last_edited_at, status, orientation, is_template, cover_image, last_editor, users_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING projects_id;",
+	err := storeDB.QueryRow(ctx, "INSERT INTO projects (name, created_at, last_edited_at, status, orientation, cover_image, last_editor, users_id, covertype, bindingtype, papertype, promooffers_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING projects_id;",
 		projectname,
 		t,
 		t,
 		"EDITED",
 		orientation,
-		false,
 		coverImage,
 		userID,
 		userID,
+		covertype,
+		bindingtype,
+		papertype,
+		promooffersID,
 	).Scan(&pID)
 	if err != nil {
 		log.Printf("Error happened when inserting a new project into pgx table. Err: %s", err)
@@ -70,9 +73,10 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, page
 	pagesRange := makeRange(1, pageNumber)
 
 	for _, num := range pagesRange {
-		_, err = storeDB.Exec(ctx, "INSERT INTO pages (last_edited_at, number, projects_id) VALUES ($1, $2, $3);",
+		_, err = storeDB.Exec(ctx, "INSERT INTO pages (last_edited_at, number, is_template, projects_id) VALUES ($1, $2, $3, $4);",
 			t,
 			num,
+			false,
 			pID,
 		)
 		if err != nil {
@@ -99,34 +103,35 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, page
 
 
 // CreateTemplate function performs the operation of creating a new photobook template in pgx database with a query.
-func CreateTemplate(ctx context.Context, storeDB *pgxpool.Pool, userID uint, pageNumber int, orientation string, coverImage string, category string, projectname string) (uint, error) {
+func CreateTemplate(ctx context.Context, storeDB *pgxpool.Pool, userID uint, pageNumber int, orientation string, coverImage string, category string, hardCopy string, projectname string) (uint, error) {
 
 	t := time.Now()
 	var pID uint
-	var email string
-	err := storeDB.QueryRow(ctx, "INSERT INTO projects (name, created_at, last_edited_at, status, orientation, is_template, category, cover_image, last_editor, users_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING projects_id;",
+	err := storeDB.QueryRow(ctx, "INSERT INTO templates (name, created_at, last_edited_at, status, orientation, category, hardcopy, cover_image, last_editor, users_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING templates_id;",
 		projectname,
 		t,
 		t,
 		"EDITED",
 		orientation,
-		true,
 		category,
+		hardCopy,
 		coverImage,
 		userID,
 		userID,
 	).Scan(&pID)
 	if err != nil {
-		log.Printf("Error happened when inserting a new project into pgx table. Err: %s", err)
-		return 0, err
+		log.Printf("Error happened when inserting a new template into pgx table. Err: %s", err)
+		return pID, err
 	}
 
 	pagesRange := makeRange(1, pageNumber)
 
 	for _, num := range pagesRange {
-		_, err = storeDB.Exec(ctx, "INSERT INTO pages (last_edited_at, number, projects_id) VALUES ($1, $2, $3);",
+		
+		_, err = storeDB.Exec(ctx, "INSERT INTO pages (last_edited_at, number, is_template, projects_id) VALUES ($1, $2, $3, $4) RETURNING pages_id;",
 			t,
 			num,
+			true,
 			pID,
 		)
 		if err != nil {
@@ -134,20 +139,6 @@ func CreateTemplate(ctx context.Context, storeDB *pgxpool.Pool, userID uint, pag
 			return pID, err
 		}
     }
-
-	err = storeDB.QueryRow(ctx, "SELECT email FROM users WHERE users_id = ($1);", userID).Scan(&email)
-	if err != nil {
-			log.Printf("Error happened when retrieving user email data from db. Err: %s", err)
-			return pID, err
-	}
-
-	_, err = AddProjectEditor(ctx, storeDB, email, pID, "OWNER")
-	if err != nil {
-		log.Printf("Error happened when adding project editor. Err: %s", err)
-		return pID, err
-	}
-
-	log.Printf("added new project to DB")
 	return pID, nil
 }
 
@@ -159,6 +150,11 @@ func SaveProject(ctx context.Context, storeDB *pgxpool.Pool, projectObj models.P
 
 	t := time.Now()
 
+	if projectObj.ProjectID == 0{
+		log.Printf("Project object not provided or malformed")
+		return errors.New("Project object not provided or malformed")
+	}
+
 	_, err = storeDB.Exec(ctx, "UPDATE projects SET (name, last_edited_at, orientation, cover_image, last_editor) = ($1, $2, $3, $4, $5) WHERE projects_id = ($6);",
 		projectObj.Name,
 		t,
@@ -168,7 +164,47 @@ func SaveProject(ctx context.Context, storeDB *pgxpool.Pool, projectObj models.P
 		projectObj.ProjectID,
 	)
 	if err != nil {
-		log.Printf("Error happened when inserting a new project into pgx table. Err: %s", err)
+		log.Printf("Error happened when saving a project in pgx table. Err: %s", err)
+		return err
+	}
+	return nil
+
+}
+
+// SaveTemplate function performs the operation of saving data related to existing project.
+func SaveTemplate(ctx context.Context, storeDB *pgxpool.Pool, projectObj models.ProjectObj, userID uint) error {
+
+	var err error
+
+	t := time.Now()
+
+	_, err = storeDB.Exec(ctx, "UPDATE templates SET (name, last_edited_at, orientation, cover_image) = ($1, $2, $3, $4) WHERE templates_id = ($5);",
+		projectObj.Name,
+		t,
+		projectObj.Orientation,
+		projectObj.CoverImage,
+		projectObj.TemplateID,
+	)
+	if err != nil {
+		log.Printf("Error happened when saving template into pgx table. Err: %s", err)
+		return err
+	}
+	return nil
+
+}
+
+// PublishTemplate function performs the operation of saving data related to existing project.
+func PublishTemplate(ctx context.Context, storeDB *pgxpool.Pool, projectObj models.TemplateProjectObj) error {
+
+	var err error
+
+	_, err = storeDB.Exec(ctx, "UPDATE templates SET (status, hardcopy) = ($1, $2) WHERE templates_id = ($3);",
+		projectObj.HardCopy,
+		"PUBLISHED",
+		projectObj.TemplateID,
+	)
+	if err != nil {
+		log.Printf("Error happened when inserting template hardcopy into pgx table. Err: %s", err)
 		return err
 	}
 	return nil
@@ -176,10 +212,10 @@ func SaveProject(ctx context.Context, storeDB *pgxpool.Pool, projectObj models.P
 }
 
 // RetrieveProjectPages function performs the operation of retrieving a photobook project from pgx database with a query.
-func RetrieveProjectPages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint) ([]uint, error) {
+func RetrieveProjectPages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint, isTemplate bool) ([]uint, error) {
 
 	var pageslice []uint
-	rows, err := storeDB.Query(ctx, "SELECT pages_id FROM pages WHERE projects_id = ($1) ORDER BY number;", projectID)
+	rows, err := storeDB.Query(ctx, "SELECT pages_id FROM pages WHERE projects_id = ($1) AND is_template = ($2) ORDER BY number;", projectID, isTemplate)
 	if err != nil {
 		log.Printf("Error happened when retrieving pages from pgx table. Err: %s", err)
 		return nil, err
@@ -204,43 +240,261 @@ func RetrieveProjectPages(ctx context.Context, storeDB *pgxpool.Pool, projectID 
 }
 
 // AddProjectPage function performs the operation of adding a photobook project page to pgx database with a query.
-func AddProjectPage(ctx context.Context, storeDB *pgxpool.Pool, projectID uint) (error) {
+func AddProjectPage(ctx context.Context, storeDB *pgxpool.Pool, projectID uint) (uint, error) {
 
 	var pageslice []models.Page
-	rows, err := storeDB.Query(ctx, "SELECT pages_id, background FROM pages WHERE projects_id = ($1);", projectID)
+	var pID uint
+	rows, err := storeDB.Query(ctx, "SELECT pages_id FROM pages WHERE projects_id = ($1);", projectID)
 	if err != nil {
 		log.Printf("Error happened when retrieving pages from pgx table. Err: %s", err)
-		return err
+		return pID, err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		var page models.Page
-		if err = rows.Scan(&page.PageID, &page.Background); err != nil {
+		if err = rows.Scan(&page.PageID); err != nil {
 			log.Printf("Error happened when scanning pages. Err: %s", err)
-			return err
+			return pID, err
 		}
 		pageslice = append(pageslice, page)
 	}
 
 	if err = rows.Err(); err != nil {
 		log.Printf("Error happened when retrieving pages from pgx table. Err: %s", err)
-		return err
+		return pID, err
 	}
 
 	t := time.Now()
 	newPageNum := len(pageslice) + 1
-	_, err = storeDB.Exec(ctx, "INSERT INTO pages (created_at, number, background, projects_id) VALUES ($1, $2, $3, $4);",
+	err = storeDB.QueryRow(ctx, "INSERT INTO pages (last_edited_at, number, is_template, projects_id) VALUES ($1, $2, $3, $4) RETURNING pages_id;",
 			t,
 			newPageNum,
-			"",
+			false,
 			projectID,
-		)
+		).Scan(&pID)
+	if err != nil {
+			log.Printf("Error happened when inserting a new page into pgx table. Err: %s", err)
+			return pID, err
+	}
+	return pID, nil
+
+}
+
+// DuplicateProjectPage function performs the operation of duplicating existing photobook project page to pgx database with a query.
+func DuplicateProjectPage(ctx context.Context, storeDB *pgxpool.Pool, duplicateID uint) (uint, error) {
+
+	var pageslice []models.Page
+	var pID uint
+	var projectID uint
+
+	err = storeDB.QueryRow(ctx, "SELECT projects_id FROM pages WHERE pages_id = ($1);", duplicateID).Scan(&projectID)
+	if err != nil {
+			log.Printf("Error happened when retrieving project ID from pgx table. Err: %s", err)
+			return pID, err
+	}
+
+	rows, err := storeDB.Query(ctx, "SELECT pages_id FROM pages WHERE projects_id = ($1);", projectID)
+	if err != nil {
+		log.Printf("Error happened when retrieving pages from pgx table. Err: %s", err)
+		return pID, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var page models.Page
+		if err = rows.Scan(&page.PageID); err != nil {
+			log.Printf("Error happened when scanning pages. Err: %s", err)
+			return pID, err
+		}
+		pageslice = append(pageslice, page)
+	}
+
+	if err = rows.Err(); err != nil {
+		log.Printf("Error happened when retrieving pages from pgx table. Err: %s", err)
+		return pID, err
+	}
+
+	t := time.Now()
+	newPageNum := len(pageslice) + 1
+	err = storeDB.QueryRow(ctx, "INSERT INTO pages (last_edited_at, number, projects_id) VALUES ($1, $2, $3) RETURNING pages_id;",
+			t,
+			newPageNum,
+			projectID,
+		).Scan(&pID)
+	if err != nil {
+			log.Printf("Error happened when inserting a new page into pgx table. Err: %s", err)
+			return pID, err
+	}
+
+	_, err = storeDB.Exec(ctx, "INSERT INTO page_has_photos (pages_id, photos_id, ptop, pleft, style, last_edited_at) SELECT $1, photos_id, ptop, pleft, style, $2 FROM page_has_photos WHERE pages_id = $3;",
+			pID,
+			t,
+			duplicateID,
+	)
+	if err != nil {
+			log.Printf("Error happened when duplicating page photos into pgx table. Err: %s", err)
+			return pID, err
+	}
+
+	_, err = storeDB.Exec(ctx, "INSERT INTO page_has_decoration (pages_id, decorations_id, ptop, pleft, style, last_edited_at) SELECT $1, decorations_id, ptop, pleft, style, $2 FROM page_has_decoration WHERE pages_id = $3;",
+			pID,
+			t,
+			duplicateID,
+	)
+	if err != nil {
+			log.Printf("Error happened when duplicating page decorations into pgx table. Err: %s", err)
+			return pID, err
+	}
+
+	_, err = storeDB.Exec(ctx, "INSERT INTO page_has_layout (pages_id, layouts_id, last_edited_at) SELECT $1, layouts_id, $2 FROM page_has_layout WHERE pages_id = $3;",
+			pID,
+			t,
+			duplicateID,
+	)
+	if err != nil {
+			log.Printf("Error happened when duplicating page layout into pgx table. Err: %s", err)
+			return pID, err
+	}
+
+	_, err = storeDB.Exec(ctx, "INSERT INTO page_has_background (pages_id, backgrounds_id, last_edited_at) SELECT $1, backgrounds_id, $2 FROM page_has_background WHERE pages_id = $3;",
+			pID,
+			t,
+			duplicateID,
+	)
+	if err != nil {
+			log.Printf("Error happened when duplicating page background into pgx table. Err: %s", err)
+			return pID, err
+	}
+
+	_, err = storeDB.Exec(ctx, "INSERT INTO page_has_text (pages_id, custom_text, ptop, pleft, style) SELECT $1, custom_text, ptop, pleft, style FROM page_has_text WHERE pages_id = $2;",
+			pID,
+			duplicateID,
+	)
+	if err != nil {
+			log.Printf("Error happened when duplicating page texts into pgx table. Err: %s", err)
+			return pID, err
+	}
+
+	return pID, nil
+
+}
+
+
+// CreateProjectFromTemplate function performs the operation of duplicating existing photobook project page to pgx database with a query.
+func CreateProjectFromTemplate(ctx context.Context, storeDB *pgxpool.Pool, userID uint, templateID uint, covertype string, bindingtype string, papertype string, promooffersID uint) (uint, []uint, error) {
+
+	var pageslice []models.Page
+	var newpageslice []uint
+	var pID uint
+	var projectID uint
+	var name, orientation, coverImage string
+	t := time.Now()
+
+	err := storeDB.QueryRow(ctx, "SELECT name, orientation, cover_image FROM templates WHERE templates_id = ($1);", templateID).Scan(&name, &orientation, &coverImage)
+	if err != nil {
+		log.Printf("Error happened when retrieving template data. Err: %s", err)
+		return projectID, newpageslice, err
+	}
+	err = storeDB.QueryRow(ctx, "INSERT INTO projects (name, created_at, last_edited_at, status, orientation, cover_image, last_editor, users_id, covertype, bindingtype, papertype, promooffers_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING projects_id;",
+		name,
+		t,
+		t,
+		"EDITED",
+		orientation,
+		coverImage,
+		userID,
+		userID,
+		covertype,
+		bindingtype,
+		papertype,
+		promooffersID,
+	).Scan(&projectID)
+	if err != nil {
+		log.Printf("Error happened when inserting a new project into pgx table. Err: %s", err)
+		return projectID, newpageslice, err
+	}
+
+	rows, err := storeDB.Query(ctx, "SELECT pages_id FROM pages WHERE projects_id = ($1) and is_template = ($2);", templateID, true)
+	if err != nil {
+		log.Printf("Error happened when retrieving pages from pgx table. Err: %s", err)
+		return projectID, newpageslice, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var page models.Page
+		if err = rows.Scan(&page.PageID); err != nil {
+			log.Printf("Error happened when scanning pages. Err: %s", err)
+			return projectID, newpageslice, err
+		}
+		pageslice = append(pageslice, page)
+	}
+
+	if err = rows.Err(); err != nil {
+		log.Printf("Error happened when retrieving pages from pgx table. Err: %s", err)
+		return projectID, newpageslice, err
+	}
+
+
+	pagesRange := makeRange(1, len(pageslice))
+
+	for _, num := range pagesRange {
+		err = storeDB.QueryRow(ctx, "INSERT INTO pages (last_edited_at, number, is_template, projects_id) VALUES ($1, $2, $3, $4) RETURNING pages_id;",
+			t,
+			num,
+			false,
+			projectID,
+		).Scan(&pID)
 		if err != nil {
 			log.Printf("Error happened when inserting a new page into pgx table. Err: %s", err)
-			return err
+			return projectID, newpageslice, err
 		}
-	return nil
+		_, err = storeDB.Exec(ctx, "INSERT INTO page_has_decoration (pages_id, decorations_id, ptop, pleft, style, last_edited_at) SELECT $1, decorations_id, ptop, pleft, style, $2 FROM page_has_decoration WHERE pages_id = $3;",
+			pID,
+			t,
+			pageslice[num].PageID,
+		)
+		if err != nil {
+				log.Printf("Error happened when duplicating page decorations into pgx table. Err: %s", err)
+				return projectID, newpageslice, err
+		}
+
+		_, err = storeDB.Exec(ctx, "INSERT INTO page_has_layout (pages_id, layouts_id, last_edited_at) SELECT $1, layouts_id, $2 FROM page_has_layout WHERE pages_id = $3;",
+				pID,
+				t,
+				pageslice[num].PageID,
+		)
+		if err != nil {
+				log.Printf("Error happened when duplicating page layout into pgx table. Err: %s", err)
+				return projectID, newpageslice, err
+		}
+
+		_, err = storeDB.Exec(ctx, "INSERT INTO page_has_background (pages_id, backgrounds_id, last_edited_at) SELECT $1, backgrounds_id, $2 FROM page_has_background WHERE pages_id = $3;",
+				pID,
+				t,
+				pageslice[num].PageID,
+		)
+		if err != nil {
+				log.Printf("Error happened when duplicating page background into pgx table. Err: %s", err)
+				return projectID, newpageslice, err
+		}
+
+		_, err = storeDB.Exec(ctx, "INSERT INTO page_has_text (pages_id, custom_text, ptop, pleft, style) SELECT $1, custom_text, ptop, pleft, style FROM page_has_text WHERE pages_id = $2;",
+				pID,
+				pageslice[num].PageID,
+		)
+		if err != nil {
+				log.Printf("Error happened when duplicating page texts into pgx table. Err: %s", err)
+				return projectID, newpageslice, err
+		}
+		newpageslice = append(newpageslice, pID)
+
+    }
+
+	
+
+	return projectID, newpageslice, nil
 
 }
 
@@ -327,14 +581,14 @@ func SavePagePhotos(ctx context.Context, storeDB *pgxpool.Pool, pageID uint, ima
 	}
 	defer tx.Rollback(ctx)
 
-	_, err = tx.Prepare(ctx, "my-query","INSERT INTO page_has_photos (pages_id, photos_id, ptop, pleft, style, last_edited_at) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO UPDATE SET (pages_id, photos_id, ptop, pleft, style, last_edited_at) = ($1, $2, $3, $4, $5, $6);")
+	_, err = tx.Prepare(ctx, "my-query-photo","INSERT INTO page_has_photos (pages_id, photos_id, ptop, pleft, style, last_edited_at) VALUES ($1, $2, $3, $4, $5, $6);")
 	if err != nil {
 		log.Printf("Error happened when preparing pgx transaction context. Err: %s", err)
 		return err
 	}
 
 	for _, v := range images {
-		if _, err = tx.Exec(ctx, "my-query", pageID, v.ObjectID, v.Ptop, v.Pleft, v.Style, t); err != nil {
+		if _, err = tx.Exec(ctx, "my-query-photo", pageID, v.ObjectID, v.Ptop, v.Pleft, v.Style, t); err != nil {
 			log.Printf("Error happened when declaring transaction. Err: %s", err)
 			return err
 		}
@@ -349,7 +603,7 @@ func SavePageDecorations(ctx context.Context, storeDB *pgxpool.Pool, pageID uint
 
 	var err error
 
-	_, err = storeDB.Exec(ctx, "DELETE FROM page_has_decorations WHERE pages_id=($1);",
+	_, err = storeDB.Exec(ctx, "DELETE FROM page_has_decoration WHERE pages_id=($1);",
 		pageID,
 	)
 	if err != nil && err != pgx.ErrNoRows {
@@ -365,14 +619,14 @@ func SavePageDecorations(ctx context.Context, storeDB *pgxpool.Pool, pageID uint
 	}
 	defer tx.Rollback(ctx)
 
-	_, err = tx.Prepare(ctx, "my-query", "INSERT INTO page_has_decorations (pages_id, decorations_id, ptop, pleft, style, last_edited_at) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO UPDATE SET (pages_id, decorations_id, ptop, pleft, style, last_edited_at) = ($1, $2, $3, $4, $5, $6);")
+	_, err = tx.Prepare(ctx, "my-query-decor", "INSERT INTO page_has_decoration (pages_id, decorations_id, ptop, pleft, style, last_edited_at) VALUES ($1, $2, $3, $4, $5, $6);")
 	if err != nil {
 		log.Printf("Error happened when preparing pgx transaction context. Err: %s", err)
 		return err
 	}
 
 	for _, v := range images {
-		if _, err = tx.Exec(ctx, "my-query", pageID, v.ObjectID, v.Ptop, v.Pleft, v.Style, t); err != nil {
+		if _, err = tx.Exec(ctx, "my-query-decor", pageID, v.ObjectID, v.Ptop, v.Pleft, v.Style, t); err != nil {
 			log.Printf("Error happened when declaring transaction. Err: %s", err)
 			return err
 		}
@@ -403,14 +657,14 @@ func SavePageLayout(ctx context.Context, storeDB *pgxpool.Pool, pageID uint, ima
 	}
 	defer tx.Rollback(ctx)
 
-	_, err = tx.Prepare(ctx, "my-query", "INSERT INTO page_has_layout (pages_id, layouts_id, last_edited_at) VALUES ($1, $2, $3) ON CONFLICT DO UPDATE SET (pages_id, layouts_id, last_edited_at) = ($1, $2, $3);")
+	_, err = tx.Prepare(ctx, "my-query-layout", "INSERT INTO page_has_layout (pages_id, layouts_id, last_edited_at) VALUES ($1, $2, $3);")
 	if err != nil {
 		log.Printf("Error happened when preparing pgx transaction context. Err: %s", err)
 		return err
 	}
 
 	for _, v := range images {
-		if _, err = tx.Exec(ctx, "my-query", pageID, v.ObjectID, t); err != nil {
+		if _, err = tx.Exec(ctx, "my-query-layout", pageID, v.ObjectID, t); err != nil {
 			log.Printf("Error happened when declaring transaction. Err: %s", err)
 			return err
 		}
@@ -441,14 +695,14 @@ func SavePageBackground(ctx context.Context, storeDB *pgxpool.Pool, pageID uint,
 	}
 	defer tx.Rollback(ctx)
 
-	_, err = tx.Prepare(ctx, "my-query", "INSERT INTO page_has_background (pages_id, backgrounds_id, last_edited_at) VALUES ($1, $2, $3) ON CONFLICT DO UPDATE SET (pages_id, backgrounds_id, last_edited_at) = ($1, $2, $3);")
+	_, err = tx.Prepare(ctx, "my-query-b", "INSERT INTO page_has_background (pages_id, backgrounds_id, last_edited_at) VALUES ($1, $2, $3);")
 	if err != nil {
 		log.Printf("Error happened when preparing pgx transaction context. Err: %s", err)
 		return err
 	}
 
 	for _, v := range images {
-		if _, err = tx.Exec(ctx, "my-query", pageID, v.ObjectID, t); err != nil {
+		if _, err = tx.Exec(ctx, "my-query-b", pageID, v.ObjectID, t); err != nil {
 			log.Printf("Error happened when declaring transaction. Err: %s", err)
 			return err
 		}
@@ -471,7 +725,6 @@ func SavePageText(ctx context.Context, storeDB *pgxpool.Pool, pageID uint, textO
 		return err
 	}
 
-	t := time.Now()
 	tx, err := storeDB.Begin(ctx)
 	if err != nil {
 		log.Printf("Error happened when initiating pgx transaction. Err: %s", err)
@@ -479,14 +732,14 @@ func SavePageText(ctx context.Context, storeDB *pgxpool.Pool, pageID uint, textO
 	}
 	defer tx.Rollback(ctx)
 
-	_, err = tx.Prepare(ctx, "my-query", "INSERT INTO page_has_text (pages_id, custom_text, ptop, pleft, style, last_edited_at) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO UPDATE SET (pages_id, custom_text, ptop, pleft, style, last_edited_at) = ($1, $2, $3, $4, $5, $6);")
+	_, err = tx.Prepare(ctx, "my-query-text", "INSERT INTO page_has_text (pages_id, custom_text, ptop, pleft, style) VALUES ($1, $2, $3, $4, $5);")
 	if err != nil {
 		log.Printf("Error happened when preparing pgx transaction context. Err: %s", err)
 		return err
 	}
 
 	for _, v := range textObjs {
-		if _, err = tx.Exec(ctx, "my-query", pageID, v.CustomText, v.Ptop, v.Pleft, v.Style, t); err != nil {
+		if _, err = tx.Exec(ctx, "my-query-text", pageID, v.CustomText, v.Ptop, v.Pleft, v.Style); err != nil {
 			log.Printf("Error happened when declaring transaction. Err: %s", err)
 			return err
 		}
@@ -532,7 +785,7 @@ func RetrievePagePhotos(ctx context.Context, storeDB *pgxpool.Pool, pageID uint)
 func RetrievePageDecorations(ctx context.Context, storeDB *pgxpool.Pool, pageID uint) ([]models.ArtObject, error) {
 
 	var images = []models.ArtObject{}
-	rows, err := storeDB.Query(ctx, "SELECT decorations_id, ptop, pleft, style FROM page_has_decorations WHERE pages_id = ($1);", pageID)
+	rows, err := storeDB.Query(ctx, "SELECT decorations_id, ptop, pleft, style FROM page_has_decoration WHERE pages_id = ($1);", pageID)
 	if err != nil {
 		log.Printf("Error happened when retrieving project decorations from pgx table. Err: %s", err)
 		return nil, err
@@ -563,7 +816,7 @@ func RetrievePageDecorations(ctx context.Context, storeDB *pgxpool.Pool, pageID 
 func RetrievePageLayout(ctx context.Context, storeDB *pgxpool.Pool, pageID uint) ([]models.ArtObject, error) {
 
 	var images = []models.ArtObject{}
-	rows, err := storeDB.Query(ctx, "SELECT layouts_id, FROM page_has_layouts WHERE pages_id = ($1);", pageID)
+	rows, err := storeDB.Query(ctx, "SELECT layouts_id FROM page_has_layout WHERE pages_id = ($1);", pageID)
 	if err != nil {
 		log.Printf("Error happened when retrieving project layout from pgx table. Err: %s", err)
 		return nil, err
@@ -594,7 +847,7 @@ func RetrievePageLayout(ctx context.Context, storeDB *pgxpool.Pool, pageID uint)
 func RetrievePageBackground(ctx context.Context, storeDB *pgxpool.Pool, pageID uint) ([]models.ArtObject, error) {
 
 	var images = []models.ArtObject{}
-	rows, err := storeDB.Query(ctx, "SELECT backgrounds_id, FROM page_has_backgrounds WHERE pages_id = ($1);", pageID)
+	rows, err := storeDB.Query(ctx, "SELECT backgrounds_id FROM page_has_background WHERE pages_id = ($1);", pageID)
 	if err != nil {
 		log.Printf("Error happened when retrieving project background from pgx table. Err: %s", err)
 		return nil, err
@@ -664,11 +917,57 @@ func DeletePage(ctx context.Context, storeDB *pgxpool.Pool, pageID uint) (error)
 		return err
 	}
 
-	_, err = storeDB.Exec(ctx, "DELETE FROM page_has_decorations WHERE pages_id=($1);",
+	_, err = storeDB.Exec(ctx, "DELETE FROM page_has_decoration WHERE pages_id=($1);",
 		pageID,
 	)
 	if err != nil && err != pgx.ErrNoRows {
-		log.Printf("Error happened when deleting page decorations from pgx table. Err: %s", err)
+		log.Printf("Error happened when deleting page decoration from pgx table. Err: %s", err)
+		return err
+	}
+
+	_, err = storeDB.Exec(ctx, "DELETE FROM page_has_layout WHERE pages_id=($1);",
+		pageID,
+	)
+	if err != nil && err != pgx.ErrNoRows {
+		log.Printf("Error happened when deleting page layout from pgx table. Err: %s", err)
+		return err
+	}
+
+	_, err = storeDB.Exec(ctx, "DELETE FROM page_has_background WHERE pages_id=($1);",
+		pageID,
+	)
+	if err != nil && err != pgx.ErrNoRows {
+		log.Printf("Error happened when deleting page background from pgx table. Err: %s", err)
+		return err
+	}
+
+	_, err = storeDB.Exec(ctx, "DELETE FROM page_has_text WHERE pages_id=($1);",
+		pageID,
+	)
+	if err != nil && err != pgx.ErrNoRows {
+		log.Printf("Error happened when deleting page text from pgx table. Err: %s", err)
+		return err
+	}
+
+	return nil
+}
+
+// DeletePageObjects function performs the operation of deleting page related objects from pgx database with a query.
+func DeletePageObjects(ctx context.Context, storeDB *pgxpool.Pool, pageID uint) (error) {
+
+	_, err = storeDB.Exec(ctx, "DELETE FROM page_has_photos WHERE pages_id=($1);",
+		pageID,
+	)
+	if err != nil && err != pgx.ErrNoRows {
+		log.Printf("Error happened when deleting page photos from pgx table. Err: %s", err)
+		return err
+	}
+
+	_, err = storeDB.Exec(ctx, "DELETE FROM page_has_decoration WHERE pages_id=($1);",
+		pageID,
+	)
+	if err != nil && err != pgx.ErrNoRows {
+		log.Printf("Error happened when deleting page decoration from pgx table. Err: %s", err)
 		return err
 	}
 
@@ -751,16 +1050,16 @@ func AddProjectEditor(ctx context.Context, storeDB *pgxpool.Pool, email string, 
 }
 
 // RetrieveUserProjects function performs the operation of retrieving user photobook projects from pgx database with a query.
-func RetrieveUserProjects(ctx context.Context, storeDB *pgxpool.Pool, userID uint) ([]models.ProjectObj, error) {
+func RetrieveUserProjects(ctx context.Context, storeDB *pgxpool.Pool, userID uint) ([]models.RetrievedUserProject, error) {
 
-	var projectslice []models.ProjectObj
+	var projectslice []models.RetrievedUserProject
 	var email string
 	err = storeDB.QueryRow(ctx, "SELECT email FROM users WHERE users_id = ($1);", userID).Scan(&email)
 	if err != nil {
 			log.Printf("Error happened when retrieving user email data from db. Err: %s", err)
 			return nil, err
 	}
-	rows, err := storeDB.Query(ctx, "SELECT projects_id FROM users_edit_projects WHERE email = ($1);", email)
+	rows, err := storeDB.Query(ctx, "SELECT projects_id, category FROM users_edit_projects WHERE email = ($1);", email)
 	if err != nil {
 		log.Printf("Error happened when retrieving projects from pgx table. Err: %s", err)
 		return nil, err
@@ -769,21 +1068,23 @@ func RetrieveUserProjects(ctx context.Context, storeDB *pgxpool.Pool, userID uin
 
 	for rows.Next() {
 
+		var userProjectObj models.RetrievedUserProject
 		var projectObj models.ProjectObj
 		var updateTimeStorage time.Time
-		if err = rows.Scan(&projectObj.ProjectID); err != nil {
+		if err = rows.Scan(&projectObj.ProjectID, userProjectObj.Ownership.Category); err != nil {
 			log.Printf("Error happened when scanning projects. Err: %s", err)
 			return nil, err
 		}
 
-		err = storeDB.QueryRow(ctx, "SELECT name, status, orientation, cover_image, last_edited_at FROM projects WHERE projects_id = ($1) ORDER BY last_edited_at;", projectObj.ProjectID).Scan(&projectObj.Name, &projectObj.Status, &projectObj.Orientation, &projectObj.CoverImage, &updateTimeStorage)
+		err = storeDB.QueryRow(ctx, "SELECT name, orientation, cover_image, last_edited_at FROM projects WHERE projects_id = ($1) ORDER BY last_edited_at;", projectObj.ProjectID).Scan(&projectObj.Name, &projectObj.Orientation, &projectObj.CoverImage, &updateTimeStorage)
 		if err != nil && err != pgx.ErrNoRows {
 			log.Printf("Error happened when retrieving project data from db. Err: %s", err)
 			return nil, err
 		}
 		
 		projectObj.LastEditedAt = updateTimeStorage.Format(time.RFC3339)
-		projectslice = append(projectslice, projectObj)
+		userProjectObj.Project = projectObj
+		projectslice = append(projectslice, userProjectObj)
 	}
 
 	if err = rows.Err(); err != nil {
@@ -811,38 +1112,36 @@ func UpdateNewUserProjects(ctx context.Context, storeDB *pgxpool.Pool, email str
 }
 
 // RetrieveTemplates function performs the operation of retrieving photobook templates from pgx database with a query.
-func RetrieveTemplates(ctx context.Context, storeDB *pgxpool.Pool) ([]models.ProjectObj, error) {
+func RetrieveTemplates(ctx context.Context, storeDB *pgxpool.Pool) ([]models.TemplateProjectObj, error) {
 
-	var projectslice []models.ProjectObj
+	var projectslice []models.TemplateProjectObj
 	
 	rows, err := storeDB.Query(ctx, "SELECT projects_id FROM projects WHERE is_template = ($1);", true)
 	if err != nil {
-		log.Printf("Error happened when retrieving projects from pgx table. Err: %s", err)
+		log.Printf("Error happened when retrieving templates from pgx table. Err: %s", err)
 		return nil, err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 
-		var projectObj models.ProjectObj
-		var updateTimeStorage time.Time
-		if err = rows.Scan(&projectObj.ProjectID); err != nil {
-			log.Printf("Error happened when scanning projects. Err: %s", err)
+		var projectObj models.TemplateProjectObj
+		if err = rows.Scan(&projectObj.TemplateID); err != nil {
+			log.Printf("Error happened when scanning templates. Err: %s", err)
 			return nil, err
 		}
 
-		err = storeDB.QueryRow(ctx, "SELECT name, category, orientation, cover_image, last_edited_at FROM projects WHERE projects_id = ($1) ORDER BY last_edited_at;", projectObj.ProjectID).Scan(&projectObj.Name, &projectObj.Category, &projectObj.Orientation, &projectObj.CoverImage, &updateTimeStorage)
+		err = storeDB.QueryRow(ctx, "SELECT name, category, orientation, cover_image, hardcopy FROM templates WHERE templates_id = ($1) ORDER BY last_edited_at;", projectObj.TemplateID).Scan(&projectObj.Name, &projectObj.Category, &projectObj.Orientation, &projectObj.HardCopy, &projectObj.CoverImage)
 		if err != nil && err != pgx.ErrNoRows {
-			log.Printf("Error happened when retrieving project data from db. Err: %s", err)
+			log.Printf("Error happened when retrieving templates data from db. Err: %s", err)
 			return nil, err
 		}
 		
-		projectObj.LastEditedAt = updateTimeStorage.Format(time.RFC3339)
 		projectslice = append(projectslice, projectObj)
 	}
 
 	if err = rows.Err(); err != nil {
-		log.Printf("Error happened when retrieving projects from pgx table. Err: %s", err)
+		log.Printf("Error happened when retrieving templates from pgx table. Err: %s", err)
 		return nil, err
 	}
 	return projectslice, nil

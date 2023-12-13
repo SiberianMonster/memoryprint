@@ -15,6 +15,7 @@ import (
 	"github.com/SiberianMonster/memoryprint/internal/models"
 	"github.com/SiberianMonster/memoryprint/internal/orderstorage"
 	"github.com/SiberianMonster/memoryprint/internal/handlersfunc"
+	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
 )
 
@@ -105,18 +106,11 @@ func AddOrderPrintAgency(rw http.ResponseWriter, r *http.Request) {
 func DeleteOrder(rw http.ResponseWriter, r *http.Request) {
 
 	resp := make(map[string]string)
-	orderNumBytes, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		handlersfunc.HandleWrongBytesInput(rw, resp)
-		return
-	}
-	defer r.Body.Close()
-	aByteToInt, _ := strconv.Atoi(string(orderNumBytes))
-	orderNum := uint(aByteToInt)
-	log.Printf("Delete order %s", string(orderNumBytes))
-
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
+	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
+	orderNum := uint(aByteToInt)
+	defer r.Body.Close()
 
 
 	_, err =  orderstorage.DeleteOrder(ctx, config.DB, orderNum)
@@ -138,7 +132,7 @@ func DeleteOrder(rw http.ResponseWriter, r *http.Request) {
 }
 
 
-func CreateOrder(rw http.ResponseWriter, r *http.Request) {
+func CreateDraftOrder(rw http.ResponseWriter, r *http.Request) {
 
 	resp := make(map[string]string)
 	var OrderParams models.AdminOrder
@@ -154,7 +148,7 @@ func CreateOrder(rw http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
 	userID := handlersfunc.UserIDContextReader(r)
-	log.Printf("Create order for user %d", userID)
+	log.Printf("Create draft order for user %d", userID)
 	log.Println(OrderParams)
 	_, err = orderstorage.AddOrder(ctx, config.DB, OrderParams, userID)
 
@@ -299,6 +293,7 @@ func CheckPromoCode(rw http.ResponseWriter, r *http.Request) {
 	promoCodeBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		handlersfunc.HandleWrongBytesInput(rw, resp)
+		return
 	}
 	defer r.Body.Close()
 	promoCode := string(promoCodeBytes)

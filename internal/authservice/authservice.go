@@ -20,6 +20,12 @@ import (
 
 var err error
 
+func Hash(value, key string) (string, error) {
+	mac := hmac.New(sha256.New, []byte(key))
+	_, err := mac.Write([]byte(value))
+	return fmt.Sprintf("%x", mac.Sum(nil)), err
+}
+
 // RefreshTokenCustomClaims specifies the claims for refresh token
 type RefreshTokenCustomClaims struct {
 	UserEmail    string
@@ -35,11 +41,6 @@ type AccessTokenCustomClaims struct {
 	jwt.StandardClaims
 }
 
-func Hash(value, key string) (string, error) {
-	mac := hmac.New(sha256.New, []byte(key))
-	_, err := mac.Write([]byte(value))
-	return fmt.Sprintf("%x", mac.Sum(nil)), err
-}
 
 func Authenticate(u *models.User, dbUser *models.User) (bool, error) {
 
@@ -61,6 +62,9 @@ func Authenticate(u *models.User, dbUser *models.User) (bool, error) {
 // the key is a hashed combination of the userID and user tokenhash
 func GenerateCustomKey(userEmail string, tokenHash string) string {
 
+	log.Println("generating custom key")
+	log.Println(userEmail)
+	log.Println(tokenHash)
 	// data := userID + tokenHash
 	h := hmac.New(sha256.New, []byte(tokenHash))
 	h.Write([]byte(userEmail))

@@ -97,6 +97,8 @@ func MiddlewareValidateRefreshToken(h http.Handler) http.Handler {
 		}
 
 		actualCustomKey := authservice.GenerateCustomKey(user.Email, user.TokenHash)
+		log.Println(actualCustomKey)
+		log.Println(customKey)
 		if customKey != actualCustomKey {
 			log.Printf("wrong token: authetincation failed")
 			handlersfunc.HandleJWTError(w, resp)

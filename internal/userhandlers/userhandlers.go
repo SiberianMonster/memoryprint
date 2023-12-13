@@ -70,37 +70,37 @@ func Register(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send verification mail
-	from := "support@memoryprint.ru"
-	to := []string{user.Email}
-	subject := "Email Verification for MemoryPrint"
-	mailType := emailutils.MailConfirmation
-	mailData := &emailutils.MailData{
-		Username: user.Username,
-		Code: 	emailutils.GenerateRandomString(8),
-	}
+	//from := "support@memoryprint.ru"
+	//to := []string{user.Email}
+	//subject := "Email Verification for MemoryPrint"
+	//mailType := emailutils.MailConfirmation
+	//mailData := &emailutils.MailData{
+	//	Username: user.Username,
+	//	Code: 	emailutils.GenerateRandomString(8),
+	//}
 
-	ms := &emailutils.SGMailService{config.YandexApiKey, config.MailVerifCodeExpiration, config.PassResetCodeExpiration, config.MailVerifTemplateID, config.PassResetTemplateID, config.DesignerOrderTemplateID}
-	mailReq := emailutils.NewMail(from, to, subject, mailType, mailData)
-	err = emailutils.SendMail(mailReq, ms)
-	if err != nil {
-		log.Printf("unable to send mail", "error", err)
-		handlersfunc.HandleMailSendError(rw, resp)
-		return
-	}
+	//ms := &emailutils.SGMailService{config.YandexApiKey, config.MailVerifCodeExpiration, config.PassResetCodeExpiration, config.MailVerifTemplateID, config.PassResetTemplateID, config.DesignerOrderTemplateID}
+	//mailReq := emailutils.NewMail(from, to, subject, mailType, mailData)
+	//err = emailutils.SendMail(mailReq, ms)
+	//if err != nil {
+	//	log.Printf("unable to send mail", "error", err)
+	//	handlersfunc.HandleMailSendError(rw, resp)
+	//	return
+	//}
 
-	verificationData := &models.VerificationData{
-		Email: user.Email,
-		Code : mailData.Code,
-		Type : emailutils.MailConfirmation,
-		ExpiresAt: time.Now().Add(time.Hour * time.Duration(config.MailVerifCodeExpiration)),
-	}
+	//verificationData := &models.VerificationData{
+	//	Email: user.Email,
+	//	Code : mailData.Code,
+	//	Type : emailutils.MailConfirmation,
+	//	ExpiresAt: time.Now().Add(time.Hour * time.Duration(config.MailVerifCodeExpiration)),
+	//}
 
-	err = userstorage.StoreVerificationData(ctx, config.DB, verificationData)
-	if err != nil {
-		log.Printf("unable to store mail verification data", "error", err)
-		handlersfunc.HandleDatabaseServerError(rw, resp)
-		return
-	}
+	//err = userstorage.StoreVerificationData(ctx, config.DB, verificationData)
+	//if err != nil {
+	//	log.Printf("unable to store mail verification data", "error", err)
+	//	handlersfunc.HandleDatabaseServerError(rw, resp)
+	//	return
+	//}
 
 	rw.WriteHeader(http.StatusOK)
 	resp["status"] = "new user added successfully"
@@ -125,7 +125,7 @@ func Login(rw http.ResponseWriter, r *http.Request) {
 	log.Printf("Login user")
 	log.Println(user)
 
-	if user.Email == "" || user.Password == "" {
+	if user.Email == "" && user.Username == "" {
 		handlersfunc.HandleWrongCredentialsError(rw, resp)
 		return
 	}
@@ -208,6 +208,7 @@ func DeleteUser(rw http.ResponseWriter, r *http.Request) {
 	userNumBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		handlersfunc.HandleWrongBytesInput(rw, resp)
+		return
 	}
 	defer r.Body.Close()
 	aByteToInt, _ := strconv.Atoi(string(userNumBytes))
@@ -222,6 +223,7 @@ func DeleteUser(rw http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw, resp)
+		return
 	}
 
 	rw.WriteHeader(http.StatusOK)
@@ -242,6 +244,7 @@ func UpdateUserCategory(rw http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&UserParams)
 	if err != nil {
 		handlersfunc.HandleDecodeError(rw, resp, err)
+		return
 	}
 
 
@@ -253,6 +256,7 @@ func UpdateUserCategory(rw http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw, resp)
+		return
 	}
 
 	
@@ -275,6 +279,7 @@ func UpdateUserStatus(rw http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&UserParams)
 	if err != nil {
 		handlersfunc.HandleDecodeError(rw, resp, err)
+		return
 	}
 
 	defer r.Body.Close()
@@ -285,6 +290,7 @@ func UpdateUserStatus(rw http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw, resp)
+		return
 	}
 
 	
@@ -328,6 +334,7 @@ func VerifyMail(rw http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&verificationData)
 	if err != nil {
 		handlersfunc.HandleDecodeError(rw, resp, err)
+		return
 	}
 
 	defer r.Body.Close()
@@ -364,6 +371,7 @@ func VerifyMail(rw http.ResponseWriter, r *http.Request) {
 	err = userstorage.DeleteVerificationData(ctx, config.DB, verificationData.Email, verificationData.Type)
 	if err != nil {
 		log.Printf("unable to delete the verification data", "error", err)
+		return
 	}
 
 	log.Printf("user mail verification succeeded")
@@ -389,6 +397,7 @@ func VerifyPasswordReset(rw http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&verificationData)
 	if err != nil {
 		handlersfunc.HandleDecodeError(rw, resp, err)
+		return
 	}
 
 	defer r.Body.Close()
@@ -435,6 +444,7 @@ func UpdateUsername(rw http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&UserParams)
 	if err != nil {
 		handlersfunc.HandleDecodeError(rw, resp, err)
+		return
 	}
 
 	defer r.Body.Close()
@@ -473,6 +483,7 @@ func ResetPassword(rw http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&passResetReq)
 	if err != nil {
 		handlersfunc.HandleDecodeError(rw, resp, err)
+		return
 	}
 
 	defer r.Body.Close()
@@ -528,6 +539,7 @@ func ResetPassword(rw http.ResponseWriter, r *http.Request) {
 	err = userstorage.DeleteVerificationData(ctx, config.DB, verificationData.Email, verificationData.Type)
 	if err != nil {
 		log.Printf("unable to delete the verification data", "error", err)
+		return
 	}
 
 	log.Printf("password reset successfully")
