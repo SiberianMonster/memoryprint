@@ -43,8 +43,8 @@ var db *pgxpool.Pool
 
 func init() {
 
-	host = config.GetEnv("RUN_ADDRESS", flag.String("a", "127.0.0.1:8080", "SERVER HOST RUN_ADDRESS"))
-	connStr = config.GetEnv("DATABASE_URI", flag.String("d", "", "DATA STORAGE DATABASE_URI"))
+	host = config.GetEnv("RUN_ADDRESS", flag.String("a", "109.70.24.79:8080", "SERVER HOST RUN_ADDRESS"))
+	connStr = config.GetEnv("DATABASE_URI", flag.String("d", "postgres://postgres:iQ8hA2vI8p@localhost/memory_print?sslmode=disable&statement_cache_capacity=1", "DATA STORAGE DATABASE_URI"))
 	adminEmail = config.GetEnv("ADMIN_EMAIL", flag.String("am", "support@memoryprint.ru", "ADMIN_EMAIL"))
 	yandexKey = config.GetEnv("YANDEX_PASSWORD", flag.String("yp", "", "YANDEX_PASSWORD"))
 
