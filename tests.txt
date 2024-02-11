@@ -7,7 +7,7 @@ resp=requests.get("http://127.0.0.1:8080/greet")
 b'{"status":"successfully greeted user"}'
 
 1. Registration
-resp=requests.post("http://127.0.0.1:8080/api/user/register",data=json.dumps({"username":"test1","password":"test123","email":"test@mail.ru"}))
+resp=requests.post("http://127.0.0.1:8080/api/v1/user/register",data=json.dumps({"name":"test1","password":"test123","email":"test@mail.ru"}))
 b'{"status":"new user added successfully"}
 
 2. Username taken
@@ -177,5 +177,3 @@ b'{"status":"template saved successfully"}'
 resp=requests.post("http://127.0.0.1:8080/api/v1/user/save-page",data=json.dumps({"page_id":140,"decorations":[{"object_id":1,"style":"front","ptop":1.54,"pleft":1.11}],"background":[{"object_id":1}],"layout":[{"object_id":1}],"text_obj":[{"custom_text":"aaabbb","style":"front","ptop":1.54,"pleft":1.11}]}),headers={'Authorization': 'Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VyRW1haWwiOiJlbGVuYS52YWxjaHVrQGdtYWlsLmNvbSIsIktleVR5cGUiOiJhY2Nlc3MiLCJleHAiOjE3MDE1ODAxMzcsImlzcyI6Im1lbW9yeXByaW50LmF1dGguc2VydmljZSJ9.IR8y4akK-dKle73ItAqd3epYARtp81LbTLUbPnAHIgGX4MdXHv-NwhtKPHm0Z8KzHMnKcRW2ZzdsSSxR8AfmflA3URghCMWbBhFqKARZkr8GY5HkLIY4LPuI1wenJoBoXiFMEn33rN0eOrk8hN-kIKzxrrG0QAPG74syfmZeyk6Y85jrG25GYPZV4ujZ-vkvit9tu6Yee7PmUOyvmM5eh2OSSNGs2-Rk9AfJZOAzzmCkOVa2Ch_GgAzaQAyeMgN9_CwQIyj-Wq3wmo5eXGO9JtoV9DFvsj4Uh7YHU8iJ6Z-6G3zWkxuL96OOhJuMKSTnnwIO9ifhIewZ5HZvtoxhJw'})
 b'{"status":"page saved successfully"}'
 
-39. Request new access token
-resp=requests.get("http://localhost:8080/refresh-token",headers={"Authorization":"Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VyRW1haWwiOiJlbGVuYS52YWxjaHVrQGdtYWlsLmNvbSIsIkN1c3RvbUtleSI6IjMxMzQ1MTcxMjI0ZDZjOWIyODk2ZmI1Y2FlMzQ2MDM3NWZmMjFmMWE4MTQ2YzExZTFhNmFlMWVhMjE3YmE0YWYiLCJLZXlUeXBlIjoicmVmcmVzaCIsImlzcyI6Im1lbW9yeXByaW50LmF1dGguc2VydmljZSJ9.fbOVZQl0Bvzfm55eBduHLtqn0H6kvOHXtPM2DIPpQzxwgq2gHpsdXotfc3_n0KpGtubZIpsUjqrdp0QsPVtrioGPM5u1ORZGxkcujiiog0wnt6YiS5qRgGfcdU1j2OvdgohEt2Xa7Qtb4KnULjFf6BtbVUO8B30f2daXoDHm5hhW_Ba1Qaxl1ZuGd4BxQ3oU5MZKsuWvzTiSnwjyU2HMrKHNiZAjlrRD5afwk_BJG1g7ejwD-yzc3hb2d3FhwndcjtAoQg4l94vVTRj2IkTvGaOs3922GpLk9xNHlhT2Rd_nA5gXZ59IWI0gTPK5K2frswirLvC8u8PR3GMQi1569A"})
