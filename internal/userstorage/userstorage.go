@@ -41,7 +41,7 @@ func CheckUser(ctx context.Context, storeDB *pgxpool.Pool, u models.User) bool {
 func GetUserData(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (models.User, error) {
 
 	var dbUser models.User
-	err := storeDB.QueryRow(ctx, "SELECT username, email, tokenhash FROM users WHERE users_id = ($1);", userID).Scan(&dbUser.Username, &dbUser.Email, &dbUser.TokenHash)
+	err := storeDB.QueryRow(ctx, "SELECT username, email, tokenhash FROM users WHERE users_id = ($1);", userID).Scan(&dbUser.Name, &dbUser.Email, &dbUser.TokenHash)
 	if err != nil {
 		log.Printf("Error happened when checking if user is in db. Err: %s", err)
 		return dbUser, err
@@ -74,7 +74,7 @@ func CreateUser(ctx context.Context, storeDB *pgxpool.Pool, u models.User) (uint
 	tokenHash := emailutils.GenerateRandomString(15)
 
 	_, err = storeDB.Exec(ctx, "INSERT INTO users (username, password, email, tokenhash, category, status, isverified, last_edited_at, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);",
-		u.Username,
+		u.Name,
 		pwdHash,
 		u.Email,
 		tokenHash,
@@ -88,7 +88,7 @@ func CreateUser(ctx context.Context, storeDB *pgxpool.Pool, u models.User) (uint
 		log.Printf("Error happened when inserting a new user entry into pgx table. Err: %s", err)
 		return userID, err
 	}
-	err = storeDB.QueryRow(ctx, "SELECT users_id FROM users WHERE username=($1);", u.Username).Scan(&userID)
+	err = storeDB.QueryRow(ctx, "SELECT users_id FROM users WHERE email=($1);", u.Email).Scan(&userID)
 	if err != nil {
 		log.Printf("Error happened when retrieving usersid from the db. Err: %s", err)
 		return userID, err
@@ -100,7 +100,7 @@ func CheckCredentials(ctx context.Context, storeDB *pgxpool.Pool, u models.User)
 
 	var dbUser models.User
 	
-	err := storeDB.QueryRow(ctx, "SELECT username, email, password, tokenhash, users_id FROM users WHERE email=($1);", u.Email).Scan(&dbUser.Username, &dbUser.Email, &dbUser.Password, &dbUser.TokenHash, &dbUser.ID)
+	err := storeDB.QueryRow(ctx, "SELECT username, email, password, tokenhash, users_id FROM users WHERE email=($1);", u.Email).Scan(&dbUser.Name, &dbUser.Email, &dbUser.Password, &dbUser.TokenHash, &dbUser.ID)
 	if err != nil {
 		log.Printf("Error happened when retrieving credentials from the db. Err: %s", err)
 		return dbUser, err
@@ -130,15 +130,9 @@ func UpdatePassword(ctx context.Context, storeDB *pgxpool.Pool, user models.User
 		return user.ID, nil
 	}
 	t := time.Now()
-	pwdHash, err := Hash(fmt.Sprintf("%s:password", user.Password), config.Key)
-	if err != nil {
-		log.Printf("Error happened when hashing received value. Err: %s", err)
-		return user.ID, err
-	}
 
-	_, err = storeDB.Exec(ctx, "UPDATE users SET password = ($1), tokenhash = ($2), last_edited_at = ($3) WHERE users_id = ($4);",
-		pwdHash,
-		user.TokenHash,
+	_, err = storeDB.Exec(ctx, "UPDATE users SET password = ($1), last_edited_at = ($2) WHERE users_id = ($3);",
+		user.Password,
 		t,
 		user.ID,
 	)
@@ -146,7 +140,7 @@ func UpdatePassword(ctx context.Context, storeDB *pgxpool.Pool, user models.User
 		log.Printf("Error happened when updating user credentials into pgx table. Err: %s", err)
 		return user.ID, err
 	}
-	err = storeDB.QueryRow(ctx, "SELECT users_id FROM users WHERE username=($1);", user.Username).Scan(&user.ID)
+	err = storeDB.QueryRow(ctx, "SELECT users_id FROM users WHERE email=($1);", user.Email).Scan(&user.ID)
 	if err != nil {
 		log.Printf("Error happened when retrieving usersid from the db. Err: %s", err)
 		return user.ID, err
@@ -162,13 +156,13 @@ func UpdateUserCategory(ctx context.Context, storeDB *pgxpool.Pool, u models.Use
 
 	_, err = storeDB.Exec(ctx, "UPDATE users SET category = ($1) WHERE username = ($2);",
 		u.Category,
-		u.Username,
+		u.Name,
 	)
 	if err != nil {
 		log.Printf("Error happened when updating user category into pgx table. Err: %s", err)
 		return u.ID, err
 	}
-	err = storeDB.QueryRow(ctx, "SELECT users_id FROM users WHERE username=($1);", u.Username).Scan(&u.ID)
+	err = storeDB.QueryRow(ctx, "SELECT users_id FROM users WHERE username=($1);", u.Name).Scan(&u.ID)
 	if err != nil {
 		log.Printf("Error happened when retrieving usersid from the db. Err: %s", err)
 		return u.ID, err
@@ -184,13 +178,13 @@ func UpdateUserStatus(ctx context.Context, storeDB *pgxpool.Pool, u models.User)
 
 	_, err = storeDB.Exec(ctx, "UPDATE users SET status = ($1) WHERE username = ($2);",
 		u.Status,
-		u.Username,
+		u.Name,
 	)
 	if err != nil {
 		log.Printf("Error happened when updating user status into pgx table. Err: %s", err)
 		return u.ID, err
 	}
-	err = storeDB.QueryRow(ctx, "SELECT users_id FROM users WHERE username=($1);", u.Username).Scan(&u.ID)
+	err = storeDB.QueryRow(ctx, "SELECT users_id FROM users WHERE username=($1);", u.Name).Scan(&u.ID)
 	if err != nil {
 		log.Printf("Error happened when retrieving usersid from the db. Err: %s", err)
 		return u.ID, err
@@ -254,7 +248,7 @@ func RetrieveUsers(ctx context.Context, storeDB *pgxpool.Pool) ([]models.User, e
 
 	for rows.Next() {
 		var user models.User
-		if err = rows.Scan(&user.Username, &user.Password, &user.Email, &user.Category,
+		if err = rows.Scan(&user.Name, &user.Password, &user.Email, &user.Category,
 			&user.Status); err != nil {
 			log.Printf("Error happened when retrieving users from pgx table. Err: %s", err)
 			return nil, err

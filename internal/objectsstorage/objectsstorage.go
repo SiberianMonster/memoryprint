@@ -5,6 +5,7 @@ package objectsstorage
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
 	"time"
@@ -19,7 +20,7 @@ var err error
 func CheckUserOwnsPhoto(ctx context.Context, storeDB *pgxpool.Pool, userID uint, photoID uint) bool {
 
 	var checkPhoto bool
-	err := storeDB.QueryRow(ctx, "SELECT CASE WHEN EXISTS (SELECT * FROM photos WHERE photos_id = ($1) AND users_id = ($2)) THEN 'TRUE' ELSE 'FALSE' END;", photoID, userID).Scan(&checkPhoto)
+	err := storeDB.QueryRow(ctx, "SELECT CASE WHEN EXISTS (SELECT * FROM photos WHERE photos_id = ($1) AND users_id = ($2)) THEN TRUE ELSE FALSE END;", photoID, userID).Scan(&checkPhoto)
 	if err != nil && err != pgx.ErrNoRows {
 		log.Printf("Error happened when checking if user can edit photo in db. Err: %s", err)
 		return false
@@ -34,18 +35,13 @@ func AddPhoto(ctx context.Context, storeDB *pgxpool.Pool, photoLink string, user
 
 	var photoID uint
 	t := time.Now()
-	_, err = storeDB.Exec(ctx, "INSERT INTO photos (link, uploaded_at, users_id) VALUES ($1, $2, $3);",
+	err = storeDB.QueryRow(ctx, "INSERT INTO photos (link, uploaded_at, users_id) VALUES ($1, $2, $3) RETURNING photos_id;",
 		photoLink,
 		t,
 		userID,
-	)
+	).Scan(&photoID)
 	if err != nil {
 		log.Printf("Error happened when inserting a new photo entry into pgx table. Err: %s", err)
-		return userID, err
-	}
-	err = storeDB.QueryRow(ctx, "SELECT photos_id FROM photos WHERE link=($1);", photoLink).Scan(&photoID)
-	if err != nil {
-		log.Printf("Error happened when retrieving usersid from the db. Err: %s", err)
 		return photoID, err
 	}
 
@@ -53,20 +49,6 @@ func AddPhoto(ctx context.Context, storeDB *pgxpool.Pool, photoLink string, user
 
 }
 
-
-// RetrievePhoto function performs the operation of retrieving photos by id from pgx database with a query.
-func RetrievePhoto(ctx context.Context, storeDB *pgxpool.Pool, photoID uint) (string, error) {
-
-	var photo string
-	err := storeDB.QueryRow(ctx, "SELECT link FROM photos WHERE photos_id = ($1);", photoID).Scan(&photo)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		log.Printf("Error happened when retrieving photo from pgx table. Err: %s", err)
-		return "", err
-	}
-
-	return photo, nil
-
-}
 
 // AddDecoration function performs the operation of adding decoration to the db.
 func AddDecoration(ctx context.Context, storeDB *pgxpool.Pool, newDecor models.PersonalisedObject, userID uint) (uint, error) {
@@ -90,7 +72,7 @@ func AddDecoration(ctx context.Context, storeDB *pgxpool.Pool, newDecor models.P
 		userID,
 		decorID,
 		newDecor.IsFavourite,
-		newDecor.IsPersonal,
+		true,
 	)
 	if err != nil {
 		log.Printf("Error happened when inserting a new entry into user_has_decoration pgx table. Err: %s", err)
@@ -101,8 +83,40 @@ func AddDecoration(ctx context.Context, storeDB *pgxpool.Pool, newDecor models.P
 
 }
 
+// AdminDeleteDecoration function performs the operation of deleting decoration from the db.
+func AdminDeleteDecoration(ctx context.Context, storeDB *pgxpool.Pool, dID uint) (error) {
+
+	_, err = storeDB.Exec(ctx, "DELETE FROM decorations WHERE decorations_id=($1);",
+		dID,
+	)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		log.Printf("Error happened when deleting decoration from decorations pgx table. Err: %s", err)
+		return err
+	}
+
+	_, err = storeDB.Exec(ctx, "DELETE FROM users_has_decoration WHERE decorations_id=($1);",
+		dID,
+	)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		log.Printf("Error happened when deleting decoration from users_has_decoration pgx table. Err: %s", err)
+		return err
+	}
+
+
+	return nil
+
+}
+
 // DeleteDecoration function performs the operation of deleting decoration from the db.
-func DeleteDecoration(ctx context.Context, storeDB *pgxpool.Pool, decorID uint) (error) {
+func DeleteDecoration(ctx context.Context, storeDB *pgxpool.Pool, userID uint, decorID uint) (error) {
+
+	var isPersonal bool
+
+	err = storeDB.QueryRow(ctx, "SELECT is_personal FROM users_has_decoration WHERE decorations_id=($1) AND users_id=($2);", decorID, userID).Scan(&isPersonal)
+	if err != nil || !isPersonal{
+		log.Printf("The decoration does not belong to user. Err: %s", err)
+		return err
+	}
 
 	_, err = storeDB.Exec(ctx, "DELETE FROM decorations WHERE decorations_id=($1);",
 		decorID,
@@ -125,41 +139,13 @@ func DeleteDecoration(ctx context.Context, storeDB *pgxpool.Pool, decorID uint) 
 
 }
 
-// RetrieveDecoration function performs the operation of retrieving decoration by id from pgx database with a query.
-func RetrieveDecoration(ctx context.Context, storeDB *pgxpool.Pool, objID uint) (string, error) {
-
-	var link string
-	err := storeDB.QueryRow(ctx, "SELECT link FROM decorations WHERE decorations_id = ($1);", objID).Scan(&link)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		log.Printf("Error happened when retrieving decoration from pgx table. Err: %s", err)
-		return "", err
-	}
-
-	return link, nil
-
-}
-
-// RetrieveLayout function performs the operation of retrieving layout by id from pgx database with a query.
-func RetrieveLayout(ctx context.Context, storeDB *pgxpool.Pool, objID uint) (string, error) {
-
-	var link string
-	err := storeDB.QueryRow(ctx, "SELECT link FROM layouts WHERE layouts_id = ($1);", objID).Scan(&link)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		log.Printf("Error happened when retrieving decoration from pgx table. Err: %s", err)
-		return "", err
-	}
-
-	return link, nil
-
-}
 
 // AddBackground function performs the operation of adding background to the db.
 func AddBackground(ctx context.Context, storeDB *pgxpool.Pool, newDecor models.PersonalisedObject, userID uint) (uint, error) {
 
 	var bID uint
-	_, err = storeDB.Exec(ctx, "INSERT INTO backgrounds (link, category) VALUES ($1, $2);",
+	_, err = storeDB.Exec(ctx, "INSERT INTO backgrounds (link) VALUES ($1);",
 		newDecor.Link,
-		newDecor.Category,
 	)
 	if err != nil {
 		log.Printf("Error happened when inserting a new background entry into pgx table. Err: %s", err)
@@ -174,7 +160,7 @@ func AddBackground(ctx context.Context, storeDB *pgxpool.Pool, newDecor models.P
 		userID,
 		bID,
 		newDecor.IsFavourite,
-		newDecor.IsPersonal,
+		true,
 	)
 	if err != nil {
 		log.Printf("Error happened when inserting a new entry into user_has_decoration pgx table. Err: %s", err)
@@ -185,8 +171,8 @@ func AddBackground(ctx context.Context, storeDB *pgxpool.Pool, newDecor models.P
 
 }
 
-// DeleteBackground function performs the operation of deleting background from the db.
-func DeleteBackground(ctx context.Context, storeDB *pgxpool.Pool, bID uint) (error) {
+// AdminDeleteBackground function performs the operation of deleting background from the db.
+func AdminDeleteBackground(ctx context.Context, storeDB *pgxpool.Pool, bID uint) (error) {
 
 	_, err = storeDB.Exec(ctx, "DELETE FROM backgrounds WHERE backgrounds_id=($1);",
 		bID,
@@ -209,19 +195,39 @@ func DeleteBackground(ctx context.Context, storeDB *pgxpool.Pool, bID uint) (err
 
 }
 
-// RetrieveBackground function performs the operation of retrieving background by id from pgx database with a query.
-func RetrieveBackground(ctx context.Context, storeDB *pgxpool.Pool, objID uint) (string, error) {
 
-	var link string
-	err := storeDB.QueryRow(ctx, "SELECT link FROM backgrounds WHERE backgrounds_id = ($1);", objID).Scan(&link)
+// DeleteBackground function performs the operation of deleting background from the db.
+func DeleteBackground(ctx context.Context, storeDB *pgxpool.Pool, userID uint, bID uint) (error) {
+
+	var isPersonal bool
+
+	err = storeDB.QueryRow(ctx, "SELECT is_personal FROM users_has_backgrounds WHERE backgrounds_id=($1) AND users_id=($2);", bID, userID).Scan(&isPersonal)
+	if err != nil || !isPersonal{
+		log.Printf("The background does not belong to user. Err: %s", err)
+		return err
+	}
+	
+	_, err = storeDB.Exec(ctx, "DELETE FROM backgrounds WHERE backgrounds_id=($1);",
+		bID,
+	)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		log.Printf("Error happened when retrieving background from pgx table. Err: %s", err)
-		return "", err
+		log.Printf("Error happened when deleting background from backgrounds pgx table. Err: %s", err)
+		return err
 	}
 
-	return link, nil
+	_, err = storeDB.Exec(ctx, "DELETE FROM users_has_backgrounds WHERE backgrounds_id=($1);",
+		bID,
+	)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		log.Printf("Error happened when deleting background from users_has_backgrounds pgx table. Err: %s", err)
+		return err
+	}
+
+
+	return nil
 
 }
+
 
 // DeletePhoto function performs the operation of deleting photos by id from pgx database with a query.
 func DeletePhoto(ctx context.Context, storeDB *pgxpool.Pool, photoID uint) (uint, error) {
@@ -239,10 +245,10 @@ func DeletePhoto(ctx context.Context, storeDB *pgxpool.Pool, photoID uint) (uint
 }
 
 // RetrieveUserPhotos function performs the operation of retrieving user photos from pgx database with a query.
-func RetrieveUserPhotos(ctx context.Context, storeDB *pgxpool.Pool, userID uint) ([]string, error) {
+func RetrieveUserPhotos(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset uint, limit uint) ([]models.Photo, error) {
 
-	var photoslice []string
-	rows, err := storeDB.Query(ctx, "SELECT link FROM photos WHERE users_id = ($1);", userID)
+	var photoslice []models.Photo
+	rows, err := storeDB.Query(ctx, "SELECT photos_id, link FROM photos WHERE users_id = ($1) ORDER BY photos_id LIMIT ($2) OFFSET ($3);", userID, limit, offset)
 	if err != nil {
 		log.Printf("Error happened when retrieving photos from pgx table. Err: %s", err)
 		return nil, err
@@ -250,8 +256,8 @@ func RetrieveUserPhotos(ctx context.Context, storeDB *pgxpool.Pool, userID uint)
 	defer rows.Close()
 
 	for rows.Next() {
-		var photo string
-		if err = rows.Scan(&photo); err != nil {
+		var photo models.Photo
+		if err = rows.Scan(&photo.PhotoID, &photo.Link); err != nil {
 			log.Printf("Error happened when scanning photos. Err: %s", err)
 			return nil, err
 		}
@@ -266,177 +272,362 @@ func RetrieveUserPhotos(ctx context.Context, storeDB *pgxpool.Pool, userID uint)
 
 }
 
+// LoadBackgrounds function performs the operation of retrieving all backgrounds from the db for project editing.
+func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset uint, limit uint, btype string) (models.ResponseBackground, error) {
 
-
-// RetrieveAllBackgrounds function performs the operation of retrieving all backgrounds from the db for project editing.
-func RetrieveAllBackgrounds(ctx context.Context, storeDB *pgxpool.Pool) ([]models.Background, error) {
-
-	var backgroundslice []models.Background
-	rows, err := storeDB.Query(ctx, "SELECT backgrounds_id, link, category FROM backgrounds;")
+	var responseBackground models.ResponseBackground
+	rows, err := storeDB.Query(ctx, "SELECT backgrounds_id, link, category FROM backgrounds WHERE category = ($1) ORDER BY backgrounds_id LIMIT ($2) OFFSET ($3);", btype, limit, offset)
 	if err != nil {
-		log.Printf("Error happened when retrieving orders from pgx table. Err: %s", err)
-		return nil, err
+		log.Printf("Error happened when retrieving backgrounds from pgx table. Err: %s", err)
+		return responseBackground, err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		var background models.Background
-		if err = rows.Scan(&background.BackgroundID, &background.Link, &background.Category); err != nil {
+		if err = rows.Scan(&background.BackgroundID, &background.Link, &background.Type); err != nil {
 			log.Printf("Error happened when scanning backgrounds. Err: %s", err)
-			return nil, err
+			return responseBackground, err
 		}
-		
-		backgroundslice = append(backgroundslice, background)
+		background.Type = btype
+		err := storeDB.QueryRow(ctx, "SELECT is_personal, is_favourite FROM users_has_backgrounds WHERE backgrounds_id = ($1) AND users_id=($2);", background.BackgroundID, userID).Scan(&background.IsPersonal, &background.IsFavourite)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			log.Printf("Error happened when retrieving background from user_background table. Err: %s", err)
+			return responseBackground, err
+		}
+		responseBackground.Backgrounds = append(responseBackground.Backgrounds, background)
 	}
 
 	if err = rows.Err(); err != nil {
 		log.Printf("Error happened when retrieving backgrounds from pgx table. Err: %s", err)
-		return nil, err
+		return responseBackground, err
 	}
 
-	return backgroundslice, nil
-
-}
-
-// RetrieveAllLayouts function performs the operation of retrieving all layouts from the db for project editing.
-func RetrieveAllLayouts(ctx context.Context, storeDB *pgxpool.Pool) ([]models.Layout, error) {
-
-	var layoutslice []models.Layout
-	rows, err := storeDB.Query(ctx, "SELECT layouts_id, link, category FROM layouts;")
-	if err != nil {
-		log.Printf("Error happened when retrieving layouts from pgx table. Err: %s", err)
-		return nil, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var layout models.Layout
-		if err = rows.Scan(&layout.LayoutID, &layout.Link, &layout.Category); err != nil {
-			log.Printf("Error happened when scanning layouts. Err: %s", err)
-			return nil, err
+	err = storeDB.QueryRow(ctx, "SELECT COUNT(backgrounds_id) FROM backgrounds WHERE category = ($1);", btype).Scan(&responseBackground.CountAll)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			log.Printf("Error happened when counting backgrounds. Err: %s", err)
+			return responseBackground, err
 		}
-		
-		layoutslice = append(layoutslice, layout)
-	}
 
-	if err = rows.Err(); err != nil {
-		log.Printf("Error happened when retrieving layouts from pgx table. Err: %s", err)
-		return nil, err
-	}
-
-	return layoutslice, nil
+	return responseBackground, nil
 
 }
 
-// RetrieveAllDecorations function performs the operation of retrieving all decorations from the db for project editing.
-func RetrieveAllDecorations(ctx context.Context, storeDB *pgxpool.Pool) ([]models.Decoration, error) {
+// AddAdminBackground function performs the operation of adding background to the db.
+func AddAdminBackground(ctx context.Context, storeDB *pgxpool.Pool, newB models.Background) (uint, error) {
 
-	var decorationslice []models.Decoration
-	rows, err := storeDB.Query(ctx, "SELECT decorations_id, link, type, category FROM decorations;")
+	var bID uint
+	_, err = storeDB.Exec(ctx, "INSERT INTO backgrounds (link, category) VALUES ($1, $2);",
+		newB.Link,
+		newB.Type,
+	)
+	if err != nil {
+		log.Printf("Error happened when inserting a new admin background entry into pgx table. Err: %s", err)
+		return bID, err
+	}
+	err = storeDB.QueryRow(ctx, "SELECT backgrounds_id FROM backgrounds WHERE link=($1);", newB.Link).Scan(&bID)
+	if err != nil {
+		log.Printf("Error happened when retrieving bid from the db. Err: %s", err)
+		return bID, err
+	}
+	
+	return bID, nil
+
+}
+
+// UpdateBackground function performs the operation of updating background to the db.
+func UpdateBackground(ctx context.Context, storeDB *pgxpool.Pool, bID uint, newB models.Background) ( error) {
+
+	_, err = storeDB.Exec(ctx, "UPDATE backgrounds SET link = ($1), category = ($2) WHERE backgrounds_id = ($3);",
+		newB.Link,
+		newB.Type,
+		bID,
+	)
+	if err != nil {
+		log.Printf("Error happened when updating admin background entry into pgx table. Err: %s", err)
+		return err
+	}
+	
+	return nil
+
+}
+
+// UpdateDecoration function performs the operation of updating decoration to the db.
+func UpdateDecoration(ctx context.Context, storeDB *pgxpool.Pool, dID uint, newD models.Decoration) ( error) {
+
+	_, err = storeDB.Exec(ctx, "UPDATE decorations SET link = ($1), category = ($2), type = ($3) WHERE decorations_id = ($4);",
+		newD.Link,
+		newD.Type,
+		newD.Category,
+		dID,
+	)
+	if err != nil {
+		log.Printf("Error happened when updating admin decoration entry into pgx table. Err: %s", err)
+		return err
+	}
+	
+	return nil
+
+}
+
+// FavourBackground function performs the operation of updating background favourite bool in the db.
+func FavourBackground(ctx context.Context, storeDB *pgxpool.Pool, newDecor models.PersonalisedObject, userID uint) (error) {
+
+	_, err = storeDB.Exec(ctx, "SELECT FROM users_has_backgrounds WHERE backgrounds_id=($1) AND users_id=($2);", newDecor.ObjectID, userID)
+	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			log.Printf("Error happened when searching for background in users_has_backgrounds pgx table. Err: %s", err)
+			return err
+		} else {
+			_, err = storeDB.Exec(ctx, "INSERT INTO users_has_backgrounds (users_id, backgrounds_id, is_favourite) VALUES ($1, $2, $3);",
+				userID,
+				newDecor.ObjectID,
+				newDecor.IsFavourite,
+			)
+			if err != nil {
+				log.Printf("Error happened when inserting a new background entry into pgx table. Err: %s", err)
+				return err
+			}
+			return nil
+		}
+	}
+	_, err = storeDB.Exec(ctx, "UPDATE users_has_backgrounds SET is_favourite = ($1) WHERE backgrounds_id=($2) AND users_id=($3);",
+		newDecor.IsFavourite,
+		newDecor.ObjectID,
+		userID,
+	)
+	if err != nil {
+		log.Printf("Error happened when inserting a new entry into user_has_decoration pgx table. Err: %s", err)
+		return err
+	}
+
+	return nil
+
+}
+
+// LoadDecorations function performs the operation of retrieving all decorations from the db for project editing.
+func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset uint, limit uint, dtype string, dcategory string) (models.ResponseDecoration, error) {
+
+	var responseDecoration models.ResponseDecoration
+	rows, err := storeDB.Query(ctx, "SELECT decorations_id, link FROM decorations WHERE type = ($1) and category = ($2) ORDER BY decorations_id LIMIT ($3) OFFSET ($4);", dtype, dcategory, limit, offset)
 	if err != nil {
 		log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
-		return nil, err
+		return responseDecoration, err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		var decoration models.Decoration
-		if err = rows.Scan(&decoration.DecorationID, &decoration.Link, &decoration.Type, &decoration.Category); err != nil {
+		if err = rows.Scan(&decoration.DecorationID, &decoration.Link); err != nil {
 			log.Printf("Error happened when scanning decorations. Err: %s", err)
-			return nil, err
+			return responseDecoration, err
+		}
+		decoration.Type = dtype
+		decoration.Category = dcategory
+		err := storeDB.QueryRow(ctx, "SELECT is_personal, is_favourite FROM users_has_decoration WHERE decorations_id = ($1) AND users_id=($2);", decoration.DecorationID, userID).Scan(&decoration.IsPersonal, &decoration.IsFavourite)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			log.Printf("Error happened when retrieving decorations from user_decorations table. Err: %s", err)
+			return responseDecoration, err
 		}
 		
-		decorationslice = append(decorationslice, decoration)
+		responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
 	}
 
 	if err = rows.Err(); err != nil {
-		log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
-		return nil, err
+		log.Printf("Error happened when retrieving backgrounds from pgx table. Err: %s", err)
+		return responseDecoration, err
 	}
 
-	return decorationslice, nil
+	err = storeDB.QueryRow(ctx, "SELECT COUNT(decorations_id) FROM decorations WHERE type = ($1) AND category = ($2);", dtype, dcategory).Scan(&responseDecoration.CountAll)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			log.Printf("Error happened when counting decorations. Err: %s", err)
+			return responseDecoration, err
+		}
+
+	return responseDecoration, nil
 
 }
 
+// AddAdminDecoration function performs the operation of adding decoration to the db.
+func AddAdminDecoration(ctx context.Context, storeDB *pgxpool.Pool, newD models.Decoration) (uint, error) {
 
-// LoadProjectSession function performs the operation of retrieving all support art objects from the db for project editing.
-func LoadProjectSession(ctx context.Context, storeDB *pgxpool.Pool) (models.ProjectSession, error) {
-	var pSession models.ProjectSession
-	var err error
-	pSession.Decorations, err = RetrieveAllDecorations(ctx, storeDB)
+	var dID uint
+	_, err = storeDB.Exec(ctx, "INSERT INTO decorations (link, category, type) VALUES ($1, $2, $3);",
+		newD.Link,
+		newD.Type,
+		newD.Category,
+	)
 	if err != nil {
-		log.Printf("Error happened when retrieving decorations. Err: %s", err)
-		return pSession, err
+		log.Printf("Error happened when inserting a new admin decoration entry into pgx table. Err: %s", err)
+		return dID, err
 	}
-	pSession.Background, err = RetrieveAllBackgrounds(ctx, storeDB)
+	err = storeDB.QueryRow(ctx, "SELECT decorations_id FROM decorations WHERE link=($1);", newD.Link).Scan(&dID)
 	if err != nil {
-		log.Printf("Error happened when retrieving backgrounds. Err: %s", err)
-		return pSession, err
+		log.Printf("Error happened when retrieving did from the db. Err: %s", err)
+		return dID, err
 	}
-	pSession.Layout, err = RetrieveAllLayouts(ctx, storeDB)
-	if err != nil {
-		log.Printf("Error happened when retrieving layouts. Err: %s", err)
-		return pSession, err
-	}
-	return pSession, nil
+	
+	return dID, nil
 
 }
 
-// RetrieveUserPersonalisedObjects function performs the operation of retrieving user personalised backgrounds and decorations from pgx database with a query.
-func RetrieveUserPersonalisedObjects(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (models.RetrievedPersonalisedObj, error) {
+// FavourDecoration function performs the operation of updating decoration favourite bool in the db.
+func FavourDecoration(ctx context.Context, storeDB *pgxpool.Pool, newDecor models.PersonalisedObject, userID uint) (error) {
 
-	var persObj models.RetrievedPersonalisedObj
-	rows, err := storeDB.Query(ctx, "SELECT backgrounds_id, is_favourite, is_personal FROM user_has_background WHERE users_id = ($1);", userID)
+	_, err = storeDB.Exec(ctx, "SELECT FROM users_has_decoration WHERE decorations_id=($1) AND users_id=($2);", newDecor.ObjectID, userID)
 	if err != nil {
-		log.Printf("Error happened when retrieving user backgrounds from pgx table. Err: %s", err)
-		return persObj, err
+		if !errors.Is(err, pgx.ErrNoRows) {
+			log.Printf("Error happened when searching for decorations in users_has_decoration pgx table. Err: %s", err)
+			return err
+		} else {
+			_, err = storeDB.Exec(ctx, "INSERT INTO users_has_decoration (users_id, decorations_id, is_favourite) VALUES ($1, $2, $3);",
+				userID,
+				newDecor.ObjectID,
+				newDecor.IsFavourite,
+			)
+			if err != nil {
+				log.Printf("Error happened when inserting a new decoration entry into pgx table. Err: %s", err)
+				return err
+			}
+			return nil
+		}
+	}
+	_, err = storeDB.Exec(ctx, "UPDATE users_has_decoration SET is_favourite = ($1) WHERE decorations_id=($2) AND users_id=($3);",
+		newDecor.IsFavourite,
+		newDecor.ObjectID,
+		userID,
+	)
+	if err != nil {
+		log.Printf("Error happened when inserting a new entry into user_has_decoration pgx table. Err: %s", err)
+		return err
+	}
+
+	return nil
+
+}
+
+// LoadLayouts function performs the operation of retrieving all layouts from the db for project editing.
+func LoadLayouts(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset uint, limit uint, countimages uint) (models.ResponseLayout, error) {
+
+	var responseLayout models.ResponseLayout
+	rows, err := storeDB.Query(ctx, "SELECT layouts_id, link, data FROM layouts WHERE count_images = ($1) ORDER BY layouts_id LIMIT ($2) OFFSET ($3);", countimages, limit, offset)
+	if err != nil {
+		log.Printf("Error happened when retrieving layouts from pgx table. Err: %s", err)
+		return responseLayout, err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
-		var bObj models.PersonalisedObject
-		if err = rows.Scan(&bObj.ObjectID, bObj.IsFavourite, bObj.IsPersonal); err != nil {
-			log.Printf("Error happened when scanning user backgrounds. Err: %s", err)
-			return persObj, err
+		var layout models.Layout
+		var strdata string
+		if err = rows.Scan(&layout.LayoutID, &layout.Link, &strdata); err != nil {
+			log.Printf("Error happened when scanning layouts. Err: %s", err)
+			return responseLayout, err
 		}
-		bObj.Link, err = RetrieveBackground(ctx, storeDB, bObj.ObjectID)
-		if err != nil {
-			log.Printf("Error happened when retrieving background link. Err: %s", err)
-			return persObj, err
+		layout.Data = json.RawMessage(strdata)
+		err := storeDB.QueryRow(ctx, "SELECT is_favourite FROM users_has_layouts WHERE layouts_id = ($1) AND users_id=($2);", layout.LayoutID, userID).Scan(&layout.IsFavourite)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			log.Printf("Error happened when retrieving layouts from user_layouts table. Err: %s", err)
+			return responseLayout, err
 		}
-		persObj.Backgrounds = append(persObj.Backgrounds, bObj)
+		
+		responseLayout.Layouts = append(responseLayout.Layouts, layout)
 	}
 
 	if err = rows.Err(); err != nil {
-		log.Printf("Error happened when retrieving user backgrounds from pgx table. Err: %s", err)
-		return persObj, err
+		log.Printf("Error happened when retrieving layouts from pgx table. Err: %s", err)
+		return responseLayout, err
 	}
 
-	rows, err = storeDB.Query(ctx, "SELECT decoration_id, is_favourite, is_personal FROM user_has_decoration WHERE users_id = ($1);", userID)
+	err = storeDB.QueryRow(ctx, "SELECT COUNT(layouts_id) FROM layouts WHERE count_images = ($1);", countimages).Scan(&responseLayout.CountAll)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			log.Printf("Error happened when counting layouts. Err: %s", err)
+			return responseLayout, err
+		}
+
+	return responseLayout, nil
+
+}
+
+// AddAdminLayout function performs the operation of adding layout to the db.
+func AddAdminLayout(ctx context.Context, storeDB *pgxpool.Pool, newL models.Layout) (uint, error) {
+
+	var lID uint
+	strdata := string(newL.Data)
+	_, err = storeDB.Exec(ctx, "INSERT INTO layouts (link, count_images, data) VALUES ($1, $2, $3);",
+		newL.Link,
+		newL.CountImages,
+		strdata,
+	)
 	if err != nil {
-		log.Printf("Error happened when retrieving user decorations from pgx table. Err: %s", err)
-		return persObj, err
+		log.Printf("Error happened when inserting a new admin layout entry into pgx table. Err: %s", err)
+		return lID, err
 	}
-	defer rows.Close()
+	err = storeDB.QueryRow(ctx, "SELECT layouts_id FROM layouts WHERE link=($1);", newL.Link).Scan(&lID)
+	if err != nil {
+		log.Printf("Error happened when retrieving lid from the db. Err: %s", err)
+		return lID, err
+	}
+	
+	return lID, nil
 
-	for rows.Next() {
-		var dObj models.PersonalisedObject
-		if err = rows.Scan(&dObj.ObjectID, dObj.IsFavourite, dObj.IsPersonal); err != nil {
-			log.Printf("Error happened when scanning user decorations. Err: %s", err)
-			return persObj, err
-		}
-		dObj.Link, err = RetrieveDecoration(ctx, storeDB, dObj.ObjectID)
-		if err != nil {
-			log.Printf("Error happened when retrieving decorations link. Err: %s", err)
-			return persObj, err
-		}
-		persObj.Decor = append(persObj.Decor, dObj)
+}
+
+// AdminDeleteLayout function performs the operation of deleting layout from the db.
+func AdminDeleteLayout(ctx context.Context, storeDB *pgxpool.Pool, lID uint) (error) {
+
+	_, err = storeDB.Exec(ctx, "DELETE FROM layouts WHERE layouts_id=($1);",
+		lID,
+	)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		log.Printf("Error happened when deleting layout from layouts pgx table. Err: %s", err)
+		return err
 	}
 
-	if err = rows.Err(); err != nil {
-		log.Printf("Error happened when retrieving user decorations from pgx table. Err: %s", err)
-		return persObj, err
+	_, err = storeDB.Exec(ctx, "DELETE FROM users_has_layouts WHERE layouts_id=($1);",
+		lID,
+	)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		log.Printf("Error happened when deleting layout from users_has_layouts pgx table. Err: %s", err)
+		return err
 	}
-	return persObj, nil
+
+
+	return nil
+
+}
+
+// FavourLayout function performs the operation of updating layout favourite bool in the db.
+func FavourLayout(ctx context.Context, storeDB *pgxpool.Pool, newDecor models.PersonalisedObject, userID uint) (error) {
+
+	_, err = storeDB.Exec(ctx, "SELECT FROM users_has_layouts WHERE layouts_id=($1) AND users_id=($2);", newDecor.ObjectID, userID)
+	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			log.Printf("Error happened when searching for layouts in users_has_layouts pgx table. Err: %s", err)
+			return err
+		} else {
+			_, err = storeDB.Exec(ctx, "INSERT INTO users_has_layouts (users_id, layouts_id, is_favourite) VALUES ($1, $2, $3);",
+				userID,
+				newDecor.ObjectID,
+				newDecor.IsFavourite,
+			)
+			if err != nil {
+				log.Printf("Error happened when inserting a new layout entry into pgx table. Err: %s", err)
+				return err
+			}
+			return nil
+		}
+	}
+	_, err = storeDB.Exec(ctx, "UPDATE users_has_layouts SET is_favourite = ($1) WHERE layouts_id=($2) AND users_id=($3);",
+		newDecor.IsFavourite,
+		newDecor.ObjectID,
+		userID,
+	)
+	if err != nil {
+		log.Printf("Error happened when inserting a new entry into users_has_layouts pgx table. Err: %s", err)
+		return err
+	}
+
+	return nil
 
 }

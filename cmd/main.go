@@ -23,12 +23,13 @@ import (
 	"github.com/SiberianMonster/memoryprint/internal/authhandlers"
 	"github.com/SiberianMonster/memoryprint/internal/config"
 	"github.com/SiberianMonster/memoryprint/internal/initstorage"
+	"github.com/SiberianMonster/memoryprint/internal/imagehandlers"
 	"github.com/SiberianMonster/memoryprint/internal/userhandlers"
-	"github.com/SiberianMonster/memoryprint/internal/orderhandlers"
 	"github.com/SiberianMonster/memoryprint/internal/projecthandlers"
 	"github.com/SiberianMonster/memoryprint/internal/middleware"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"gopkg.in/ini.v1"
 	"time"
 	"log"
 	"net/http"
@@ -38,15 +39,24 @@ import (
 )
 
 var err error
-var host, connStr, accrualStr, adminEmail, yandexKey *string
+var host, connStr, accrualStr, adminEmail, yandexKey, timewebToken, balaToken *string
 var db *pgxpool.Pool
 
 func init() {
 
-	host = config.GetEnv("RUN_ADDRESS", flag.String("a", "109.70.24.79:8080", "SERVER HOST RUN_ADDRESS"))
-	connStr = config.GetEnv("DATABASE_URI", flag.String("d", "postgres://postgres:iQ8hA2vI8p@localhost/memory_print?sslmode=disable&statement_cache_capacity=1", "DATA STORAGE DATABASE_URI"))
+	inidata, err := ini.Load("config.ini")
+	if err != nil {
+		log.Printf("Fail to read ini file: %v", err)
+		os.Exit(1)
+	}
+	section := inidata.Section("section")
+
+	host = config.GetEnv("RUN_ADDRESS", flag.String("a", section.Key("host").String(), "SERVER HOST RUN_ADDRESS"))
+	connStr = config.GetEnv("DATABASE_URI", flag.String("d", section.Key("connstr").String(), "DATA STORAGE DATABASE_URI"))
 	adminEmail = config.GetEnv("ADMIN_EMAIL", flag.String("am", "support@memoryprint.ru", "ADMIN_EMAIL"))
-	yandexKey = config.GetEnv("YANDEX_PASSWORD", flag.String("yp", "", "YANDEX_PASSWORD"))
+	yandexKey = config.GetEnv("YANDEX_PASSWORD", flag.String("yp", section.Key("yandexkey").String(), "YANDEX_PASSWORD"))
+	timewebToken = config.GetEnv("TW_TOKEN", flag.String("tw", section.Key("timeweb").String(), "TW_TOKEN"))
+	balaToken = config.GetEnv("BL_TOKEN", flag.String("bl", section.Key("bala").String(), "BL_TOKEN"))
 
 }
 
@@ -83,6 +93,8 @@ func main() {
 
 	config.AdminEmail = *adminEmail
 	config.YandexApiKey = *yandexKey
+	config.TimewebToken = *timewebToken
+	config.BalaToken = *balaToken
 
 	router := mux.NewRouter()
 	noAuthRouter := router.MatcherFunc(func(r *http.Request, rm *mux.RouteMatch) bool {
@@ -96,26 +108,14 @@ func main() {
 	adminRouter := router.MatcherFunc(func(r *http.Request, rm *mux.RouteMatch) bool {
 		return true
 	}).Subrouter()
-
-	refreshRouter := router.MatcherFunc(func(r *http.Request, rm *mux.RouteMatch) bool {
-		return true
-	}).Subrouter()
 	
-	printAgentRouter := router.MatcherFunc(func(r *http.Request, rm *mux.RouteMatch) bool {
-		return true
-	}).Subrouter()
-
-	
-	noAuthRouter.HandleFunc("/api/v1/user/register", userhandlers.Register)
-	noAuthRouter.HandleFunc("/api/v1/user/login", userhandlers.Login)
-	noAuthRouter.HandleFunc("/api/v1/prices", orderhandlers.LoadPrices)
-	noAuthRouter.HandleFunc("/api/v1/templates", projecthandlers.RetrieveTemplates)
-	noAuthRouter.HandleFunc("/api/v1/project-session", projecthandlers.LoadProjectSession)
+	noAuthRouter.HandleFunc("/api/v1/auth/signup", userhandlers.Register)
+	noAuthRouter.HandleFunc("/api/v1/auth/login", userhandlers.Login)
+	noAuthRouter.HandleFunc("/api/v1/load-templates", projecthandlers.LoadTemplates)
 	
 	noAuthRouter.HandleFunc("/api/v1/greet", authhandlers.Greet)
-	noAuthRouter.HandleFunc("/api/v1//get-password-reset-code", authhandlers.GeneratePassResetCode)
-	noAuthRouter.HandleFunc("/api/v1/verify/mail", userhandlers.VerifyMail)
-	noAuthRouter.HandleFunc("/api/v1/verify/password-reset", userhandlers.VerifyPasswordReset)
+	noAuthRouter.HandleFunc("/api/v1/auth/restore", authhandlers.GenerateTempPass)
+	//noAuthRouter.HandleFunc("/api/v1/verify/password-reset", userhandlers.VerifyPasswordReset)
 
 
 	authRouter.Use(middleware.MiddlewareValidateAccessToken)
@@ -123,59 +123,48 @@ func main() {
 	// authRouter.Use(middleware.MiddlewareValidateRefreshToken)
 	// adminRouter.Use(middleware.MiddlewareValidateRefreshToken)
 	adminRouter.Use(middleware.AdminHandler)
-	printAgentRouter.Use(middleware.MiddlewareValidateAccessToken)
-	// printAgentRouter.Use(middleware.MiddlewareValidateRefreshToken)
-	printAgentRouter.Use(middleware.PAHandler)
 
-	refreshRouter.Use(middleware.MiddlewareValidateRefreshToken)
-	refreshRouter.HandleFunc("/refresh-token", authhandlers.RefreshToken).Methods("GET")
 
-	adminRouter.HandleFunc("/api/v1/admin/users", userhandlers.ViewUsers).Methods("GET")
-	adminRouter.HandleFunc("/api/v1/admin/orders", orderhandlers.ViewOrders).Methods("GET")
-	adminRouter.HandleFunc("/api/v1/admin/assign-print-agent", orderhandlers.AddOrderPrintAgency).Methods("POST")
 	adminRouter.HandleFunc("/api/v1/admin/create-template", projecthandlers.CreateTemplate).Methods("POST")
-	adminRouter.HandleFunc("/api/v1/admin/save-template", projecthandlers.SaveTemplate).Methods("POST")
-	adminRouter.HandleFunc("/api/v1/admin/load-template/{id}", projecthandlers.LoadTemplate).Methods("GET")
-	adminRouter.HandleFunc("/api/v1/admin/publish-template", projecthandlers.PublishTemplate).Methods("POST")
-	adminRouter.HandleFunc("/api/v1/admin/delete-order/{id}", orderhandlers.DeleteOrder).Methods("GET")
-	adminRouter.HandleFunc("/api/v1/admin/delete-user", userhandlers.DeleteUser).Methods("POST")
-	adminRouter.HandleFunc("/api/v1/admin/update-user-category", userhandlers.UpdateUserCategory).Methods("POST")
-	adminRouter.HandleFunc("/api/v1/admin/update-user-status", userhandlers.UpdateUserStatus).Methods("POST")
-	adminRouter.HandleFunc("/api/v1/admin/update-order-status", orderhandlers.UpdateOrderStatus).Methods("POST")
+	adminRouter.HandleFunc("/api/v1/admin/save-template-pages/{id}", projecthandlers.SavePage).Methods("POST")
+	// do I need to retrun page_id here?
+	adminRouter.HandleFunc("/api/v1/admin/add-template-pages/{id}", projecthandlers.AddTemplatePages).Methods("POST")
+	adminRouter.HandleFunc("/api/v1/admin/delete-template-pages/{id}", projecthandlers.DeleteTemplatePages).Methods("POST")
+	adminRouter.HandleFunc("/api/v1/admin/reorder-template-pages/{id}", projecthandlers.ReorderTemplatePages).Methods("POST")
+	adminRouter.HandleFunc("/api/v1/admin/publish-template/{id}", projecthandlers.PublishTemplate).Methods("GET")
 
-	printAgentRouter.HandleFunc("/api/v1/printagent/update-order-status", orderhandlers.UpdateOrderStatus).Methods("POST")
-	printAgentRouter.HandleFunc("/api/v1/printagent/orders", orderhandlers.PAViewOrders).Methods("GET")
+	
+	adminRouter.HandleFunc("/api/v1/admin/create-background", projecthandlers.AdminCreateBackground).Methods("POST")
+	adminRouter.HandleFunc("/api/v1/admin/create-decoration", projecthandlers.AdminCreateDecoration).Methods("POST")
+	adminRouter.HandleFunc("/api/v1/admin/create-layout", projecthandlers.AdminCreateLayout).Methods("POST")
+	adminRouter.HandleFunc("/api/v1/admin/delete-background/{id}", projecthandlers.AdminDeleteBackground).Methods("GET")
+	adminRouter.HandleFunc("/api/v1/admin/delete-decoration/{id}", projecthandlers.AdminDeleteDecoration).Methods("GET")
+	adminRouter.HandleFunc("/api/v1/admin/delete-layout/{id}", projecthandlers.AdminDeleteLayout).Methods("GET")
+	adminRouter.HandleFunc("/api/v1/admin/update-background/{id}", projecthandlers.AdminUpdateBackground).Methods("POST")
+	adminRouter.HandleFunc("/api/v1/admin/update-decoration/{id}", projecthandlers.AdminUpdateDecoration).Methods("POST")
 
-	authRouter.HandleFunc("/api/v1/update-username", userhandlers.UpdateUsername)
-	authRouter.HandleFunc("/api/v1/reset-password", userhandlers.ResetPassword)
-	authRouter.HandleFunc("/api/v1/greet", authhandlers.Greet)
-	authRouter.HandleFunc("/api/v1/refresh-token", authhandlers.RefreshToken)
-	authRouter.HandleFunc("/api/v1/get-password-reset-code", authhandlers.GeneratePassResetCode)
-	authRouter.HandleFunc("/api/v1/user/create-draft-order", orderhandlers.CreateDraftOrder).Methods("POST")
-	authRouter.HandleFunc("/api/v1/user/orders", orderhandlers.UserLoadOrders).Methods("GET")
-	authRouter.HandleFunc("/api/v1/user/order-status", orderhandlers.CheckOrderStatus).Methods("GET")
-	authRouter.HandleFunc("/api/v1/user/add-new-editor", projecthandlers.AddProjectEditor).Methods("POST")
-	authRouter.HandleFunc("/api/v1/user/add-new-viewer", projecthandlers.AddProjectViewer).Methods("POST")
-	authRouter.HandleFunc("/api/v1/user/projects", projecthandlers.UserLoadProjects).Methods("GET")
-	authRouter.HandleFunc("/api/v1/user/photos", projecthandlers.UserLoadPhotos).Methods("GET")
-	authRouter.HandleFunc("/api/v1/user/upload-photo", projecthandlers.NewPhoto).Methods("POST")
-	authRouter.HandleFunc("/api/v1/user/delete-photo/{id}", projecthandlers.DeletePhoto).Methods("GET")
-	authRouter.HandleFunc("/api/v1/user/create-decor", projecthandlers.CreateDecor).Methods("POST")
-	authRouter.HandleFunc("/api/v1/user/create-background", projecthandlers.CreateBackground).Methods("POST")
-	authRouter.HandleFunc("/api/v1/user/delete-decor/{id}", projecthandlers.DeleteDecor).Methods("GET")
-	authRouter.HandleFunc("/api/v1/user/delete-background/{id}", projecthandlers.DeleteBackground).Methods("GET")
-	authRouter.HandleFunc("/api/v1/user/load-personalised-objects", projecthandlers.UserLoadPersObjects).Methods("GET")
-	authRouter.HandleFunc("/api/v1/user/create-project", projecthandlers.CreateBlankProject).Methods("POST")
-	authRouter.HandleFunc("/api/v1/user/create-project-from-template", projecthandlers.CreateProjectFromTemplate).Methods("POST")
-	authRouter.HandleFunc("/api/v1/user/create-designer-project", projecthandlers.CreateDesignerProject).Methods("POST")
-	authRouter.HandleFunc("/api/v1/user/save-project", projecthandlers.SaveProject).Methods("POST")
-	authRouter.HandleFunc("/api/v1/user/save-page", projecthandlers.SavePage).Methods("POST")
-	authRouter.HandleFunc("/api/v1/user/load-project/{id}", projecthandlers.LoadProject).Methods("GET")
-	authRouter.HandleFunc("/api/v1/user/delete-project/{id}", projecthandlers.DeleteProject).Methods("GET")
-	authRouter.HandleFunc("/api/v1/user/add-page", projecthandlers.AddProjectPage).Methods("POST")
-	authRouter.HandleFunc("/api/v1/user/duplicate-page", projecthandlers.DuplicatePage).Methods("POST")
-	authRouter.HandleFunc("/api/v1/user/delete-page/{id}", projecthandlers.DeletePage).Methods("GET")
-	authRouter.HandleFunc("/api/v1/user/project-photos", projecthandlers.LoadProjectPhotos).Methods("GET")
+	authRouter.HandleFunc("/api/v1/auth/get-user", userhandlers.CheckUserCategory)
+	authRouter.HandleFunc("/api/v1/image/save", imagehandlers.LoadImage).Methods("POST")
+	authRouter.HandleFunc("/api/v1/load-photos", projecthandlers.UserLoadPhotos).Methods("GET")
+	authRouter.HandleFunc("/api/v1/upload-photo", projecthandlers.NewPhoto).Methods("POST")
+	authRouter.HandleFunc("/api/v1/delete-photo/{id}", projecthandlers.DeletePhoto).Methods("GET")
+	authRouter.HandleFunc("/api/v1/create-decoration", projecthandlers.CreateDecor).Methods("POST")
+	authRouter.HandleFunc("/api/v1/create-background", projecthandlers.CreateBackground).Methods("POST")
+	authRouter.HandleFunc("/api/v1/delete-decoration/{id}", projecthandlers.DeleteDecor).Methods("GET")
+	authRouter.HandleFunc("/api/v1/delete-background/{id}", projecthandlers.DeleteBackground).Methods("GET")
+	authRouter.HandleFunc("/api/v1/create-project", projecthandlers.CreateBlankProject).Methods("POST")
+	authRouter.HandleFunc("/api/v1/save-project-pages/{id}", projecthandlers.SavePage).Methods("POST")
+	authRouter.HandleFunc("/api/v1/load-projects", projecthandlers.LoadProjects).Methods("GET")
+	authRouter.HandleFunc("/api/v1/load-project/{id}", projecthandlers.LoadProject).Methods("GET")
+	authRouter.HandleFunc("/api/v1/add-pages/{id}", projecthandlers.AddProjectPages).Methods("POST")
+	authRouter.HandleFunc("/api/v1/delete-pages/{id}", projecthandlers.DeletePages).Methods("POST")
+	authRouter.HandleFunc("/api/v1/reorder-pages/{id}", projecthandlers.ReorderPages).Methods("POST")
+	authRouter.HandleFunc("/api/v1/load-backgrounds", projecthandlers.LoadBackground).Methods("GET")
+	authRouter.HandleFunc("/api/v1/load-decorations", projecthandlers.LoadDecoration).Methods("GET")
+	authRouter.HandleFunc("/api/v1/load-layouts", projecthandlers.LoadLayouts).Methods("GET")
+	authRouter.HandleFunc("/api/v1/change-favourite-background/{id}", projecthandlers.FavourBackground).Methods("POST")
+	authRouter.HandleFunc("/api/v1/change-favourite-decoration/{id}", projecthandlers.FavourDecoration).Methods("POST")
+	authRouter.HandleFunc("/api/v1/change-favourite-layout/{id}", projecthandlers.FavourLayout).Methods("POST")
 
 	srv := &http.Server{
 		Handler: router,

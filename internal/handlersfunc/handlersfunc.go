@@ -12,6 +12,10 @@ import (
     "strings"
 )
 
+type ErrorBody struct {
+    ErrorCode    uint     `json:"error_code"`
+    ErrorMessage    string     `json:"error_message"`
+}
 
 func UserIDContextReader(r *http.Request) (uint) {
 
@@ -19,20 +23,55 @@ func UserIDContextReader(r *http.Request) (uint) {
 	return userID
 }
 
-func HandleWrongCredentialsError(rw http.ResponseWriter, resp map[string]string) {
-    rw.WriteHeader(http.StatusNoContent)
-    resp["status"] = "incorrect credentials error"
+func HandleWrongCredentialsError(rw http.ResponseWriter) {
+    
+    rw.WriteHeader(http.StatusOK)
+    
+    resp := make(map[string]ErrorBody)
+    var errorB ErrorBody
+    errorB.ErrorCode = 401
+    errorB.ErrorMessage = "Wrong password"
+
+    resp["error"] = errorB
     jsonResp, err := json.Marshal(resp)
     if err != nil {
         log.Printf("Error happened in JSON marshal. Err: %s", err)
         return
     }
     rw.Write(jsonResp)
+   
 }
 
-func HandlePermissionError(rw http.ResponseWriter, resp map[string]string) {
+func HandlePermissionError(rw http.ResponseWriter) {
     rw.WriteHeader(http.StatusUnauthorized)
-    resp["status"] = "action not permitted"
+}
+
+
+func HandleUnregisteredUserError(rw http.ResponseWriter) {
+    rw.WriteHeader(http.StatusOK)
+    resp := make(map[string]ErrorBody)
+    var errorB ErrorBody
+    errorB.ErrorCode = 404
+    errorB.ErrorMessage = "User with this email does not exist"
+
+    resp["error"] = errorB
+    jsonResp, err := json.Marshal(resp)
+    if err != nil {
+        log.Printf("Error happened in JSON marshal. Err: %s", err)
+        return
+    }
+    rw.Write(jsonResp)
+   
+}
+
+func HandleUsernameAlreadyTaken(rw http.ResponseWriter) {
+    rw.WriteHeader(http.StatusOK)
+    var errorB ErrorBody
+    resp := make(map[string]ErrorBody)
+    errorB.ErrorCode = 409
+    errorB.ErrorMessage = "User with this email already exists"
+
+    resp["error"] = errorB
     jsonResp, err := json.Marshal(resp)
     if err != nil {
         log.Printf("Error happened in JSON marshal. Err: %s", err)
@@ -41,31 +80,26 @@ func HandlePermissionError(rw http.ResponseWriter, resp map[string]string) {
     rw.Write(jsonResp)
 }
 
-func HandleUsernameAlreadyTaken(rw http.ResponseWriter, resp map[string]string) {
-    rw.WriteHeader(http.StatusConflict)
-    resp["status"] = "username already taken"
-    jsonResp, err := json.Marshal(resp)
-    if err != nil {
-        log.Printf("Error happened in JSON marshal. Err: %s", err)
-        return
-    }
-    rw.Write(jsonResp)
-}
-
-func HandleNoContent(rw http.ResponseWriter, resp map[string]string) {
+func HandleNoContent(rw http.ResponseWriter) {
     rw.WriteHeader(http.StatusNoContent)
-    resp["status"] = "no content found"
-    jsonResp, err := json.Marshal(resp)
-    if err != nil {
-        log.Printf("Error happened in JSON marshal. Err: %s", err)
-        return
-    }
-    rw.Write(jsonResp)
 }
 
-func HandleWrongBytesInput(rw http.ResponseWriter, resp map[string]string) {
+func HandleWrongBytesInput(rw http.ResponseWriter) {
     rw.WriteHeader(http.StatusNoContent)
-    resp["status"] = "wrong bytes input"
+}
+
+func HandleDatabaseServerError(rw http.ResponseWriter) {
+	rw.WriteHeader(http.StatusInternalServerError)
+}
+
+func HandleJWTError(rw http.ResponseWriter) {
+    rw.WriteHeader(http.StatusOK)
+    resp := make(map[string]ErrorBody)
+    var errorB ErrorBody
+    errorB.ErrorCode = 401
+    errorB.ErrorMessage = "jwt tokenizer error"
+
+    resp["error"] = errorB
     jsonResp, err := json.Marshal(resp)
     if err != nil {
         log.Printf("Error happened in JSON marshal. Err: %s", err)
@@ -74,30 +108,9 @@ func HandleWrongBytesInput(rw http.ResponseWriter, resp map[string]string) {
     rw.Write(jsonResp)
 }
 
-func HandleDatabaseServerError(rw http.ResponseWriter, resp map[string]string) {
-		rw.WriteHeader(http.StatusInternalServerError)
-		resp["status"] = "sql database error"
-		jsonResp, err := json.Marshal(resp)
-		if err != nil {
-			log.Printf("Error happened in JSON marshal. Err: %s", err)
-			return
-		}
-		rw.Write(jsonResp)
-}
+func HandleDecodeError(rw http.ResponseWriter, err error) {
 
-func HandleJWTError(rw http.ResponseWriter, resp map[string]string) {
-    rw.WriteHeader(http.StatusInternalServerError)
-    resp["status"] = "jwt tokenizer error"
-    jsonResp, err := json.Marshal(resp)
-    if err != nil {
-        log.Printf("Error happened in JSON marshal. Err: %s", err)
-        return
-    }
-    rw.Write(jsonResp)
-}
-
-func HandleDecodeError(rw http.ResponseWriter, resp map[string]string, err error) {
-
+    resp := make(map[string]ErrorBody)
     if err != nil {
         var syntaxError *json.SyntaxError
         var unmarshalTypeError *json.UnmarshalTypeError
@@ -126,8 +139,12 @@ func HandleDecodeError(rw http.ResponseWriter, resp map[string]string, err error
         default:
             msg = err.Error()
         }
-        rw.WriteHeader(http.StatusBadRequest)
-        resp["status"] = msg
+        rw.WriteHeader(http.StatusOK)
+        var errorB ErrorBody
+        errorB.ErrorCode = 404
+        errorB.ErrorMessage = msg
+
+        resp["error"] = errorB
         jsonResp, err := json.Marshal(resp)
         if err != nil {
                 log.Printf("Error happened in JSON marshal. Err: %s", err)
@@ -138,9 +155,95 @@ func HandleDecodeError(rw http.ResponseWriter, resp map[string]string, err error
 
 }
 
-func HandleMailSendError(rw http.ResponseWriter, resp map[string]string) {
-    rw.WriteHeader(http.StatusInternalServerError)
-    resp["status"] = "unable to send email"
+func HandleMailSendError(rw http.ResponseWriter) {
+    rw.WriteHeader(http.StatusOK)
+    resp := make(map[string]ErrorBody)
+    var errorB ErrorBody
+    errorB.ErrorCode = 500
+    errorB.ErrorMessage = "unable to send email"
+
+    resp["error"] = errorB
+    jsonResp, err := json.Marshal(resp)
+    if err != nil {
+        log.Printf("Error happened in JSON marshal. Err: %s", err)
+        return
+    }
+    rw.Write(jsonResp)
+}
+
+func HandleMissingPageError(rw http.ResponseWriter) {
+    rw.WriteHeader(http.StatusOK)
+    resp := make(map[string]ErrorBody)
+    var errorB ErrorBody
+    errorB.ErrorCode = 404
+    errorB.ErrorMessage = "One or more pages are missing"
+
+    resp["error"] = errorB
+    jsonResp, err := json.Marshal(resp)
+    if err != nil {
+        log.Printf("Error happened in JSON marshal. Err: %s", err)
+        return
+    }
+    rw.Write(jsonResp)
+}
+
+func HandleCoverPageError(rw http.ResponseWriter) {
+    rw.WriteHeader(http.StatusOK)
+    resp := make(map[string]ErrorBody)
+    var errorB ErrorBody
+    errorB.ErrorCode = 405
+    errorB.ErrorMessage = "Attempt to reorder a cover page"
+
+    resp["error"] = errorB
+    jsonResp, err := json.Marshal(resp)
+    if err != nil {
+        log.Printf("Error happened in JSON marshal. Err: %s", err)
+        return
+    }
+    rw.Write(jsonResp)
+}
+
+func HandleWrongOrderError(rw http.ResponseWriter) {
+    rw.WriteHeader(http.StatusOK)
+    resp := make(map[string]ErrorBody)
+    var errorB ErrorBody
+    errorB.ErrorCode = 503
+    errorB.ErrorMessage = "Order of pages is corrupted"
+
+    resp["error"] = errorB
+    jsonResp, err := json.Marshal(resp)
+    if err != nil {
+        log.Printf("Error happened in JSON marshal. Err: %s", err)
+        return
+    }
+    rw.Write(jsonResp)
+}
+
+func HandleRemoveBackgroundError(rw http.ResponseWriter) {
+    rw.WriteHeader(http.StatusOK)
+    resp := make(map[string]ErrorBody)
+    var errorB ErrorBody
+    errorB.ErrorCode = 409
+    errorB.ErrorMessage = "Failed to remove background for image"
+
+    resp["error"] = errorB
+    jsonResp, err := json.Marshal(resp)
+    if err != nil {
+        log.Printf("Error happened in JSON marshal. Err: %s", err)
+        return
+    }
+    rw.Write(jsonResp)
+}
+
+
+func HandleNotAllPagesPassedError(rw http.ResponseWriter) {
+    rw.WriteHeader(http.StatusOK)
+    resp := make(map[string]ErrorBody)
+    var errorB ErrorBody
+    errorB.ErrorCode = 406
+    errorB.ErrorMessage = "Not all pages passed"
+
+    resp["error"] = errorB
     jsonResp, err := json.Marshal(resp)
     if err != nil {
         log.Printf("Error happened in JSON marshal. Err: %s", err)

@@ -79,7 +79,7 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 
 	// users table
 	_, err = db.Exec(ctx,
-		"CREATE TABLE IF NOT EXISTS users (users_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, username varchar NOT NULL UNIQUE, password varchar NOT NULL, email varchar NOT NULL, tokenhash varchar, category varchar NOT NULL, isverified varchar NOT NULL, status varchar NOT NULL, last_edited_at timestamp NOT NULL, created_at timestamp NOT NULL)")
+		"CREATE TABLE IF NOT EXISTS users (users_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, username varchar NOT NULL, password varchar NOT NULL, email varchar NOT NULL, tokenhash varchar, category varchar NOT NULL, isverified varchar NOT NULL, status varchar NOT NULL, last_edited_at timestamp NOT NULL, created_at timestamp NOT NULL)")
 	if err != nil {
 		log.Printf("Error happened when creating users table. Err: %s", err)
 		return nil, false
@@ -133,7 +133,7 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 
 	// background table
 	_, err = db.Exec(ctx,
-			"CREATE TABLE IF NOT EXISTS backgrounds (backgrounds_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, link varchar NOT NULL, category varchar NOT NULL)")
+			"CREATE TABLE IF NOT EXISTS backgrounds (backgrounds_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, link varchar NOT NULL, category varchar)")
 	if err != nil {
 			log.Printf("Error happened when creating background table. Err: %s", err)
 			return nil, false
@@ -142,7 +142,7 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 
 	// layout table
 	_, err = db.Exec(ctx,
-		"CREATE TABLE IF NOT EXISTS layouts (layouts_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, orientation varchar NOT NULL, link varchar NOT NULL, category varchar NOT NULL)")
+		"CREATE TABLE IF NOT EXISTS layouts (layouts_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, count_images int NOT NULL, link varchar NOT NULL, data text NOT NULL)")
 	if err != nil {
 			log.Printf("Error happened when creating layout table. Err: %s", err)
 			return nil, false
@@ -151,7 +151,7 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 
 	// decorations table
 	_, err = db.Exec(ctx,
-		"CREATE TABLE IF NOT EXISTS decorations (decorations_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, link varchar NOT NULL, type varchar NOT NULL, category varchar NOT NULL)")
+		"CREATE TABLE IF NOT EXISTS decorations (decorations_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, link varchar NOT NULL, type varchar NOT NULL, category varchar)")
 	if err != nil {
 			log.Printf("Error happened when creating decorations table. Err: %s", err)
 			return nil, false
@@ -160,7 +160,7 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 
 	// projects table
 	_, err = db.Exec(ctx,
-		"CREATE TABLE IF NOT EXISTS projects (projects_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, name varchar, orientation varchar NOT NULL, cover_image varchar, status varchar NOT NULL, last_edited_at timestamp NOT NULL, last_editor int, created_at timestamp NOT NULL, covertype varchar, bindingtype varchar, papertype varchar, promooffers_id int, users_id int REFERENCES users(users_id))")
+		"CREATE TABLE IF NOT EXISTS projects (projects_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, name varchar, size varchar NOT NULL, variant varchar NOT NULL, cover varchar NOT NULL, paper varchar NOT NULL, preview_image_link varchar, count_pages int, status varchar NOT NULL, last_edited_at timestamp NOT NULL, last_editor int, created_at timestamp NOT NULL, promooffers_id int, users_id int REFERENCES users(users_id))")
 	if err != nil {
 		log.Printf("Error happened when creating photobooks table. Err: %s", err)
 		return nil, false
@@ -169,7 +169,7 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 
 	// templates table
 	_, err = db.Exec(ctx,
-			"CREATE TABLE IF NOT EXISTS templates (templates_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, name varchar, orientation varchar NOT NULL, cover_image varchar, status varchar NOT NULL, category varchar, hardcopy varchar, last_edited_at timestamp NOT NULL, last_editor int, created_at timestamp NOT NULL, users_id int REFERENCES users(users_id))")
+			"CREATE TABLE IF NOT EXISTS templates (templates_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, name varchar, status varchar NOT NULL, category varchar, size varchar, last_edited_at timestamp NOT NULL, last_editor int, created_at timestamp NOT NULL)")
 	if err != nil {
 			log.Printf("Error happened when creating photobooks table. Err: %s", err)
 			return nil, false
@@ -187,7 +187,7 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 
 	// pages table
 	_, err = db.Exec(ctx,
-		"CREATE TABLE IF NOT EXISTS pages (pages_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, number int NOT NULL, is_template boolean NOT NULL, last_edited_at timestamp NOT NULL, projects_id int REFERENCES projects(projects_id))")
+		"CREATE TABLE IF NOT EXISTS pages (pages_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, is_template boolean NOT NULL, last_edited_at timestamp NOT NULL, data text, sort int NOT NULL, preview_link varchar, creating_image_link varchar, type varchar, projects_id int NOT NULL)")
 	if err != nil {
 		log.Printf("Error happened when creating pages table. Err: %s", err)
 		return nil, false
@@ -202,25 +202,6 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 		return nil, false
 
 	}
-
-	// mapping orders and printing agency with editing permission table
-	_, err = db.Exec(ctx,
-		"CREATE TABLE IF NOT EXISTS pa_has_orders (users_id int NOT NULL, orders_id int NOT NULL )")
-	if err != nil {
-		log.Printf("Error happened when creating pa_has_orders table. Err: %s", err)
-		return nil, false
-
-	}
-
-	// mapping photoalbums and users with editing permission
-	_, err = db.Exec(ctx,
-			"CREATE TABLE IF NOT EXISTS users_edit_albums (users_id int NOT NULL, albums_id int NOT NULL, category varchar NOT NULL)")
-	if err != nil {
-			log.Printf("Error happened when creating users_edit_albums table. Err: %s", err)
-			return nil, false
-	
-	}
-
 
 	// mapping photobooks and pages
 	_, err = db.Exec(ctx,
@@ -240,56 +221,12 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 
 	}
 
-	// mapping pages and layout
-	_, err = db.Exec(ctx,
-		"CREATE TABLE IF NOT EXISTS page_has_layout (pages_id int NOT NULL UNIQUE, layouts_id int NOT NULL, last_edited_at timestamp NOT NULL)")
-	if err != nil {
-		log.Printf("Error happened when creating page_has_layout table. Err: %s", err)
-		return nil, false
-
-	}
-
-	// mapping pages and background
-	_, err = db.Exec(ctx,
-		"CREATE TABLE IF NOT EXISTS page_has_background (pages_id int NOT NULL UNIQUE, backgrounds_id int NOT NULL, last_edited_at timestamp NOT NULL)")
-	if err != nil {
-		log.Printf("Error happened when creating page_has_background table. Err: %s", err)
-		return nil, false
-
-	}
-
-	// mapping pages and decoration
-	_, err = db.Exec(ctx,
-		"CREATE TABLE IF NOT EXISTS page_has_decoration (pages_id int NOT NULL, decorations_id int NOT NULL, ptop double precision, pleft double precision, style varchar, last_edited_at timestamp NOT NULL)")
-	if err != nil {
-		log.Printf("Error happened when creating page_has_background table. Err: %s", err)
-		return nil, false
-
-	}
-
-	// custom user text
-	_, err = db.Exec(ctx,
-		"CREATE TABLE IF NOT EXISTS page_has_text (pages_id int NOT NULL, custom_text varchar NOT NULL, ptop double precision, pleft double precision, style varchar)")
-	if err != nil {
-		log.Printf("Error happened when creating page_has_text table. Err: %s", err)
-		return nil, false
-
-	}
-
-	// prices table
-	_, err = db.Exec(ctx,
-			"CREATE TABLE IF NOT EXISTS prices (prices_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, covertype varchar, bindingtype varchar, price double precision)")
-	if err != nil {
-			log.Printf("Error happened when creating prices table. Err: %s", err)
-			return nil, false
-	
-	}
 
 	// mapping decorations uploaded by users and users 
 	_, err = db.Exec(ctx,
 			"CREATE TABLE IF NOT EXISTS users_has_decoration (users_id int NOT NULL, decorations_id int NOT NULL, is_favourite boolean NOT NULL, is_personal boolean NOT NULL)")
 	if err != nil {
-			log.Printf("Error happened when creating users_edit_albums table. Err: %s", err)
+			log.Printf("Error happened when creating users_has_decoration table. Err: %s", err)
 			return nil, false
 	
 	}
@@ -298,7 +235,16 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 	_, err = db.Exec(ctx,
 			"CREATE TABLE IF NOT EXISTS users_has_backgrounds (users_id int NOT NULL, backgrounds_id int NOT NULL, is_favourite boolean NOT NULL, is_personal boolean NOT NULL)")
 	if err != nil {
-			log.Printf("Error happened when creating users_edit_albums table. Err: %s", err)
+			log.Printf("Error happened when creating users_has_backgrounds table. Err: %s", err)
+			return nil, false
+	
+	}
+
+	// mapping layouts favoured by users and users 
+	_, err = db.Exec(ctx,
+			"CREATE TABLE IF NOT EXISTS users_has_layouts (users_id int NOT NULL, layouts_id int NOT NULL, is_favourite boolean NOT NULL)")
+	if err != nil {
+			log.Printf("Error happened when creating users_has_layouts table. Err: %s", err)
 			return nil, false
 	
 	}

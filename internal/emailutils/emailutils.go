@@ -38,9 +38,10 @@ type MailService interface {
 const (
 	MailConfirmation int = 1
 	MailDesignerOrder int = 2
-	MailPassReset int = 3
+	MailPassTemp int = 3
 	MailViewerInvitationNew int = 4
 	MailViewerInvitationExist int = 5
+	MailWelcome int = 6
 )
 
 // MailData represents the data to be sent to the template of the mail.
@@ -96,15 +97,16 @@ type SGMailService struct {
 	MailVerifCodeExpiration    int		// in hours
 	PassResetCodeExpiration    int		// in minutes
 	MailVerifTemplateID        string
-	PassResetTemplateID        string
+	TempPassTemplateID        string
 	DesignerOrderTemplateID    string
 	ViewerInvitationNewTemplateID    string
 	ViewerInvitationExistTemplateID    string
+	MailWelcomeTemplateID string
 }
 
 // NewSGMailService returns a new instance of SGMailService
 func NewSGMailService() *SGMailService {
-	return &SGMailService{config.SendGridApiKey, config.MailVerifCodeExpiration, config.PassResetCodeExpiration, config.MailVerifTemplateID, config.PassResetTemplateID, config.DesignerOrderTemplateID, config.ViewerInvitationNewTemplateID, config.ViewerInvitationExistTemplateID}
+	return &SGMailService{config.YandexApiKey, config.MailVerifCodeExpiration, config.PassResetCodeExpiration, config.WelcomeMailTemplateID, config.MailVerifTemplateID, config.TempPassTemplateID, config.DesignerOrderTemplateID, config.ViewerInvitationNewTemplateID, config.ViewerInvitationExistTemplateID}
 }
 
 
@@ -114,11 +116,14 @@ func CreateMail(mailReq *Mail, ms *SGMailService) error {
 	var err error
 	if mailReq.mtype == MailConfirmation {
 		err = mailReq.ParseTemplate("confirm_mail.html", mailReq.data)
-	} else if mailReq.mtype == MailPassReset {
+	} else if mailReq.mtype == MailPassTemp {
 		err = mailReq.ParseTemplate("password_reset.html", mailReq.data)
 	} else if mailReq.mtype == MailDesignerOrder {
 		err = mailReq.ParseTemplate("confirm_mail.html", mailReq.data)
 	
+	} else if mailReq.mtype == MailWelcome {
+		err = mailReq.ParseTemplate("confirm_mail.html", mailReq.data)
+		
 	} else if mailReq.mtype == MailViewerInvitationNew {
 		err = mailReq.ParseTemplate("viewer_invitation.html", mailReq.data)
 	
@@ -139,7 +144,8 @@ func CreateMail(mailReq *Mail, ms *SGMailService) error {
 func SendMail(mailReq *Mail, ms *SGMailService) error {
 
 	var auth smtp.Auth
-	auth = smtp.PlainAuth("", mailReq.from, ms.YandexApiKey, "smtp.yandex.com")
+	auth = smtp.PlainAuth("", mailReq.from, ms.YandexApiKey, "smtp.yandex.ru")
+	print(ms.YandexApiKey)
 
 	err := CreateMail(mailReq, ms)
 	if err != nil{
@@ -147,11 +153,11 @@ func SendMail(mailReq *Mail, ms *SGMailService) error {
 		return err
 	}
 	msg := mailReq.BuildMessage()
-	addr := "smtp.yandex.com:465"
+	addr := "smtp.yandex.ru:465"
 
 	tlsconfig := &tls.Config{
 		InsecureSkipVerify: true,
-		ServerName:         "smtp.yandex.com",
+		ServerName:         "smtp.yandex.ru",
 	}
 
 	conn, err := tls.Dial("tcp", addr, tlsconfig)
@@ -160,7 +166,7 @@ func SendMail(mailReq *Mail, ms *SGMailService) error {
 		return err
 	}
 
-	client, err := smtp.NewClient(conn,  "smtp.yandex.com")
+	client, err := smtp.NewClient(conn,  "smtp.yandex.ru")
 	if err != nil {
 		log.Printf("failed to create client")
 		return err

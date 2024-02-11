@@ -29,27 +29,26 @@ func MiddlewareValidateAccessToken(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Content-Type", "application/json")
-		resp := make(map[string]string)
 
 		log.Println("validating access token")
 
 		token, err := extractToken(r)
 		if err != nil {
 			log.Printf("Error happened when extracting jwt access token. Err: %s", err)
-			handlersfunc.HandleJWTError(w, resp)
+			handlersfunc.HandleJWTError(w)
 			return
 			}
 
 		userEmail, err := authservice.ValidateAccessToken(token)
 		if err != nil {
 			log.Printf("Error happened when validating jwt access token. Err: %s", err)
-			handlersfunc.HandleJWTError(w, resp)
+			handlersfunc.HandleJWTError(w)
 			return
 		}
 		userID, err := userstorage.GetUserID(context.Background(), config.DB, userEmail)
 		if err != nil {
 			log.Printf("Error happened when getting user ID by email. Err: %s", err)
-			handlersfunc.HandleDatabaseServerError(w, resp)
+			handlersfunc.HandleDatabaseServerError(w)
 			return
 		}
 		
@@ -66,33 +65,32 @@ func MiddlewareValidateRefreshToken(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Content-Type", "application/json")
-		resp := make(map[string]string)
 
 		log.Println("validating refresh token")
 		token, err := extractToken(r)
 		if err != nil {
 			log.Printf("Error happened when extracting jwt access token. Err: %s", err)
-			handlersfunc.HandleJWTError(w, resp)
+			handlersfunc.HandleJWTError(w)
 			return
 		}
 
 		userEmail, customKey, err := authservice.ValidateRefreshToken(token)
 		if err != nil {
 			log.Printf("Error happened when validating jwt refresh token. Err: %s", err)
-			handlersfunc.HandleJWTError(w, resp)
+			handlersfunc.HandleJWTError(w)
 			return
 		}
 
 		userID, err := userstorage.GetUserID(context.Background(), config.DB, userEmail)
 		if err != nil {
 			log.Printf("Error happened when getting user ID by email. Err: %s", err)
-			handlersfunc.HandleDatabaseServerError(w, resp)
+			handlersfunc.HandleDatabaseServerError(w)
 			return
 		}
 
 		user, err := userstorage.GetUserData(context.Background(), config.DB, userID)
 		if err != nil {
-			handlersfunc.HandleWrongCredentialsError(w, resp)
+			handlersfunc.HandleWrongCredentialsError(w)
 			return
 		}
 
@@ -101,7 +99,7 @@ func MiddlewareValidateRefreshToken(h http.Handler) http.Handler {
 		log.Println(customKey)
 		if customKey != actualCustomKey {
 			log.Printf("wrong token: authetincation failed")
-			handlersfunc.HandleJWTError(w, resp)
+			handlersfunc.HandleJWTError(w)
 			return
 		}
 
@@ -123,7 +121,6 @@ func AdminHandler(h http.Handler) http.Handler {
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			log.Print("Failed to check user category")
-			resp["status"] = "user unauthorized"
 			jsonResp, err := json.Marshal(resp)
 			if err != nil {
 				log.Printf("Error happened in JSON marshal. Err: %s", err)
@@ -139,7 +136,6 @@ func AdminHandler(h http.Handler) http.Handler {
         } else {
             // Otherwise, 403.
             w.WriteHeader(http.StatusUnauthorized)
-			log.Print("Not Admin")
 			resp["status"] = "user unauthorized"
 			jsonResp, err := json.Marshal(resp)
 			if err != nil {
@@ -154,42 +150,3 @@ func AdminHandler(h http.Handler) http.Handler {
     })
 }
 
-func PAHandler(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		userID := handlersfunc.UserIDContextReader(r)
-		userCategory, err := userstorage.CheckUserCategory(r.Context(), config.DB, userID)
-		resp := make(map[string]string)
-		if err != nil {
-			w.WriteHeader(http.StatusUnauthorized)
-			log.Print("Failed to check user category")
-			resp["status"] = "user unauthorized"
-			jsonResp, err := json.Marshal(resp)
-			if err != nil {
-				log.Printf("Error happened in JSON marshal. Err: %s", err)
-				return
-			}
-			w.Write(jsonResp)
-			return
-		}
-
-        // If user is print agent, allows access.
-        if userCategory == models.PrintAgentUserCategory {
-            h.ServeHTTP(w, r)
-        } else {
-            // Otherwise, 403.
-            w.WriteHeader(http.StatusUnauthorized)
-			log.Print("Not Print Agent")
-			resp["status"] = "user unauthorized"
-			jsonResp, err := json.Marshal(resp)
-			if err != nil {
-				log.Printf("Error happened in JSON marshal. Err: %s", err)
-				return
-			}
-			w.Write(jsonResp)
-			return
-        }
-
-        return
-    })
-}
