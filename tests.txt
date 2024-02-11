@@ -1,3 +1,11 @@
+database_url
+go run main.go -d "postgres://postgres:Moscow2022@localhost/MemoryPrint?sslmode=disable&statement_cache_capacity=1"
+go run main.go -d "postgres://postgres:iQ8hA2vI8p@localhost/memory_print?sslmode=disable&statement_cache_capacity=1" -a "109.70.24.79:8080"
+
+0. Greet
+resp=requests.get("http://127.0.0.1:8080/greet")
+b'{"status":"successfully greeted user"}'
+
 1. Registration
 resp=requests.post("http://127.0.0.1:8080/api/user/register",data=json.dumps({"username":"test1","password":"test123","email":"test@mail.ru"}))
 b'{"status":"new user added successfully"}
@@ -10,9 +18,13 @@ b'{"status":"username already taken"}{"status":"sql database error"}'
 resp=requests.post("http://127.0.0.1:8080/api/user/register",data=json.dumps({"username":"test22","password":"","email":"test@mail.ru"}))
 b'{"status":"incorrect credentials error"}'
 
+3a. Email Verification
+resp=requests.post("http://127.0.0.1:8080/api/verify/mail",data=json.dumps({"email":"elena.valchuk@gmail.com","code":"wtPilfsf"}))
+b'{"status":"user mail verified successfully"}'
+
 4. Login
-resp=requests.post("http://127.0.0.1:8080/api/user/login",data=json.dumps({"username":"test1","password":"test123"}))
-b'{"status":"user logged in successfully"}'
+resp=requests.post("http://127.0.0.1:8080/api/user/login",data=json.dumps({"username":"testone","password":"test123"}))
+b'{"accesstoken":"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VyRW1haWwiOiJlbGVuYS52YWxjaHVrQGdtYWlsLmNvbSIsIktleVR5cGUiOiJhY2Nlc3MiLCJleHAiOjE2OTg5NDQ4MjAsImlzcyI6Im1lbW9yeXByaW50LmF1dGguc2VydmljZSJ9.k9ljxP5hbn94LHpEdT5RWwc-o5TN6FNYPCDjuriKoibVXX9pploYuMv6_FEk4kG8ljS0xr7wIU-xCl-rIDSQeYLNrX9wj6TRstncsRsAuXOdakE6uVu25kjHbEMdQOj_sDdO9V8BW5_mKZDobY8G6J2HCl-rGUdfs1TKiZ7beCdds3zZKamlPmHR3er5ddB46IpdGnP2hau8qXXhdEEadrQ-SkkTaouvxbezpfCCCTDoBWHtGDxVqPbbs1fo28giO8bc0uX8RaMGFpuipqNq9cDUwUsRbRP1hTeYHoE0rmQvF_qJPT0MjLMXOMBhrH4GVZmShkdubBbDLgKe0LB6HQ","refreshtoken":"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VyRW1haWwiOiJlbGVuYS52YWxjaHVrQGdtYWlsLmNvbSIsIkN1c3RvbUtleSI6IjI3Y2UwNTg1NzMxZjJjZGQyMThhNTMyOTAwZjJiMWI0MzdiMDYyZWZjOTFkZGFjMGFjZjg1MTdhNjQwMTRmMGYiLCJLZXlUeXBlIjoicmVmcmVzaCIsImlzcyI6Im1lbW9yeXByaW50LmF1dGguc2VydmljZSJ9.VbFgKi1ab8AMAWA7tvDNpxGBQaqGB9ROLNNXAWXehJbmyf-b525NPdu8CIQmztULXzsKeHLzQALmgUzkQGzYi-f6Voz1_UpFLbQg3DNE0DTXGKTMkH9Ml9r6aKSHU2piSFr5HMPJhtBel2VRovFcrgqWwenD8KI8fMC-cwwq1BX3ZDg9rE6TWN3ThAaRrEPbmAy1fXkiwcUYNu10Nv_NMlASzTuGYwGMTja_cmO_MaBx5tWBX4gWBh7pFcvCHUzz1HjwdwwWUPeyOP0tSVFVSe1pFZ24efdeaXYtbIhkJpkMY8NSLtRvjXTMpX5KpNny6N94mMQsDYFggsdZlXh2NA","status":"user logged in successfully","username":"test4"}'
 
 5. Forbidden endpoint
 resp=requests.get("http://127.0.0.1:8080/api/admin/users", headers={'Authorization': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHBpcnkiOjE2OTIwMzMzNDMsInVzZXJfaWQiOjR9.jPdKrRXPjjFQPzfLNxh_j7M4BSHWEqgjHnBqXq_tvPU'})
@@ -67,7 +79,7 @@ resp=requests.post("http://127.0.0.1:8080/api/admin/deleteorder","3",headers={'A
 b'{"status":"order deleted successfully"}'
 
 18. Upload Photo
-resp=requests.post("http://127.0.0.1:8080/api/user/uploadphoto","photo_link",headers={'Authorization': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHBpcnkiOjE2OTIwODkyNzIsInVzZXJfaWQiOjl9.XMVeSr1T3mCeMQmF303Nnds6qYJPddK_rAha4iOn0oM'})
+resp=requests.post("http://127.0.0.1:8080/api/user/upload-photo","photo_link",headers={'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHBpcnkiOjE2OTIwODkyNzIsInVzZXJfaWQiOjl9.XMVeSr1T3mCeMQmF303Nnds6qYJPddK_rAha4iOn0oM'})
 b'{"status":"photo added successfully"}'
 
 19. Add new Project
@@ -86,3 +98,84 @@ b'["photo_link","photo_link"]\n'
 resp=requests.post("http://127.0.0.1:8080/api/user/addneweditor",data=json.dumps({"email":"newemail2.ru","project_id":7}),headers={'Authorization': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHBpcnkiOjE2OTIwODkyNzIsInVzZXJfaWQiOjl9.XMVeSr1T3mCeMQmF303Nnds6qYJPddK_rAha4iOn0oM'})
 b'{"status":"project editor added successfully"}'
 
+23. Asked for Pass Reset
+resp=requests.post("http://127.0.0.1:8080/get-password-reset-code", data="14")
+b'{"status":"successfully mailed password reset code"}'
+
+24. Get Prices
+resp=requests.get("http://127.0.0.1:8080/api/prices")
+b'[{"prices_id":1,"price":20.5,"pagesnum":10,"priceperpage":4.5,"covertype":"HARD","bindingtype":"LAYFLAT","papertype":"SILK"}]\n'
+
+25. Create Blank Project
+resp=requests.post("http://127.0.0.1:8080/api/user/create-project",data=json.dumps({"name":"myproject", "page_number":20,"cover_image":"clink","orientation":"HORIZONTAL"}),headers={'Authorization': 'Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VyRW1haWwiOiJlbGVuYS52YWxjaHVrQGdtYWlsLmNvbSIsIktleVR5cGUiOiJhY2Nlc3MiLCJleHAiOjE3MDAyOTc2NzcsImlzcyI6Im1lbW9yeXByaW50LmF1dGguc2VydmljZSJ9.cme2FmUtrAcsV-AdutJ1XvjU4lTMCeOcCnYwqjhKT9oWQVZgSbdUquqfeCiotc2H5620resCzFU0SLa5oj2scUSq4FEKJAX__7GrMHOA_skUmu2NZ2QGxP_z-d0xvN6X5fL_DXKlIJ0dJoyg55FZwHuVfAkDW_tR1XkejU3OABCrUhXhtMJSkRiMPRe2s8nnur-NNOOIT607jZZ8_FT-4UWjPDWVL6wD-RMNHLe1YkrGBbAuq7DtimDzwBsksFyO2EDJGSnqF27YwP3dnRal220-_U8_L8g9wUIrUc1X3qty9F5a_-G3SH_YfPXkEDmxLOC4sme1mvTnxf-4m767Rg'})
+b'{"status":"project added successfully"}{"project_id":6,"pages_ids":[121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140]}\n'
+
+26. Add Blank Page
+resp=requests.post("http://127.0.0.1:8080/api/user/add-page", "6",headers={'Authorization': 'Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VyRW1haWwiOiJlbGVuYS52YWxjaHVrQGdtYWlsLmNvbSIsIktleVR5cGUiOiJhY2Nlc3MiLCJleHAiOjE3MDAyOTc2NzcsImlzcyI6Im1lbW9yeXByaW50LmF1dGguc2VydmljZSJ9.cme2FmUtrAcsV-AdutJ1XvjU4lTMCeOcCnYwqjhKT9oWQVZgSbdUquqfeCiotc2H5620resCzFU0SLa5oj2scUSq4FEKJAX__7GrMHOA_skUmu2NZ2QGxP_z-d0xvN6X5fL_DXKlIJ0dJoyg55FZwHuVfAkDW_tR1XkejU3OABCrUhXhtMJSkRiMPRe2s8nnur-NNOOIT607jZZ8_FT-4UWjPDWVL6wD-RMNHLe1YkrGBbAuq7DtimDzwBsksFyO2EDJGSnqF27YwP3dnRal220-_U8_L8g9wUIrUc1X3qty9F5a_-G3SH_YfPXkEDmxLOC4sme1mvTnxf-4m767Rg'})
+b'{"status":"project page added successfully"}141\n'
+
+27. Delete Page
+resp=requests.post("http://127.0.0.1:8080/api/user/delete-page", "141",headers={'Authorization': 'Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VyRW1haWwiOiJlbGVuYS52YWxjaHVrQGdtYWlsLmNvbSIsIktleVR5cGUiOiJhY2Nlc3MiLCJleHAiOjE3MDAyOTg1NDAsImlzcyI6Im1lbW9yeXByaW50LmF1dGguc2VydmljZSJ9.p_KYBpSh-O6vJrXwn2RSin4-9m2GLZ7LG1K4-EXF3t7xwGr4G16gX4oIae5kPJ7caSya1bn2JC0z4UpmVroPvsuttTnWVRgjHocOTMhZOIp_rGG_pH1mIyGQPIbv1W-CtyFjFd4MpqU6kqF4qoJYURjMIgAjUZUEP8dbFM5LO94BsOmK6NVBgRMxbP4tYgZIZ-uyQ1T4aro8jWAbesvUbRH5R3D9puNORFUWLymtXqlOWmenzvd_aUXugMXCziXtBSdn0XfczD0yPXKiH-k6cE4iFumVL3hW-tuJI-dQnZZhY334V1p5CN34n1k6NZj-khIH9gXMtn-2O07OZd-NFQ'})
+b'{"status":"page deleted successfully"}'
+
+28. Save Project
+resp=requests.post("http://127.0.0.1:8080/api/user/save-project",data=json.dumps({"project":{"project_id":6,"name":"myprojectupd", "page_number":20,"cover_image":"clink1","orientation":"HORIZONTAL"},"pages":[{"page_id":140,"decorations":[{"object_id":1,"style":"front","ptop":1.54,"pleft":1.11}],"photos":[{"object_id":1,"style":"front","ptop":1.54,"pleft":1.11}],"background":[{"object_id":1}],"layout":[{"object_id":1}],"text_obj":[{"custom_text":"aaa","style":"front","ptop":1.54,"pleft":1.11}]}]}),headers={'Authorization': 'Bearer '})
+b'{"status":"project saved successfully"}'
+
+29. Duplicate Page
+resp=requests.post("http://127.0.0.1:8080/api/user/duplicate-page","140",headers={'Authorization': 'Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VyRW1haWwiOiJlbGVuYS52YWxjaHVrQGdtYWlsLmNvbSIsIktleVR5cGUiOiJhY2Nlc3MiLCJleHAiOjE3MDA0NjAzMjYsImlzcyI6Im1lbW9yeXByaW50LmF1dGguc2VydmljZSJ9.aQpPoUz1JTSGXZxVf2lUG2HYwLM0EPy2FXN31osiapgCEI8szV42N1ylSaoklq8k-JgG6VHLb08MbQOl90Y0z4uqtIimtvM2XxbLJ_1LwObShHBbYXp8lauxB2-mQ-RBehhj4t8rpnIZCZfpGx_QHQJMJxuIWsp9qWIR_56qDtD40J0JIbO5xCGAhQXaIS_9VYsT5tLoenne6micECiIo0Eyn7BqWQ9HTotWg91n7k8ftmRy9TcCDOBClxsO3tv3p8UjZa8LSHvY_SxkpnuVmsPOTzC_1JxWW5Dokcma1KqppfYQS7Fy4tM-oDspTRLilUnRf_rmcETjfZmun8WSlg'})
+b'{"status":"page duplicated successfully"}145\n'
+
+30. Create decoration
+resp=requests.post("http://127.0.0.1:8080/api/user/create-decor",data=json.dumps({"link":"dlink666","category":"HOLIDAY","type":"STICKER","is_favourite":False,"is_personal":False}),headers={"Authorization":"Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VyRW1haWwiOiJlbGVuYS52YWxjaHVrQGdtYWlsLmNvbSIsIktleVR5cGUiOiJhY2Nlc3MiLCJleHAiOjE3MDA2NTExOTAsImlzcyI6Im1lbW9yeXByaW50LmF1dGguc2VydmljZSJ9.CGc-ZEksKTKbIIx1Oz5wsx4wGKVqf8tG2JCd9XmCnOSuz1UyOWSedycnkTiuFcadOmO7MpT42kqiFKRts-AUsU1W4wUcbx4PK54jjvtdtn29ICl7O3BQ5KoU7T2_Eq8SQxFt_yCp749L1HNjXordGdpy7Zdy1WPV94KMfruuIOhw-zKBH258LsDAEMqYBvxbof6YjikHjpt-og0wCGdJw9HWRfLxzJjb6Wh-mfNkpXl8GFdDy76cM-CxYMt6bdl0Lcxaayg_U9tVU7gSijNfx1KaaX3LeAkKjdNoZEkR61hZlUf3RTNJ89dURuDaF_MPDyjwf0KZ7u1yPpoxz7dQGQ"})
+b'{"status":"decor added successfully"}1\n'
+
+31. Create background
+resp=requests.post("http://127.0.0.1:8080/api/user/create-background",data=json.dumps({"link":"dlink666","category":"HOLIDAY","is_favourite":False,"is_personal":True}),headers={"Authorization":"Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VyRW1haWwiOiJlbGVuYS52YWxjaHVrQGdtYWlsLmNvbSIsIktleVR5cGUiOiJhY2Nlc3MiLCJleHAiOjE3MDA2NTE0MDYsImlzcyI6Im1lbW9yeXByaW50LmF1dGguc2VydmljZSJ9.nLU-apAY569jjnpH1_rcVJMv_RMJi424wKgAeCMbaVe-bC1-ajgmxkh15hWF7Sa8CbmLAvB0tquopUGZJ3g2kJwBr8rlfJ0nX1HDClo0bB2lmEBwkvrTdbv9SGVTczlv62kxGE7CXb4CAAj-xBNDh-kqGjnmjA6xVQTkCkVZF7lzqiLUpRJECAyLWRdrV7c9y8PwbsavGaj3AvK0L61WhbU7aIvPOG-E09axa2ICzcOtDyCEnWyEZei-XbgY0AABPTgjTwN3CcP_WeEfe4C0_dNIM_oXEwG_pRpqbiyMmCgmkvqtYRuDb1gATvNODmvaIeZTwwfVRp7lb3o1CHkyKA"})
+b'{"status":"background added successfully"}1\n'
+
+32. Delete background
+resp=requests.post("http://127.0.0.1:8080/api/user/delete-background","1",headers={"Authorization":"Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VyRW1haWwiOiJlbGVuYS52YWxjaHVrQGdtYWlsLmNvbSIsIktleVR5cGUiOiJhY2Nlc3MiLCJleHAiOjE3MDA2NTE0MDYsImlzcyI6Im1lbW9yeXByaW50LmF1dGguc2VydmljZSJ9.nLU-apAY569jjnpH1_rcVJMv_RMJi424wKgAeCMbaVe-bC1-ajgmxkh15hWF7Sa8CbmLAvB0tquopUGZJ3g2kJwBr8rlfJ0nX1HDClo0bB2lmEBwkvrTdbv9SGVTczlv62kxGE7CXb4CAAj-xBNDh-kqGjnmjA6xVQTkCkVZF7lzqiLUpRJECAyLWRdrV7c9y8PwbsavGaj3AvK0L61WhbU7aIvPOG-E09axa2ICzcOtDyCEnWyEZei-XbgY0AABPTgjTwN3CcP_WeEfe4C0_dNIM_oXEwG_pRpqbiyMmCgmkvqtYRuDb1gATvNODmvaIeZTwwfVRp7lb3o1CHkyKA"})
+b'{"status":"background deleted successfully"}'
+
+33. Delete decoration
+resp=requests.post("http://127.0.0.1:8080/api/user/delete-decor","1",headers={"Authorization":"Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VyRW1haWwiOiJlbGVuYS52YWxjaHVrQGdtYWlsLmNvbSIsIktleVR5cGUiOiJhY2Nlc3MiLCJleHAiOjE3MDA2NTE0MDYsImlzcyI6Im1lbW9yeXByaW50LmF1dGguc2VydmljZSJ9.nLU-apAY569jjnpH1_rcVJMv_RMJi424wKgAeCMbaVe-bC1-ajgmxkh15hWF7Sa8CbmLAvB0tquopUGZJ3g2kJwBr8rlfJ0nX1HDClo0bB2lmEBwkvrTdbv9SGVTczlv62kxGE7CXb4CAAj-xBNDh-kqGjnmjA6xVQTkCkVZF7lzqiLUpRJECAyLWRdrV7c9y8PwbsavGaj3AvK0L61WhbU7aIvPOG-E09axa2ICzcOtDyCEnWyEZei-XbgY0AABPTgjTwN3CcP_WeEfe4C0_dNIM_oXEwG_pRpqbiyMmCgmkvqtYRuDb1gATvNODmvaIeZTwwfVRp7lb3o1CHkyKA"})
+b'{"status":"decor deleted successfully"}'
+
+33. Create template User not Admin
+resp=requests.post("http://127.0.0.1:8080/api/admin/create-template",data=json.dumps({"name":"myfirsttemplate","page_number":20,"cover_image":"clink","orientation":"square","category":"HOLIDAY","status":"EDITED"}),headers={"Authorization":"Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VyRW1haWwiOiJlbGVuYS52YWxjaHVrQGdtYWlsLmNvbSIsIktleVR5cGUiOiJhY2Nlc3MiLCJleHAiOjE3MDA2NTE0MDYsImlzcyI6Im1lbW9yeXByaW50LmF1dGguc2VydmljZSJ9.nLU-apAY569jjnpH1_rcVJMv_RMJi424wKgAeCMbaVe-bC1-ajgmxkh15hWF7Sa8CbmLAvB0tquopUGZJ3g2kJwBr8rlfJ0nX1HDClo0bB2lmEBwkvrTdbv9SGVTczlv62kxGE7CXb4CAAj-xBNDh-kqGjnmjA6xVQTkCkVZF7lzqiLUpRJECAyLWRdrV7c9y8PwbsavGaj3AvK0L61WhbU7aIvPOG-E09axa2ICzcOtDyCEnWyEZei-XbgY0AABPTgjTwN3CcP_WeEfe4C0_dNIM_oXEwG_pRpqbiyMmCgmkvqtYRuDb1gATvNODmvaIeZTwwfVRp7lb3o1CHkyKA"})
+b'{"status":"user unauthorized"}'
+Status 401
+
+jwt token error
+Status 500
+
+sql database error
+Status 500
+
+34. Create Template Admin user
+resp=requests.post("http://127.0.0.1:8080/api/admin/create-template",data=json.dumps({"name":"myfirsttemplate","page_number":20,"cover_image":"clink","orientation":"square","category":"HOLIDAY","status":"EDITED"}),headers={"Authorization":"Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VyRW1haWwiOiJlbGVuYS52YWxjaHVrQGdtYWlsLmNvbSIsIktleVR5cGUiOiJhY2Nlc3MiLCJleHAiOjE3MDA2NTI0MTQsImlzcyI6Im1lbW9yeXByaW50LmF1dGguc2VydmljZSJ9.qbE0a7fsk1KLyUFIPt83smQqsQotgr-Pj7hCEBKkKRUc7zUZauCqeTMIqZJP6PJL-n7yckaMUywYqof6D8JVbfGURGe4ByPbERE4wRLlvlvEi7bUBdxse-7twUPBCgbBKjg_cpNcVLSYtHzdynw7yssb73HQAM4jfo0dnNnCAd6t7dPt2jmbCJ4EM7PRRKn77avwBvkcJOoEQiwyvji4b2M6-7eWbwKv9wneyFAZln9pb0SoBJ0PG-HkD_2bSCPA7AEykrjgDXKACFyVfqbJ798--2Lcz4mq4HHhVC80aYEf0uW_gnf4kxeOWy9KaloZoB0ih3eHxkMKFgJIoN37zg"})
+b'{"status":"template created successfully"}'
+
+34. Publish Template Admin user
+resp=requests.post("http://127.0.0.1:8080/api/admin/publish-template",data=json.dumps({"template_id":1,"hardcopy":"templink"}),headers={"Authorization":"Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VyRW1haWwiOiJlbGVuYS52YWxjaHVrQGdtYWlsLmNvbSIsIktleVR5cGUiOiJhY2Nlc3MiLCJleHAiOjE3MDA2NTMwOTQsImlzcyI6Im1lbW9yeXByaW50LmF1dGguc2VydmljZSJ9.jtOkbNAFd3JuvQO-PbRuWhMpr-yk2svRH1qRJluhqWTXGMZJqf0DfGqrd1RKWoajAUb0JXhRAKVR0j6yqZHr_k_OcOgynbcbgGs__MMX3qLadu1lNzm6Zy8_n5CleeUdXcLG_lLuKZ84NqIQGOf27zMNOICHVktU3FhIt0UXwhFjcYlZgpp6XSjFQSqCkg2XOeMfFv88XSOagwpJv7H_sLZ-TGUaSM3iKF4XxiH2ksIP_ShpJ7bfkJpciRn9Ji0Dvw92n9LFZWJN45jEgBmHMjif3eXF-Chc430UjmqEeUDo95x4l7gtRlRmPNfUiUDdoL12q4ogETn6gNll2tEgpA"})
+b'{"status":"template published successfully"}'
+
+35. Loaded session objects 
+resp=requests.get("http://127.0.0.1:8080/api/project-session")
+b'{"decorations":[{"decoration_id":2,"link":"dlink666","type":"STICKER","category":"HOLIDAY"}],"background":null,"layout":[{"layout_id":1,"link":"llink","category":"GENERAL"}]}\n'
+
+36. Load Project
+resp=requests.post("http://127.0.0.1:8080/api/user/load-project","9",headers={'Authorization':"Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VyRW1haWwiOiJlbGVuYS52YWxjaHVrQGdtYWlsLmNvbSIsIktleVR5cGUiOiJhY2Nlc3MiLCJleHAiOjE3MDA2NTk0MjAsImlzcyI6Im1lbW9yeXByaW50LmF1dGguc2VydmljZSJ9.jFocerf_2lruCA-cdcIsxzMb7BG1dPKM9yShlPN-XXDjDUmcZQMqFf_vlDrStxdqB_Toef_uBwm_hQmcTr-Au5891xuqiw3E2vTHTy_ZuwBUetl042NtP0nWeAnLwmYrdbm9ormx1VhJ5sN9Tf10A7H3N8q1qtCkuv5MUCRSoN_86_zvifcJYGRnRA_ajuy1Cd631tFbPDwx7PJQQR91RsZOCCuYfHoSW8uZMnAuOyYSCo5NX9lVbMjdqC3vnlaPfE1VW-t1aOSX2QZtcZeOt5oxoiJQ0L5VNAW-z5mrcLk12qFakZ5H5pk0eaxQFzZRgbNOHHFzMmdd8o_Haq9bfA"})
+b'[{"page_id":23,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":24,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":25,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":26,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":27,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":28,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":29,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":30,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":31,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":32,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":33,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":34,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":35,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":36,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":37,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":38,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":39,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":40,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":41,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":42,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":43,"project_id":9,"decorations":[{"object_id":1,"category":"","type":"","name":"","style":"front","ptop":1.54,"pleft":1.11}],"photos":[{"object_id":1,"category":"","type":"","name":"","style":"front","ptop":1.54,"pleft":1.11}],"background":[{"object_id":1,"category":"","type":"","name":"","style":"","ptop":0,"pleft":0}],"layout":[{"object_id":1,"category":"","type":"","name":"llink","style":"","ptop":0,"pleft":0}],"text_obj":[{"custom_text":"aaa","style":"front","ptop":1.54,"pleft":1.11}]},{"page_id":44,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":45,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":46,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":47,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":48,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":49,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":50,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":51,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":52,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":53,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":54,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":55,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":56,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":57,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":58,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":59,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":60,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":61,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]},{"page_id":62,"project_id":9,"decorations":[],"photos":[],"background":[],"layout":[],"text_obj":[]}]\n'
+
+37. Save Template
+resp=requests.post("http://127.0.0.1:8080/api/user/save-template",data=json.dumps({"project":{"project_id":2,"name":"myprojectupd", "page_number":20,"cover_image":"clink1","orientation":"HORIZONTAL"},"pages":[{"page_id":140,"decorations":[{"object_id":1,"style":"front","ptop":1.54,"pleft":1.11}],"background":[{"object_id":1}],"layout":[{"object_id":1}],"text_obj":[{"custom_text":"aaa","style":"front","ptop":1.54,"pleft":1.11}]}]}),headers={'Authorization': 'Bearer '})
+b'{"status":"template saved successfully"}'
+
+38. Save Page
+resp=requests.post("http://127.0.0.1:8080/api/v1/user/save-page",data=json.dumps({"page_id":140,"decorations":[{"object_id":1,"style":"front","ptop":1.54,"pleft":1.11}],"background":[{"object_id":1}],"layout":[{"object_id":1}],"text_obj":[{"custom_text":"aaabbb","style":"front","ptop":1.54,"pleft":1.11}]}),headers={'Authorization': 'Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VyRW1haWwiOiJlbGVuYS52YWxjaHVrQGdtYWlsLmNvbSIsIktleVR5cGUiOiJhY2Nlc3MiLCJleHAiOjE3MDE1ODAxMzcsImlzcyI6Im1lbW9yeXByaW50LmF1dGguc2VydmljZSJ9.IR8y4akK-dKle73ItAqd3epYARtp81LbTLUbPnAHIgGX4MdXHv-NwhtKPHm0Z8KzHMnKcRW2ZzdsSSxR8AfmflA3URghCMWbBhFqKARZkr8GY5HkLIY4LPuI1wenJoBoXiFMEn33rN0eOrk8hN-kIKzxrrG0QAPG74syfmZeyk6Y85jrG25GYPZV4ujZ-vkvit9tu6Yee7PmUOyvmM5eh2OSSNGs2-Rk9AfJZOAzzmCkOVa2Ch_GgAzaQAyeMgN9_CwQIyj-Wq3wmo5eXGO9JtoV9DFvsj4Uh7YHU8iJ6Z-6G3zWkxuL96OOhJuMKSTnnwIO9ifhIewZ5HZvtoxhJw'})
+b'{"status":"page saved successfully"}'
+
+39. Request new access token
+resp=requests.get("http://localhost:8080/refresh-token",headers={"Authorization":"Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VyRW1haWwiOiJlbGVuYS52YWxjaHVrQGdtYWlsLmNvbSIsIkN1c3RvbUtleSI6IjMxMzQ1MTcxMjI0ZDZjOWIyODk2ZmI1Y2FlMzQ2MDM3NWZmMjFmMWE4MTQ2YzExZTFhNmFlMWVhMjE3YmE0YWYiLCJLZXlUeXBlIjoicmVmcmVzaCIsImlzcyI6Im1lbW9yeXByaW50LmF1dGguc2VydmljZSJ9.fbOVZQl0Bvzfm55eBduHLtqn0H6kvOHXtPM2DIPpQzxwgq2gHpsdXotfc3_n0KpGtubZIpsUjqrdp0QsPVtrioGPM5u1ORZGxkcujiiog0wnt6YiS5qRgGfcdU1j2OvdgohEt2Xa7Qtb4KnULjFf6BtbVUO8B30f2daXoDHm5hhW_Ba1Qaxl1ZuGd4BxQ3oU5MZKsuWvzTiSnwjyU2HMrKHNiZAjlrRD5afwk_BJG1g7ejwD-yzc3hb2d3FhwndcjtAoQg4l94vVTRj2IkTvGaOs3922GpLk9xNHlhT2Rd_nA5gXZ59IWI0gTPK5K2frswirLvC8u8PR3GMQi1569A"})
