@@ -175,5 +175,5 @@ b'{"status":"template saved successfully"}'
 
 38. Save Page
 resp=requests.post("http://127.0.0.1:8080/api/v1/user/save-page",data=json.dumps({"page_id":140,"decorations":[{"object_id":1,"style":"front","ptop":1.54,"pleft":1.11}],"background":[{"object_id":1}],"layout":[{"object_id":1}],"text_obj":[{"custom_text":"aaabbb","style":"front","ptop":1.54,"pleft":1.11}]}),headers={'Authorization': 'Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VyRW1haWwiOiJlbGVuYS52YWxjaHVrQGdtYWlsLmNvbSIsIktleVR5cGUiOiJhY2Nlc3MiLCJleHAiOjE3MDE1ODAxMzcsImlzcyI6Im1lbW9yeXByaW50LmF1dGguc2VydmljZSJ9.IR8y4akK-dKle73ItAqd3epYARtp81LbTLUbPnAHIgGX4MdXHv-NwhtKPHm0Z8KzHMnKcRW2ZzdsSSxR8AfmflA3URghCMWbBhFqKARZkr8GY5HkLIY4LPuI1wenJoBoXiFMEn33rN0eOrk8hN-kIKzxrrG0QAPG74syfmZeyk6Y85jrG25GYPZV4ujZ-vkvit9tu6Yee7PmUOyvmM5eh2OSSNGs2-Rk9AfJZOAzzmCkOVa2Ch_GgAzaQAyeMgN9_CwQIyj-Wq3wmo5eXGO9JtoV9DFvsj4Uh7YHU8iJ6Z-6G3zWkxuL96OOhJuMKSTnnwIO9ifhIewZ5HZvtoxhJw'})
-b'{"status":"page saved successfully "}'
+b'{"status":"page saved successfuly"}'
 
