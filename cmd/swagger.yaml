@@ -1,0 +1,2111 @@
+openapi: 3.0.3
+info:
+  title: Memory Print - OpenAPI 3.0
+  version: "0.1"
+  description: "basePath: http://memoryprint.ru:8080/api/v1 "
+  
+tags:
+
+  - name: auth
+    description: endpoints for authorization
+  - name: images
+    description: endpoints for image converting
+  - name: backgrounds
+    description: endpoints for backgrounds
+  - name: decorations
+    description: endpoints for decorations
+  - name: layouts
+    description: endpoints for layouts
+  - name: projects
+    description: endpoints for projects
+  - name: templates
+    description: endpoints for templates
+  - name: photos
+    description: endpoints for photos
+
+
+paths:
+  /auth/signup:
+    post:
+      tags:
+        - auth
+      summary: Register new user
+      description: Pass registration data
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:          
+                  type: string
+                email:    
+                  type: string
+                password:    
+                  type: string
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: access token with 90 days expiration
+        '409':
+          description: User with this email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: unable to send email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/login:
+    post:
+      tags:
+        - auth
+      summary: Login existing user
+      description: Pass email and password
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:    
+                  type: string
+                password:    
+                  type: string
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: access token with 90 days expiration
+        '401':
+          description: Wrong password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User with this email does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/restore:
+    post:
+      tags:
+        - auth
+      summary: Restore account access with temporary pass
+      description: Pass registered email address
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:    
+                  type: string
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: integer
+                    
+        '404':
+          description: User with this email does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: unable to send email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/get-user:
+    get:
+      tags:
+        - auth
+      summary: Check user status
+      parameters:
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+  /load-backgrounds:
+    post:
+      tags:
+        - backgrounds
+      summary: Load all backgrounds from database
+      parameters:
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestBackground'
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseBackground'
+        '401':
+          description: Unauthorized
+  /admin/create-background:
+    post:
+      tags:
+        - backgrounds
+      summary: Create new background
+      parameters:
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Background'
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseCreatedBackground'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Need higher permission level
+  /admin/update-background/{id}:
+    post:
+      tags:
+        - backgrounds
+      summary: Update existing background
+      parameters:
+        - name: id
+          in: path
+          description: id of background to update
+          required: true
+          schema:
+            type: integer
+            format: int
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Background'
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: integer
+                    
+        '401':
+          description: Unauthorized
+        '403':
+          description: Need higher permission level
+  /admin/delete-background/{id}:
+    get:
+      tags:
+        - backgrounds
+      summary: Delete existing background
+      parameters:
+        - name: id
+          in: path
+          description: id of background to delete
+          required: true
+          schema:
+            type: integer
+            format: int
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: integer
+                    
+        '401':
+          description: Unauthorized
+        '403':
+          description: Need higher permission level
+  /create-background:
+    post:
+      tags:
+        - backgrounds
+      summary: Create custom user background
+      parameters:
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                link:    
+                  type: string
+                type:    
+                  type: string
+                  enum:
+                    - "VACATION"
+                    - "WEDDING"
+                    - "HOLIDAYS"
+                    - "CHILDREN"
+                    - "ANIMAL"
+                    - "UNIVERSAL"
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseCreatedBackground'
+        '401':
+          description: Unauthorized
+  /delete-background/{id}:
+    get:
+      tags:
+        - backgrounds
+      summary: Delete existing background
+      parameters:
+        - name: id
+          in: path
+          description: id of background to delete
+          required: true
+          schema:
+            type: integer
+            format: int
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: integer
+                    
+        '401':
+          description: Unauthorized
+  /change-favourite-background/{id}:
+    post:
+      tags:
+        - backgrounds
+      summary: Update favourite bool for existing background
+      parameters:
+        - name: id
+          in: path
+          description: id of background to (un)favour
+          required: true
+          schema:
+            type: integer
+            format: int
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                is_favourite:    
+                  type: boolean 
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: integer
+                    
+        '401':
+          description: Unauthorized
+  /load-decorations:
+    post:
+      tags:
+        - decorations
+      summary: Load all decorations from database
+      parameters:
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestDecoration'
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDecoration'
+        '401':
+          description: Unauthorized
+  /admin/create-decoration:
+    post:
+      tags:
+        - decorations
+      summary: Create new decoration
+      parameters:
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Decoration'
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseCreatedDecoration'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Need higher permission level
+  /admin/update-decoration/{id}:
+    post:
+      tags:
+        - decorations
+      summary: Update existing decoration
+      parameters:
+        - name: id
+          in: path
+          description: id of decoration to update
+          required: true
+          schema:
+            type: integer
+            format: int
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Decoration'
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: integer
+                    
+        '401':
+          description: Unauthorized
+        '403':
+          description: Need higher permission level
+  /admin/delete-decoration/{id}:
+    get:
+      tags:
+        - decorations
+      summary: Delete existing decoration
+      parameters:
+        - name: id
+          in: path
+          description: id of decoration to delete
+          required: true
+          schema:
+            type: integer
+            format: int
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: integer
+                    
+        '401':
+          description: Unauthorized
+        '403':
+          description: Need higher permission level
+  /create-decoration:
+    post:
+      tags:
+        - decorations
+      summary: Create custom user decoration
+      parameters:
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                link:    
+                  type: string
+                type:    
+                  type: string
+                  enum:
+                    - "VACATION"
+                    - "WEDDING"
+                    - "HOLIDAYS"
+                    - "CHILDREN"
+                    - "ANIMAL"
+                    - "UNIVERSAL"
+                category:    
+                  type: string
+                  enum:
+                    - "FRAME"
+                    - "RIBBON"
+                    - "STICKER"
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseCreatedDecoration'
+        '401':
+          description: Unauthorized
+  /delete-decoration/{id}:
+    get:
+      tags:
+        - decorations
+      summary: Delete existing decoration
+      parameters:
+        - name: id
+          in: path
+          description: id of decoration to delete
+          required: true
+          schema:
+            type: integer
+            format: int
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: integer
+                    
+        '401':
+          description: Unauthorized
+  /change-favourite-decoration/{id}:
+    post:
+      tags:
+        - decorations
+      summary: Update favourite bool for existing decoration
+      parameters:
+        - name: id
+          in: path
+          description: id of decoration to (un)favour
+          required: true
+          schema:
+            type: integer
+            format: int
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                is_favourite:    
+                  type: boolean 
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: integer
+                    
+        '401':
+          description: Unauthorized
+  /load-layouts:
+    post:
+      tags:
+        - layouts
+      summary: Load all layouts from database
+      parameters:
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestLayout'
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseLayout'
+        '401':
+          description: Unauthorized
+  /admin/create-layout:
+    post:
+      tags:
+        - layouts
+      summary: Create new layout
+      parameters:
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Layout'
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseCreatedLayout'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Need higher permission level
+  /admin/delete-layout/{id}:
+    get:
+      tags:
+        - layouts
+      summary: Delete existing layout
+      parameters:
+        - name: id
+          in: path
+          description: id of layout to delete
+          required: true
+          schema:
+            type: integer
+            format: int
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: integer
+                    
+        '401':
+          description: Unauthorized
+        '403':
+          description: Need higher permission level
+  /change-favourite-layout/{id}:
+    post:
+      tags:
+        - layouts
+      summary: Update favourite bool for existing layout
+      parameters:
+        - name: id
+          in: path
+          description: id of layout to (un)favour
+          required: true
+          schema:
+            type: integer
+            format: int
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                is_favourite:    
+                  type: boolean 
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: integer
+                    
+        '401':
+          description: Unauthorized
+  /load-projects:
+    get:
+      tags:
+        - projects
+      summary: Load user projects
+      parameters:
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ResponseProject'   
+        '401':
+          description: Unauthorized
+  /load-project/{id}:
+    get:
+      tags:
+        - projects
+      summary: Load selected user project
+      parameters:
+        - name: id
+          in: path
+          description: id of project to load
+          required: true
+          schema:
+            type: integer
+            format: int
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedProjectObj' 
+        '401':
+          description: Unauthorized
+  /create-project:
+    post:
+      tags:
+        - projects
+      summary: Create new project
+      parameters:
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewBlankProjectObj' 
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseCreatedProject'
+        '401':
+          description: Unauthorized
+  /save-project-pages/{id}:
+    post:
+      tags:
+        - projects
+      summary: Save and update existing project pages
+      parameters:
+        - name: id
+          in: path
+          description: id of the page to save
+          required: true
+          schema:
+            type: integer
+            format: int
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestSavePages' 
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: integer
+                    
+        '401':
+          description: Unauthorized
+        '404':
+          description: One or more pages are missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /add-pages/{id}:
+    post:
+      tags:
+        - projects
+      summary: Add pages to existing project
+      parameters:
+        - name: id
+          in: path
+          description: id of the project where new pages will be added
+          required: true
+          schema:
+            type: integer
+            format: int
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestAddPage' 
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OrderPage'   
+        '401':
+          description: Unauthorized
+        '404':
+          description: One or more pages are missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /delete-pages/{id}:
+    post:
+      tags:
+        - projects
+      summary: Delete project pages
+      parameters:
+        - name: id
+          in: path
+          description: id of the project where pages will be deleted
+          required: true
+          schema:
+            type: integer
+            format: int
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestDeletePage' 
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: integer
+                    
+        '401':
+          description: Unauthorized
+  /reorder-pages/{id}:
+    post:
+      tags:
+        - projects
+      summary: Reorder project pages
+      parameters:
+        - name: id
+          in: path
+          description: id of the project where pages will be reordered
+          required: true
+          schema:
+            type: integer
+            format: int
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestReorderPage' 
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: integer
+                    
+        '401':
+          description: Unauthorized
+        '406':
+          description: Not all pages passed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: One or more pages are missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '405':
+          description: Attempt to reorder a cover page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Order of pages is corrupted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /load-templates:
+    get:
+      tags:
+        - templates
+      summary: Load templates
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ResponseTemplate'  
+  /admin/create-template:
+    post:
+      tags:
+        - templates
+      summary: Create new template
+      parameters:
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                size:    
+                  type: string 
+                  enum:
+                  - "SMALL_SQUARE"
+                  - "SQUARE"
+                  - "VERTICAL"
+                  - "HORIZONTAL"
+                category:    
+                  type: string 
+                  enum:
+                  - "VACATION"
+                  - "WEDDING"
+                  - "HOLIDAYS"
+                  - "CHILDREN"
+                  - "ANIMAL"
+                  - "UNIVERSAL"
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseCreatedTemplate'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Need higher permission level
+  /admin/save-template-pages/{id}:
+    post:
+      tags:
+        - templates
+      summary: Save and update existing template pages
+      parameters:
+        - name: id
+          in: path
+          description: id of the page to save
+          required: true
+          schema:
+            type: integer
+            format: int
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestSavePages' 
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: integer
+                    
+        '401':
+          description: Unauthorized
+        '403':
+          description: Need higher permission level
+  /admin/add-template-pages/{id}:
+    post:
+      tags:
+        - templates
+      summary: Add pages to existing project
+      parameters:
+        - name: id
+          in: path
+          description: id of the template where new pages will be added
+          required: true
+          schema:
+            type: integer
+            format: int
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestAddPage' 
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OrderPage'  
+        '404':
+          description: One or more pages are missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Need higher permission level
+  /admin/delete-template-pages/{id}:
+    post:
+      tags:
+        - templates
+      summary: Delete template pages
+      parameters:
+        - name: id
+          in: path
+          description: id of the template where pages will be deleted
+          required: true
+          schema:
+            type: integer
+            format: int
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestDeletePage' 
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: integer
+                    
+        '404':
+          description: One or more pages are missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Need higher permission level
+  /admin/reorder-template-pages/{id}:
+    post:
+      tags:
+        - templates
+      summary: Reorder template pages
+      parameters:
+        - name: id
+          in: path
+          description: id of the template where pages will be reordered
+          required: true
+          schema:
+            type: integer
+            format: int
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestReorderPage' 
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: integer
+                     
+        '406':
+          description: Not all pages passed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: One or more pages are missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '405':
+          description: Attempt to reorder a cover page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Order of pages is corrupted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Need higher permission level
+  /admin/publish-template/{id}:
+    get:
+      tags:
+        - templates
+      summary: Publish template
+      parameters:
+        - name: id
+          in: path
+          description: id of the template
+          required: true
+          schema:
+            type: integer
+            format: int
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: integer
+                     
+        '401':
+          description: Unauthorized
+        '403':
+          description: Need higher permission level
+  /load-photos:
+    post:
+      tags:
+        - photos
+      summary: Load user photos
+      parameters:
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestPhotos'
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponsePhotos'
+        '401':
+          description: Unauthorized
+  /upload-photo:
+    post:
+      tags:
+        - photos
+      summary: Add new photo for user
+      parameters:
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Photo'
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseUploadedPhoto'
+        '401':
+          description: Unauthorized
+  /delete-photo/{id}:
+    get:
+      tags:
+        - photos
+      summary: Delete user photo
+      parameters:
+        - name: id
+          in: path
+          description: id of photo to delete
+          required: true
+          schema:
+            type: integer
+            format: int
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: integer
+                    
+        '401':
+          description: Unauthorized
+  /image/save:
+    post:
+      tags:
+        - images
+      summary: Upload new image object
+      parameters:
+        - name: auth
+          in: header
+          description: Bearer access token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: object
+                  format: binary
+                extention:
+                  type: string
+                  format: binary
+                remove_background:
+                  type: boolean
+                  format: binary
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageRespBody'
+        '409':
+          description: Failed to remove background for image
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      required:
+        - code
+        - message
+    IsAdmin:
+      type: object
+      properties:
+        is_admin:
+          type: boolean
+    User:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/IsAdmin'
+    PersonalisedObject:
+      type: object
+      properties:
+        object_id:
+          type: integer
+          description: ID of object -- can be decorations and backgrounds uploaded or liked by the user
+          format: int
+          example: 10
+        link:
+          type: string
+          description: timeweb s3 storage link for the object
+        type:
+          type: string
+          description: Type of object -- applicable for decorations and backgrounds 
+          enum:
+            - "VACATION"
+            - "WEDDING"
+            - "HOLIDAYS"
+            - "CHILDREN"
+            - "ANIMAL"
+            - "UNIVERSAL"
+        category:
+          type: string
+          description: Type of object -- applicable for decorations. 
+          enum:
+            - "RIBBON"
+            - "FRAME"
+            - "STICKER"
+        is_favourite:
+          type: boolean
+          description: Boolean for liked objects
+        is_personal:
+          type: boolean
+          description: Boolean for personal uploaded objects
+    Photo:
+      required:
+          - link
+      type: object
+      properties:
+        photo_id:
+          type: integer
+          format: int
+          example: 10
+        link:
+          type: string
+          description: timeweb s3 storage link for the object
+    Layout:
+      required:
+          - link
+          - count_images
+          - data
+      type: object
+      properties:
+        layout_id:
+          type: integer
+          format: int
+          example: 10
+        link:
+          type: string
+          description: timeweb s3 storage link for the object
+        count_images:
+          type: integer
+          format: int
+          description: Number of photos in layout
+        data:
+          type: object
+          description: Json data generated by FabricJS
+    Decoration:
+      required:
+          - link
+          - category
+          - type
+      type: object
+      properties:
+        decoration_id:
+          type: integer
+          format: int
+          example: 10
+        link:
+          type: string
+          description: timeweb s3 storage link for the object
+        type:
+          type: string
+          description: Type of object -- applicable for decorations and backgrounds 
+          enum:
+            - "VACATION"
+            - "WEDDING"
+            - "HOLIDAYS"
+            - "CHILDREN"
+            - "ANIMAL"
+            - "UNIVERSAL"
+        category:
+          type: string
+          description: Type of object -- applicable for decorations. 
+          enum:
+            - "RIBBON"
+            - "FRAME"
+            - "STICKER"
+        is_favourite:
+          type: boolean
+          description: Boolean for liked objects
+        is_personal:
+          type: boolean
+          description: Boolean for personal uploaded objects
+    Background:
+      required:
+          - link
+          - type
+      type: object
+      properties:
+        background_id:
+          type: integer
+          format: int
+          example: 10
+        link:
+          type: string
+          description: timeweb s3 storage link for the object
+        type:
+          type: string
+          description: Type of object -- applicable for decorations and backgrounds 
+          enum:
+            - "VACATION"
+            - "WEDDING"
+            - "HOLIDAYS"
+            - "CHILDREN"
+            - "ANIMAL"
+            - "UNIVERSAL"
+        is_favourite:
+          type: boolean
+          description: Boolean for liked objects
+        is_personal:
+          type: boolean
+          description: Boolean for personal uploaded objects
+    ProjectObj:
+      required:
+          - name
+          - size
+          - variant
+          - created_at
+          - last_edited_at
+      type: object
+      properties:
+        name:
+          type: string
+        size:
+          type: string
+          enum:
+            - "SMALL_SQUARE"
+            - "SQUARE"
+            - "VERTICAL"
+            - "HORIZONTAL"
+        variant:
+          type: string
+          enum:
+            - "STANDARD"
+            - "PREMIUM"
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-02-09T14:18:49Z"
+        last_edited_at:
+          type: string
+          format: date-time
+          example: "2024-02-09T14:18:49Z"
+    ResponseProject:
+      required:
+          - project_id
+          - name
+          - count_pages
+          - preview_image_link
+          - size
+          - variant
+          - last_edited_at
+      type: object
+      properties:
+        project_id:
+          type: integer
+        name:
+          type: string
+        count_pages:
+          type: integer
+          description: Number of project pages
+        preview_image_link:
+          type: string
+          description: Front cover image
+        size:
+          type: string
+          enum:
+            - "SMALL_SQUARE"
+            - "SQUARE"
+            - "VERTICAL"
+            - "HORIZONTAL"
+        variant:
+          type: string
+          enum:
+            - "STANDARD"
+            - "PREMIUM"
+        last_edited_at:
+          type: string
+          format: date-time
+          example: "2024-02-09T14:18:49Z"
+    NewBlankProjectObj:
+      required:
+          - size
+          - variant
+          - cover
+          - surface
+      type: object
+      properties:
+        name:
+          type: string
+        size:
+          type: string
+          enum:
+            - "SMALL_SQUARE"
+            - "SQUARE"
+            - "VERTICAL"
+            - "HORIZONTAL"
+        variant:
+          type: string
+          enum:
+            - "STANDARD"
+            - "PREMIUM"
+        cover:
+          type: string
+          enum:
+            - "HARD"
+            - "LEATHERETTE"
+        surface:
+          type: string
+          enum:
+            - "GLOSS"
+            - "MATTE"
+    Page:
+      required:
+          - page_id
+          - type
+          - sort
+          - creating_image_link
+          - data
+          - used_photo_ids
+      type: object
+      properties:
+        page_id:
+          type: integer
+          format: int
+          description: PageID of the project page. The model is used to retrieve project pages
+          example: 10
+        type:
+          type: string
+          enum:
+            - "FRONT"
+            - "BACK"
+            - "PAGE"
+        sort:
+          type: integer
+          format: int
+          description: Page order number in the project
+        creating_image_link:
+          type: string
+          description: Page preview
+        data:
+          type: object
+          description: Json data generated by FabricJS
+        used_photo_ids:
+          type: array
+          items:
+            type: integer
+    SavePage:
+      required:
+          - page_id
+          - preview_image_link
+          - creating_image_link
+          - data
+          - used_photo_ids
+      type: object
+      properties:
+        page_id:
+          type: integer
+          format: int
+          description: PageID of the project page. The model is used to save and update project pages
+          example: 10
+        preview_image_link:
+          type: string
+          description: Page view for pdf export
+        creating_image_link:
+          type: string
+          description: Page preview to display on the left side container
+        data:
+          type: object
+          description: Json data generated by FabricJS
+        used_photo_ids:
+          type: array
+          items:
+            type: integer
+    SavedProjectObj:
+      required:
+          - project
+          - pages
+      type: object
+      properties:
+        project:
+          $ref: '#/components/schemas/ProjectObj'
+        pages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Page'
+    RequestBackground:
+      required:
+          - offset
+          - limit
+          - type
+      type: object
+      properties:
+        offset:
+          type: integer
+          format: int
+          example: 10
+        limit:
+          type: integer
+          format: int
+          example: 10
+        type:
+          type: string
+          description: Type of object -- applicable for decorations and backgrounds 
+          enum:
+            - "VACATION"
+            - "WEDDING"
+            - "HOLIDAYS"
+            - "CHILDREN"
+            - "ANIMAL"
+            - "UNIVERSAL"
+    RequestDecoration:
+      required:
+          - offset
+          - limit
+          - type
+          - category
+      type: object
+      properties:
+        offset:
+          type: integer
+          format: int
+          example: 10
+        limit:
+          type: integer
+          format: int
+          example: 10
+        type:
+          type: string
+          description: Type of object -- applicable for decorations and backgrounds 
+          enum:
+            - "VACATION"
+            - "WEDDING"
+            - "HOLIDAYS"
+            - "CHILDREN"
+            - "ANIMAL"
+            - "UNIVERSAL"
+        category:
+          type: string
+          description: Type of object -- applicable for decorations. 
+          enum:
+            - "RIBBON"
+            - "FRAME"
+            - "STICKER"
+    RequestLayout:
+      required:
+          - offset
+          - limit
+          - count_images
+      type: object
+      properties:
+        offset:
+          type: integer
+          format: int
+          example: 10
+        limit:
+          type: integer
+          format: int
+          example: 10
+        count_images:
+          type: integer
+    RequestPhotos:
+      required:
+          - offset
+          - limit
+      type: object
+      properties:
+        offset:
+          type: integer
+          format: int
+          example: 10
+        limit:
+          type: integer
+          format: int
+          example: 10
+    RequestSavePages:
+      required:
+          - pages
+      type: object
+      properties:
+        pages:
+          type: array
+          items:
+            $ref: '#/components/schemas/SavePage'
+    NewPage:
+      required:
+          - sort
+      type: object
+      properties:
+        clone_id:
+          type: integer
+          format: int
+          example: 10
+        sort:
+          type: integer
+          format: int
+          example: 10
+    RequestAddPage:
+      required:
+          - pages
+      type: object
+      properties:
+        pages:
+          type: array
+          items:
+            $ref: '#/components/schemas/NewPage'
+    RequestDeletePage:
+      required:
+          - page_ids
+      type: object
+      properties:
+        page_ids:
+          type: array
+          items:
+            type: integer
+    OrderPage:
+      required:
+          - page_id
+          - sort
+      type: object
+      properties:
+        page_id:
+          type: integer
+          format: int
+          example: 10
+        sort:
+          type: integer
+          format: int
+          example: 10
+    RequestReorderPage:
+      required:
+          - pages
+      type: object
+      properties:
+        pages:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderPage'
+    ResponseTemplate:
+      required:
+          - template_id
+          - name
+          - size
+          - category
+          - created_at
+          - last_edited_at
+          - pages
+      type: object
+      properties:
+        template_id:
+          type: integer
+        name:
+          type: string
+        size:
+          type: string
+          enum:
+            - "SMALL_SQUARE"
+            - "SQUARE"
+            - "VERTICAL"
+            - "HORIZONTAL"
+        category:
+          type: string
+          enum:
+            - "VACATION"
+            - "WEDDING"
+            - "HOLIDAYS"
+            - "CHILDREN"
+            - "ANIMAL"
+            - "UNIVERSAL"
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-02-09T14:18:49Z"
+        last_edited_at:
+          type: string
+          format: date-time
+          example: "2024-02-09T14:18:49Z"
+        pages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Page'
+    NewTemplate:
+      required:
+          - size
+          - category
+      type: object
+      properties:
+        size:
+          type: string
+          enum:
+            - "SMALL_SQUARE"
+            - "SQUARE"
+            - "VERTICAL"
+            - "HORIZONTAL"
+        category:
+          type: string
+          enum:
+            - "VACATION"
+            - "WEDDING"
+            - "HOLIDAYS"
+            - "CHILDREN"
+            - "ANIMAL"
+            - "UNIVERSAL"
+    ResponseCreatedProject:
+      required:
+          - project_id
+      type: object
+      properties:
+        project_id:
+          type: integer
+    ResponseCreatedTemplate:
+      required:
+          - template_id
+      type: object
+      properties:
+        template_id:
+          type: integer
+    ResponsePhotos:
+      required:
+          - photos
+      type: object
+      properties:
+        photos:
+          type: array
+          items:
+            $ref: '#/components/schemas/Photo'
+    ResponseUploadedPhoto:
+      required:
+          - photo_id
+      type: object
+      properties:
+        photo_id:
+          type: integer
+    ResponseCreatedLayout:
+      required:
+          - layout_id
+      type: object
+      properties:
+        layout_id:
+          type: integer
+    ResponseCreatedBackground:
+      required:
+          - background_id
+      type: object
+      properties:
+        background_id:
+          type: integer
+    ResponseCreatedDecoration:
+      required:
+          - decoration_id
+      type: object
+      properties:
+        decoration_id:
+          type: integer
+    ResponseLayout:
+      required:
+          - layouts
+          - count_all
+      type: object
+      properties:
+        layouts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Layout'
+        count_all:
+          type: integer
+    ResponseDecoration:
+      required:
+          - decorations
+          - count_all
+      type: object
+      properties:
+        decorations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Decoration'
+        count_all:
+          type: integer
+    ResponseBackground:
+      required:
+          - backgrounds
+          - count_all
+      type: object
+      properties:
+        backgrounds:
+          type: array
+          items:
+            $ref: '#/components/schemas/Background'
+        count_all:
+          type: integer
+    ImageRespBody:
+      required:
+          - link
+      type: object
+      properties:
+        link:
+          type: string
+
