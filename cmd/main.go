@@ -28,6 +28,7 @@ import (
 	"github.com/SiberianMonster/memoryprint/internal/projecthandlers"
 	"github.com/SiberianMonster/memoryprint/internal/middleware"
 	"github.com/gorilla/mux"
+	"github.com/rs/cors"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"gopkg.in/ini.v1"
 	"time"
@@ -95,6 +96,10 @@ func main() {
 	config.YandexApiKey = *yandexKey
 	config.TimewebToken = *timewebToken
 	config.BalaToken = *balaToken
+
+	c := cors.New(cors.Options{AllowedOrigins:[]string{"http://localhost:3000"},
+	AllowCredentials: true,
+	})
 
 	router := mux.NewRouter()
 	noAuthRouter := router.MatcherFunc(func(r *http.Request, rm *mux.RouteMatch) bool {
@@ -167,7 +172,7 @@ func main() {
 	authRouter.HandleFunc("/api/v1/change-favourite-layout/{id}", projecthandlers.FavourLayout).Methods("POST")
 
 	srv := &http.Server{
-		Handler: router,
+		Handler: c.Handler(router),
 		Addr:    *host,
 	}
 
