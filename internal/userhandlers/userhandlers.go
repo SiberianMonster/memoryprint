@@ -130,7 +130,6 @@ func Login(rw http.ResponseWriter, r *http.Request) {
 
 
 	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
 		return
 	}
 
