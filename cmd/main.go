@@ -113,12 +113,12 @@ func main() {
 		return true
 	}).Subrouter()
 	
-	noAuthRouter.HandleFunc("/api/v1/auth/signup", userhandlers.Register)
-	noAuthRouter.HandleFunc("/api/v1/auth/login", userhandlers.Login)
-	noAuthRouter.HandleFunc("/api/v1/load-templates", projecthandlers.LoadTemplates)
+	noAuthRouter.HandleFunc("/api/v1/auth/signup", userhandlers.Register).Methods("POST","OPTIONS")
+	noAuthRouter.HandleFunc("/api/v1/auth/login", userhandlers.Login).Methods("POST","OPTIONS")
+	noAuthRouter.HandleFunc("/api/v1/load-templates", projecthandlers.LoadTemplates).Methods("GET","OPTIONS")
 	
-	noAuthRouter.HandleFunc("/api/v1/greet", authhandlers.Greet)
-	noAuthRouter.HandleFunc("/api/v1/auth/restore", authhandlers.GenerateTempPass)
+	noAuthRouter.HandleFunc("/api/v1/greet", authhandlers.Greet).Methods("GET","OPTIONS")
+	noAuthRouter.HandleFunc("/api/v1/auth/restore", authhandlers.GenerateTempPass).Methods("POST","OPTIONS")
 	//noAuthRouter.HandleFunc("/api/v1/verify/password-reset", userhandlers.VerifyPasswordReset)
 
 
