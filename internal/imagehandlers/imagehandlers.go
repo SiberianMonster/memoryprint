@@ -219,6 +219,11 @@ func removeBackground(imgByte []byte, filename string, balaToken string) ([]byte
 
 func LoadImage(rw http.ResponseWriter, r *http.Request) {
 
+	if r.Method == "OPTIONS" {
+		rw.WriteHeader(http.StatusOK)
+		return
+	}
+
 	resp := make(map[string]ImageRespBody)
 	var imageObj models.UploadImage
 	var filename string

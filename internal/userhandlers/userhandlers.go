@@ -29,6 +29,11 @@ type AdminBool struct {
 
 func Register(rw http.ResponseWriter, r *http.Request) {
 
+	if r.Method == "OPTIONS" {
+		rw.WriteHeader(http.StatusOK)
+		return
+	}
+
 	var user models.User
 	var tBody TokenRespBody
 	rw.Header().Set("Content-Type", "application/json")
@@ -116,6 +121,12 @@ func Register(rw http.ResponseWriter, r *http.Request) {
 
 func Login(rw http.ResponseWriter, r *http.Request) {
 
+
+	if r.Method == "OPTIONS" {
+		rw.WriteHeader(http.StatusOK)
+		return
+	}
+
 	var user *models.User
 	var tBody TokenRespBody
 
@@ -180,6 +191,11 @@ func Login(rw http.ResponseWriter, r *http.Request) {
 }
 
 func CheckUserCategory(rw http.ResponseWriter, r *http.Request) {
+
+	if r.Method == "OPTIONS" {
+		rw.WriteHeader(http.StatusOK)
+		return
+	}
 
 	resp := make(map[string]UserRespBody)
 	var uBody UserRespBody
