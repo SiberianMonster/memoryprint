@@ -28,7 +28,7 @@ import (
 	"github.com/SiberianMonster/memoryprint/internal/projecthandlers"
 	"github.com/SiberianMonster/memoryprint/internal/middleware"
 	"github.com/gorilla/mux"
-	"github.com/rs/cors"
+	// "github.com/rs/cors"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"gopkg.in/ini.v1"
 	"time"
