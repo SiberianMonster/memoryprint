@@ -97,9 +97,6 @@ func main() {
 	config.TimewebToken = *timewebToken
 	config.BalaToken = *balaToken
 
-	c := cors.New(cors.Options{AllowedOrigins:[]string{"*"},
-	})
-
 	router := mux.NewRouter()
 	noAuthRouter := router.MatcherFunc(func(r *http.Request, rm *mux.RouteMatch) bool {
 		return r.Header.Get("Authorization") == ""
@@ -170,9 +167,8 @@ func main() {
 	authRouter.HandleFunc("/api/v1/change-favourite-decoration/{id}", projecthandlers.FavourDecoration).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/change-favourite-layout/{id}", projecthandlers.FavourLayout).Methods("POST","OPTIONS")
 
-	cHandler := c.Handler(router)
 	srv := &http.Server{
-		Handler: cHandler,
+		Handler: router,
 		Addr:    *host,
 	}
 
