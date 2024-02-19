@@ -29,11 +29,6 @@ type AdminBool struct {
 
 func Register(rw http.ResponseWriter, r *http.Request) {
 
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
-
 	var user models.User
 	var tBody TokenRespBody
 	rw.Header().Set("Content-Type", "application/json")
@@ -121,18 +116,6 @@ func Register(rw http.ResponseWriter, r *http.Request) {
 
 func Login(rw http.ResponseWriter, r *http.Request) {
 
-    rw.Header().Set("Access-Control-Allow-Origin", "*")
-    rw.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-    rw.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-	rw.Header().Set("Access-Control-Expose-Headers", "Authorization")
-	rw.Header().Set("Access-Control-Allow-Credentials", "true")
-
-
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
-
 	var user *models.User
 	var tBody TokenRespBody
 
@@ -197,11 +180,6 @@ func Login(rw http.ResponseWriter, r *http.Request) {
 }
 
 func CheckUserCategory(rw http.ResponseWriter, r *http.Request) {
-
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
 
 	resp := make(map[string]UserRespBody)
 	var uBody UserRespBody

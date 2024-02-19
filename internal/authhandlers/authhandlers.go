@@ -34,11 +34,6 @@ func Greet(rw http.ResponseWriter, r *http.Request) {
 // GenerateTempPass generate a new default pass to access account.
 func GenerateTempPass(rw http.ResponseWriter, r *http.Request) {
 
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
-
 	rw.Header().Set("Content-Type", "application/json")
 	resp := make(map[string]int)
 

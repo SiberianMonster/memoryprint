@@ -98,6 +98,7 @@ func main() {
 	config.BalaToken = *balaToken
 
 	router := mux.NewRouter()
+	router.Use(middleware.MiddlewareCORSHeaders)
 	noAuthRouter := router.MatcherFunc(func(r *http.Request, rm *mux.RouteMatch) bool {
 		return r.Header.Get("Authorization") == ""
 	}).Subrouter()
