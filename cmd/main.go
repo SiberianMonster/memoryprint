@@ -100,7 +100,7 @@ func main() {
 	router := mux.NewRouter()
 	router.Use(middleware.MiddlewareCORSHeaders)
 	noAuthRouter := router.MatcherFunc(func(r *http.Request, rm *mux.RouteMatch) bool {
-		return r.Header.Get("Authorization") == "Bearer undefined"
+		return true
 	}).Subrouter()
 
 	authRouter := router.MatcherFunc(func(r *http.Request, rm *mux.RouteMatch) bool {
