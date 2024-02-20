@@ -144,7 +144,8 @@ func CreateMail(mailReq *Mail, ms *SGMailService) error {
 func SendMail(mailReq *Mail, ms *SGMailService) error {
 
 	var auth smtp.Auth
-	auth = smtp.PlainAuth("", mailReq.from, ms.YandexApiKey, "smtp.yandex.ru")
+	//auth = smtp.PlainAuth("", mailReq.from, ms.YandexApiKey, "smtp.yandex.ru")
+	auth = smtp.PlainAuth("", mailReq.from, "smtp-tls-key", "0.0.0.0")
 	print(ms.YandexApiKey)
 
 	err := CreateMail(mailReq, ms)
@@ -153,50 +154,79 @@ func SendMail(mailReq *Mail, ms *SGMailService) error {
 		return err
 	}
 	msg := mailReq.BuildMessage()
-	addr := "smtp.yandex.ru:465"
+	//addr := "smtp.yandex.ru:465"
+	addr := "0.0.0.0:1025"
 
 	tlsconfig := &tls.Config{
 		InsecureSkipVerify: true,
-		ServerName:         "smtp.yandex.ru",
+		ServerName:         "0.0.0.0",
+		//ServerName:         "smtp.yandex.ru",
 	}
 
-	conn, err := tls.Dial("tcp", addr, tlsconfig)
+	//conn, err := tls.Dial("tcp", addr, tlsconfig)
+	conn, err := smtp.Dial(addr)
 	if err != nil {
 		log.Printf("failed to create conn")
 		return err
 	}
+	conn.StartTLS(tlsconfig)
 
-	client, err := smtp.NewClient(conn,  "smtp.yandex.ru")
-	if err != nil {
-		log.Printf("failed to create client")
-		return err
-	}
+    // Auth
+    if err = conn.Auth(auth); err != nil {
+        log.Panic(err)
+    }
 
-	// step 1: Use Auth
-	if err = client.Auth(auth); err != nil {
-		log.Printf("failed to create auth")
-		return err
-	}
-
-	// step 2: add all from and to
-	if err = client.Mail(mailReq.from); err != nil {
-		log.Printf("failed to create sender")
-		return err
-	}
+    // To && From
+    if err = conn.Mail(mailReq.from); err != nil {
+        log.Panic(err)
+    }
 
 	for _, k := range mailReq.to {
-		if err = client.Rcpt(k); err != nil {
+		if err = conn.Rcpt(k); err != nil {
 			log.Printf("failed to create recepient")
 			return err
 		}
 	}
 
+    // Data
+    w, err := conn.Data()
+    if err != nil {
+        log.Panic(err)
+    }
+
+
+	//client, err := smtp.NewClient(conn,  "smtp.yandex.ru")
+	//client, err := smtp.NewClient(conn,  "0.0.0.0")
+	//if err != nil {
+	//	log.Printf("failed to create client")
+	//	return err
+	//}
+
+	// step 1: Use Auth
+	//if err = client.Auth(auth); err != nil {
+	//	log.Printf("failed to create auth")
+	//	return err
+	//}
+
+	// step 2: add all from and to
+	//if err = client.Mail(mailReq.from); err != nil {
+	//	log.Printf("failed to create sender")
+	//	return err
+	//}
+
+	//for _, k := range mailReq.to {
+	//	if err = client.Rcpt(k); err != nil {
+	//		log.Printf("failed to create recepient")
+	//		return err
+	//	}
+	//}
+
 	// Data
-	w, err := client.Data()
-	if err != nil {
-		log.Printf("failed to create data")
-		return err
-	}
+	//w, err := client.Data()
+	//if err != nil {
+	//	log.Printf("failed to create data")
+	//	return err
+	//}
 
 	_, err = w.Write([]byte(msg))
 	if err != nil {
@@ -210,7 +240,8 @@ func SendMail(mailReq *Mail, ms *SGMailService) error {
 		return err
 	}
 
-	client.Quit()
+	//client.Quit()
+	conn.Quit()
 
 	log.Printf("mail sent successfully")
 	return nil
