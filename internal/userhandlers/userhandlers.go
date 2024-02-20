@@ -127,7 +127,7 @@ func Login(rw http.ResponseWriter, r *http.Request) {
 	log.Printf("Login user")
 	log.Println(user)
 
-	if user.Email == "" && user.Name == "" {
+	if user.Email == "" && user.Password == "" {
 		handlersfunc.HandleWrongCredentialsError(rw)
 		return
 	}
@@ -164,7 +164,6 @@ func Login(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusOK)
 	
 	tBody.Token = accessToken
