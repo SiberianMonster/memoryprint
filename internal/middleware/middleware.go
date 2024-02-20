@@ -33,6 +33,7 @@ func MiddlewareCORSHeaders(next http.Handler) http.Handler {
 		w.Header().Set("Access-Control-Expose-Headers", "Authorization")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		log.Printf("Setting headers:")
+		log.Printf("Setting headers:  %s", r.Method)
 	
 	
 		if r.Method == "OPTIONS" {
@@ -40,6 +41,7 @@ func MiddlewareCORSHeaders(next http.Handler) http.Handler {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
+		log.Printf("Setting headers:  %s", r.Method)
 	
         next.ServeHTTP(w, r)
     })
