@@ -26,11 +26,6 @@ var resp map[string]string
 
 func UserLoadPhotos(rw http.ResponseWriter, r *http.Request) {
 
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
-
 	resp := make(map[string]models.ResponsePhotos)
 	var photoParams models.RequestPhotos
 	var rPhotos models.ResponsePhotos
@@ -45,20 +40,14 @@ func UserLoadPhotos(rw http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	userID := handlersfunc.UserIDContextReader(r)
 	log.Printf("Load photos of the user %d", userID)
-	photos, err := objectsstorage.RetrieveUserPhotos(ctx, config.DB, userID, photoParams.Offset, photoParams.Limit)
+	rPhotos, err := objectsstorage.RetrieveUserPhotos(ctx, config.DB, userID, photoParams.Offset, photoParams.Limit)
 
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
 	}
 
-	if len(photos) == 0 {
-		handlersfunc.HandleNoContent(rw)
-		return
-	}
-
 	rw.WriteHeader(http.StatusOK)
-	rPhotos.Photos = photos
 	resp["response"] = rPhotos
 	jsonResp, err := json.Marshal(resp)
 	if err != nil {
@@ -71,11 +60,6 @@ func UserLoadPhotos(rw http.ResponseWriter, r *http.Request) {
 
 
 func NewPhoto(rw http.ResponseWriter, r *http.Request) {
-
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
 
 	resp := make(map[string]models.ResponseUploadedPhoto)
 	var photoParams models.Photo
@@ -114,11 +98,6 @@ func NewPhoto(rw http.ResponseWriter, r *http.Request) {
 
 func DeletePhoto(rw http.ResponseWriter, r *http.Request) {
 
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
-
 	resp := make(map[string]uint)
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
@@ -151,11 +130,6 @@ func DeletePhoto(rw http.ResponseWriter, r *http.Request) {
 }
 
 func CreateBlankProject(rw http.ResponseWriter, r *http.Request) {
-
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
 
 	resp := make(map[string]models.ResponseCreatedProject)
 	var ProjectObj models.NewBlankProjectObj
@@ -196,11 +170,6 @@ func CreateBlankProject(rw http.ResponseWriter, r *http.Request) {
 
 func PublishTemplate(rw http.ResponseWriter, r *http.Request) {
 
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
-
 	resp := make(map[string]uint)
 	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
 	templateID := uint(aByteToInt)
@@ -227,11 +196,6 @@ func PublishTemplate(rw http.ResponseWriter, r *http.Request) {
 }
 
 func LoadProject(rw http.ResponseWriter, r *http.Request) {
-
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
 
 	resp := make(map[string]models.SavedProjectObj)
 	var retrievedProject models.SavedProjectObj
@@ -276,12 +240,6 @@ func LoadProject(rw http.ResponseWriter, r *http.Request) {
 
 func CreateDecor(rw http.ResponseWriter, r *http.Request) {
 
-
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
-
 	resp := make(map[string]models.ResponseCreatedDecoration)
 	var DecorObj models.PersonalisedObject
 	var dID uint
@@ -319,12 +277,6 @@ func CreateDecor(rw http.ResponseWriter, r *http.Request) {
 
 func DeleteDecor(rw http.ResponseWriter, r *http.Request) {
 
-
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
-
 	resp := make(map[string]uint)
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
@@ -352,11 +304,6 @@ func DeleteDecor(rw http.ResponseWriter, r *http.Request) {
 }
 
 func CreateBackground(rw http.ResponseWriter, r *http.Request) {
-
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
 
 	resp := make(map[string]models.ResponseCreatedBackground)
 	var BackgroundObj models.PersonalisedObject
@@ -395,11 +342,6 @@ func CreateBackground(rw http.ResponseWriter, r *http.Request) {
 
 func DeleteBackground(rw http.ResponseWriter, r *http.Request) {
 
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
-
 	resp := make(map[string]uint)
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
@@ -427,11 +369,6 @@ func DeleteBackground(rw http.ResponseWriter, r *http.Request) {
 
 func LoadBackground(rw http.ResponseWriter, r *http.Request) {
 
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
-
 	resp := make(map[string]models.ResponseBackground)
 	var requestB models.RequestBackground
 
@@ -441,6 +378,7 @@ func LoadBackground(rw http.ResponseWriter, r *http.Request) {
 	requestB.Offset = uint(rOffset)
 	requestB.Limit = uint(rLimit)
 	requestB.Type = r.URL.Query().Get("type")
+	requestB.IsFavourite, _ = strconv.ParseBool(r.URL.Query().Get("is_favourite"))
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
 	userID := handlersfunc.UserIDContextReader(r)
@@ -448,7 +386,7 @@ func LoadBackground(rw http.ResponseWriter, r *http.Request) {
 	
 	
 	
-	backgroundSet, err := objectsstorage.LoadBackgrounds(ctx, config.DB, userID, requestB.Offset, requestB.Limit, requestB.Type)
+	backgroundSet, err := objectsstorage.LoadBackgrounds(ctx, config.DB, userID, requestB.Offset, requestB.Limit, requestB.Type, requestB.IsFavourite)
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
@@ -466,11 +404,6 @@ func LoadBackground(rw http.ResponseWriter, r *http.Request) {
 }
 
 func AdminCreateBackground(rw http.ResponseWriter, r *http.Request) {
-
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
 
 	resp := make(map[string]models.ResponseCreatedBackground)
 	var BackgroundObj models.Background
@@ -508,11 +441,6 @@ func AdminCreateBackground(rw http.ResponseWriter, r *http.Request) {
 
 func AdminUpdateBackground(rw http.ResponseWriter, r *http.Request) {
 
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
-
 	resp := make(map[string]uint)
 	var BackgroundObj models.Background
 
@@ -548,11 +476,6 @@ func AdminUpdateBackground(rw http.ResponseWriter, r *http.Request) {
 
 func AdminDeleteBackground(rw http.ResponseWriter, r *http.Request) {
 
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
-
 	resp := make(map[string]uint)
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
@@ -578,11 +501,6 @@ func AdminDeleteBackground(rw http.ResponseWriter, r *http.Request) {
 }
 
 func FavourBackground(rw http.ResponseWriter, r *http.Request) {
-
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
 
 	resp := make(map[string]uint)
 	var BackgroundObj models.PersonalisedObject
@@ -619,11 +537,6 @@ func FavourBackground(rw http.ResponseWriter, r *http.Request) {
 
 func LoadDecoration(rw http.ResponseWriter, r *http.Request) {
 
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
-
 	resp := make(map[string]models.ResponseDecoration)
 	var requestD models.RequestDecoration
 
@@ -634,6 +547,7 @@ func LoadDecoration(rw http.ResponseWriter, r *http.Request) {
 	requestD.Limit = uint(rLimit)
 	requestD.Type = r.URL.Query().Get("type")
 	requestD.Category = r.URL.Query().Get("category")
+	requestD.IsFavourite, _ = strconv.ParseBool(r.URL.Query().Get("is_favourite"))
 
 	defer r.Body.Close()
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
@@ -643,7 +557,7 @@ func LoadDecoration(rw http.ResponseWriter, r *http.Request) {
 	
 	
 	
-	decorationSet, err := objectsstorage.LoadDecorations(ctx, config.DB, userID, requestD.Offset, requestD.Limit, requestD.Type, requestD.Category)
+	decorationSet, err := objectsstorage.LoadDecorations(ctx, config.DB, userID, requestD.Offset, requestD.Limit, requestD.Type, requestD.Category, requestD.IsFavourite)
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
@@ -660,11 +574,6 @@ func LoadDecoration(rw http.ResponseWriter, r *http.Request) {
 }
 
 func AdminCreateDecoration(rw http.ResponseWriter, r *http.Request) {
-
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
 
 	resp := make(map[string]models.ResponseCreatedDecoration)
 	var DecorationObj models.Decoration
@@ -703,11 +612,6 @@ func AdminCreateDecoration(rw http.ResponseWriter, r *http.Request) {
 
 func AdminUpdateDecoration(rw http.ResponseWriter, r *http.Request) {
 
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
-
 	resp := make(map[string]uint)
 	var DecorationObj models.Decoration
 
@@ -743,11 +647,6 @@ func AdminUpdateDecoration(rw http.ResponseWriter, r *http.Request) {
 
 func AdminDeleteDecoration(rw http.ResponseWriter, r *http.Request) {
 
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
-
 	resp := make(map[string]uint)
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
@@ -773,11 +672,6 @@ func AdminDeleteDecoration(rw http.ResponseWriter, r *http.Request) {
 }
 
 func FavourDecoration(rw http.ResponseWriter, r *http.Request) {
-
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
 
 	resp := make(map[string]uint)
 	var DecorationObj models.PersonalisedObject
@@ -814,11 +708,6 @@ func FavourDecoration(rw http.ResponseWriter, r *http.Request) {
 
 func LoadLayouts(rw http.ResponseWriter, r *http.Request) {
 
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
-
 	resp := make(map[string]models.ResponseLayout)
 	var requestL models.RequestLayout
 
@@ -828,6 +717,7 @@ func LoadLayouts(rw http.ResponseWriter, r *http.Request) {
 	requestL.Offset = uint(rOffset)
 	requestL.Limit = uint(rLimit)
 	requestL.CountImages = uint(rCountImages)
+	requestL.IsFavourite, _ = strconv.ParseBool(r.URL.Query().Get("is_favourite"))
 
 	defer r.Body.Close()
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
@@ -837,7 +727,7 @@ func LoadLayouts(rw http.ResponseWriter, r *http.Request) {
 	
 	
 	
-	layoutSet, err := objectsstorage.LoadLayouts(ctx, config.DB, userID, requestL.Offset, requestL.Limit, requestL.CountImages)
+	layoutSet, err := objectsstorage.LoadLayouts(ctx, config.DB, userID, requestL.Offset, requestL.Limit, requestL.CountImages, requestL.IsFavourite)
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
@@ -855,11 +745,6 @@ func LoadLayouts(rw http.ResponseWriter, r *http.Request) {
 }
 
 func AdminCreateLayout(rw http.ResponseWriter, r *http.Request) {
-
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
 
 	resp := make(map[string]models.ResponseCreatedLayout)
 	var LayoutObj models.Layout
@@ -897,11 +782,6 @@ func AdminCreateLayout(rw http.ResponseWriter, r *http.Request) {
 
 func AdminDeleteLayout(rw http.ResponseWriter, r *http.Request) {
 
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
-
 	resp := make(map[string]uint)
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
@@ -927,11 +807,6 @@ func AdminDeleteLayout(rw http.ResponseWriter, r *http.Request) {
 }
 
 func FavourLayout(rw http.ResponseWriter, r *http.Request) {
-
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
 
 	resp := make(map[string]uint)
 	var LayoutObj models.PersonalisedObject
@@ -968,11 +843,6 @@ func FavourLayout(rw http.ResponseWriter, r *http.Request) {
 
 func LoadProjects(rw http.ResponseWriter, r *http.Request) {
 
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
-
 	resp := make(map[string][]models.ResponseProject)
 	defer r.Body.Close()
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
@@ -1002,11 +872,6 @@ func LoadProjects(rw http.ResponseWriter, r *http.Request) {
 }
 
 func SavePage(rw http.ResponseWriter, r *http.Request) {
-
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
 
 	resp := make(map[string]uint)
 	var savedPages models.RequestSavePages
@@ -1052,11 +917,6 @@ func SavePage(rw http.ResponseWriter, r *http.Request) {
 }
 
 func AddProjectPages(rw http.ResponseWriter, r *http.Request) {
-
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
 
 	resp := make(map[string][]models.OrderPage)
 	var newPages models.RequestAddPage
@@ -1106,11 +966,6 @@ func AddProjectPages(rw http.ResponseWriter, r *http.Request) {
 }
 
 func AddTemplatePages(rw http.ResponseWriter, r *http.Request) {
-
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
 
 	resp := make(map[string][]models.OrderPage)
 	var newPages models.RequestAddPage
@@ -1162,11 +1017,6 @@ func AddTemplatePages(rw http.ResponseWriter, r *http.Request) {
 
 func DeletePages(rw http.ResponseWriter, r *http.Request) {
 
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
-
 	resp := make(map[string]uint)
 	var deletePages models.RequestDeletePage
 	err := json.NewDecoder(r.Body).Decode(&deletePages)
@@ -1200,11 +1050,6 @@ func DeletePages(rw http.ResponseWriter, r *http.Request) {
 
 func DeleteTemplatePages(rw http.ResponseWriter, r *http.Request) {
 
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
-
 	resp := make(map[string]uint)
 	var deletePages models.RequestDeletePage
 	err := json.NewDecoder(r.Body).Decode(&deletePages)
@@ -1237,11 +1082,6 @@ func DeleteTemplatePages(rw http.ResponseWriter, r *http.Request) {
 }
 
 func ReorderPages(rw http.ResponseWriter, r *http.Request) {
-
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
 
 	resp := make(map[string]uint)
 	var reorderPages models.RequestReorderPage
@@ -1304,11 +1144,6 @@ func ReorderPages(rw http.ResponseWriter, r *http.Request) {
 
 func ReorderTemplatePages(rw http.ResponseWriter, r *http.Request) {
 
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
-
 	resp := make(map[string]uint)
 	var reorderPages models.RequestReorderPage
 	err := json.NewDecoder(r.Body).Decode(&reorderPages)
@@ -1370,11 +1205,6 @@ func ReorderTemplatePages(rw http.ResponseWriter, r *http.Request) {
 
 func LoadTemplates(rw http.ResponseWriter, r *http.Request) {
 
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
-
 	resp := make(map[string][]models.ResponseTemplate)
 	defer r.Body.Close()
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
@@ -1402,11 +1232,6 @@ func LoadTemplates(rw http.ResponseWriter, r *http.Request) {
 }
 
 func CreateTemplate(rw http.ResponseWriter, r *http.Request) {
-
-	if r.Method == "OPTIONS" {
-		rw.WriteHeader(http.StatusOK)
-		return
-	}
 
 	resp := make(map[string]models.ResponseCreatedTemplate)
 	var TemplateObj models.NewTemplateObj

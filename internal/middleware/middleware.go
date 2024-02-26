@@ -37,7 +37,7 @@ func MiddlewareCORSHeaders(next http.Handler) http.Handler {
 	
 	
 		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
+			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")

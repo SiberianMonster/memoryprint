@@ -101,7 +101,7 @@ type Layout struct {
 	LayoutID uint `json:"layout_id"`
 	// Yandex Disk Link 
 	// in: string
-	CountImages    string `json:"count_images"`
+	CountImages    uint `json:"count_images"`
 	Link    string `json:"link"`
 	Data        json.RawMessage      `json:"data"`
 	IsFavourite bool `json:"is_favourite"`
@@ -195,6 +195,7 @@ type RequestBackground struct {
 	Offset    uint     `json:"offset"`
 	Limit    uint     `json:"limit"`
 	Type string `json:"type"`
+	IsFavourite bool `json:"is_favourite"`
   }
 
 type RequestDecoration struct {
@@ -202,12 +203,14 @@ type RequestDecoration struct {
 	Limit    uint     `json:"limit"`
 	Type string `json:"type"`
 	Category string `json:"category"`
+	IsFavourite bool `json:"is_favourite"`
   }
 
 type RequestLayout struct {
 	Offset    uint     `json:"offset"`
 	Limit    uint     `json:"limit"`
 	CountImages uint `json:"count_images"`
+	IsFavourite bool `json:"is_favourite"`
   }
 
 type RequestSavePages struct {
@@ -284,6 +287,7 @@ type ResponseCreatedTemplate struct {
 type ResponsePhotos struct {
 
 	Photos []Photo `json:"photos"`
+	CountAll    int `json:"count_all"`
 	
 }
 
@@ -296,7 +300,8 @@ type ResponseUploadedPhoto struct {
 type ResponseLayout struct {
 
 	Layouts []Layout `json:"layouts"`
-	CountAll    string `json:"count_all"`
+	CountAll    int `json:"count_all"`
+	CountFavourite    int `json:"count_favourite"`
 	
 }
 
@@ -309,7 +314,8 @@ type ResponseCreatedLayout struct {
 type ResponseBackground struct {
 
 	Backgrounds []Background `json:"backgrounds"`
-	CountAll    string `json:"count_all"`
+	CountAll    int `json:"count_all"`
+	CountFavourite    int `json:"count_favourite"`
 	
 }
 
@@ -322,7 +328,8 @@ type ResponseCreatedBackground struct {
 type ResponseDecoration struct {
 
 	Decorations []Decoration `json:"decorations"`
-	CountAll    string `json:"count_all"`
+	CountAll    int `json:"count_all"`
+	CountFavourite    int `json:"count_favourite"`
 	
 }
 

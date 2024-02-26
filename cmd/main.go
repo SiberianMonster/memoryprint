@@ -141,7 +141,7 @@ func main() {
 	adminRouter.HandleFunc("/api/v1/admin/create-layout", projecthandlers.AdminCreateLayout).Methods("POST","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/delete-background/{id}", projecthandlers.AdminDeleteBackground).Methods("GET","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/delete-decoration/{id}", projecthandlers.AdminDeleteDecoration).Methods("GET","OPTIONS")
-	adminRouter.HandleFunc("/api/v1/admin/delete-layout/{id}", projecthandlers.AdminDeleteLayout).Methods("GET","OPTIONS")
+	adminRouter.HandleFunc("/api/v1/admin/delete-layout/{id}", projecthandlers.AdminDeleteLayout).Methods("POST","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/update-background/{id}", projecthandlers.AdminUpdateBackground).Methods("POST","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/update-decoration/{id}", projecthandlers.AdminUpdateDecoration).Methods("POST","OPTIONS")
 
@@ -149,7 +149,7 @@ func main() {
 	authRouter.HandleFunc("/api/v1/image/save", imagehandlers.LoadImage).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/load-photos", projecthandlers.UserLoadPhotos).Methods("GET","OPTIONS")
 	authRouter.HandleFunc("/api/v1/upload-photo", projecthandlers.NewPhoto).Methods("POST","OPTIONS")
-	authRouter.HandleFunc("/api/v1/delete-photo/{id}", projecthandlers.DeletePhoto).Methods("GET","OPTIONS")
+	authRouter.HandleFunc("/api/v1/delete-photo/{id}", projecthandlers.DeletePhoto).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/create-decoration", projecthandlers.CreateDecor).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/create-background", projecthandlers.CreateBackground).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/delete-decoration/{id}", projecthandlers.DeleteDecor).Methods("GET","OPTIONS")
