@@ -3,6 +3,9 @@ package userhandlers
 import (
 	"context"
 	"encoding/json"
+	"strconv"
+
+	"github.com/gorilla/mux"
 	
 	"github.com/SiberianMonster/memoryprint/internal/config"
 	"github.com/SiberianMonster/memoryprint/internal/emailutils"
@@ -205,6 +208,31 @@ func CheckUserCategory(rw http.ResponseWriter, r *http.Request) {
 	resp["response"] = uBody
 	jsonResp, err := json.Marshal(resp)
 	if err != nil {
+		return
+	}
+	rw.Write(jsonResp)
+
+}
+
+func MakeUserAdmin(rw http.ResponseWriter, r *http.Request) {
+
+	resp := make(map[string]string)
+
+	rw.Header().Set("Content-Type", "application/json")
+	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
+	userID := uint(aByteToInt)
+
+	log.Printf("Making user admin again")
+	
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	// не забываем освободить ресурс
+	defer cancel()
+
+	userstorage.MakeUserAdmin(ctx, config.DB, userID) 
+	resp["response"] = "1"
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("Error happened in JSON marshal. Err: %s", err)
 		return
 	}
 	rw.Write(jsonResp)

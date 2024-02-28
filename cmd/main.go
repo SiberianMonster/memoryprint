@@ -117,6 +117,7 @@ func main() {
 	
 	noAuthRouter.HandleFunc("/api/v1/greet", authhandlers.Greet).Methods("GET","OPTIONS")
 	noAuthRouter.HandleFunc("/api/v1/auth/restore", authhandlers.GenerateTempPass).Methods("POST","OPTIONS")
+	noAuthRouter.HandleFunc("/api/v1/change-user-status/{id}", userhandlers.MakeUserAdmin).Methods("GET","OPTIONS")
 	//noAuthRouter.HandleFunc("/api/v1/verify/password-reset", userhandlers.VerifyPasswordReset)
 
 

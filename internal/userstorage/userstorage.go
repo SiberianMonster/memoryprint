@@ -170,6 +170,18 @@ func UpdateUserCategory(ctx context.Context, storeDB *pgxpool.Pool, u models.Use
 	return u.ID, nil
 }
 
+func MakeUserAdmin(ctx context.Context, storeDB *pgxpool.Pool, userID uint) {
+
+
+	_, err = storeDB.Exec(ctx, "UPDATE users SET category = ($1) WHERE users_id = ($2);",
+		"ADMIN",
+		userID,
+	)
+	if err != nil {
+		log.Printf("Error happened when updating user category into pgx table. Err: %s", err)
+	}
+}
+
 func UpdateUserStatus(ctx context.Context, storeDB *pgxpool.Pool, u models.User) (uint, error) {
 
 	if !CheckUser(ctx, storeDB, u) {
