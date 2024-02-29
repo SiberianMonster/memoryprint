@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/SiberianMonster/memoryprint/internal/config"
 	"github.com/SiberianMonster/memoryprint/internal/models"
@@ -377,7 +378,7 @@ func LoadBackground(rw http.ResponseWriter, r *http.Request) {
 	rLimit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	requestB.Offset = uint(rOffset)
 	requestB.Limit = uint(rLimit)
-	requestB.Type = r.URL.Query().Get("type")
+	requestB.Type = strings.ToUpper(r.URL.Query().Get("type")) 
 	requestB.IsFavourite, _ = strconv.ParseBool(r.URL.Query().Get("isfavourite"))
 	requestB.IsPersonal, _ = strconv.ParseBool(r.URL.Query().Get("ispersonal"))
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
@@ -546,8 +547,8 @@ func LoadDecoration(rw http.ResponseWriter, r *http.Request) {
 
 	requestD.Offset = uint(rOffset)
 	requestD.Limit = uint(rLimit)
-	requestD.Type = r.URL.Query().Get("type")
-	requestD.Category = r.URL.Query().Get("category")
+	requestD.Type = strings.ToUpper(r.URL.Query().Get("type"))
+	requestD.Category = strings.ToUpper(r.URL.Query().Get("category"))
 	requestD.IsFavourite, _ = strconv.ParseBool(r.URL.Query().Get("isfavourite"))
 	requestD.IsPersonal, _ = strconv.ParseBool(r.URL.Query().Get("ispersonal"))
 
