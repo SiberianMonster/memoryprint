@@ -378,7 +378,8 @@ func LoadBackground(rw http.ResponseWriter, r *http.Request) {
 	requestB.Offset = uint(rOffset)
 	requestB.Limit = uint(rLimit)
 	requestB.Type = r.URL.Query().Get("type")
-	requestB.IsFavourite, _ = strconv.ParseBool(r.URL.Query().Get("is_favourite"))
+	requestB.IsFavourite, _ = strconv.ParseBool(r.URL.Query().Get("isfavourite"))
+	requestB.IsPersonal, _ = strconv.ParseBool(r.URL.Query().Get("ispersonal"))
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
 	userID := handlersfunc.UserIDContextReader(r)
@@ -386,7 +387,7 @@ func LoadBackground(rw http.ResponseWriter, r *http.Request) {
 	
 	
 	
-	backgroundSet, err := objectsstorage.LoadBackgrounds(ctx, config.DB, userID, requestB.Offset, requestB.Limit, requestB.Type, requestB.IsFavourite)
+	backgroundSet, err := objectsstorage.LoadBackgrounds(ctx, config.DB, userID, requestB.Offset, requestB.Limit, requestB.Type, requestB.IsFavourite, requestB.IsPersonal)
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
@@ -547,7 +548,8 @@ func LoadDecoration(rw http.ResponseWriter, r *http.Request) {
 	requestD.Limit = uint(rLimit)
 	requestD.Type = r.URL.Query().Get("type")
 	requestD.Category = r.URL.Query().Get("category")
-	requestD.IsFavourite, _ = strconv.ParseBool(r.URL.Query().Get("is_favourite"))
+	requestD.IsFavourite, _ = strconv.ParseBool(r.URL.Query().Get("isfavourite"))
+	requestD.IsPersonal, _ = strconv.ParseBool(r.URL.Query().Get("ispersonal"))
 
 	defer r.Body.Close()
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
@@ -557,7 +559,7 @@ func LoadDecoration(rw http.ResponseWriter, r *http.Request) {
 	
 	
 	
-	decorationSet, err := objectsstorage.LoadDecorations(ctx, config.DB, userID, requestD.Offset, requestD.Limit, requestD.Type, requestD.Category, requestD.IsFavourite)
+	decorationSet, err := objectsstorage.LoadDecorations(ctx, config.DB, userID, requestD.Offset, requestD.Limit, requestD.Type, requestD.Category, requestD.IsFavourite, requestD.IsPersonal)
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
@@ -1248,7 +1250,7 @@ func CreateTemplate(rw http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
 	
-	tID, err = projectstorage.CreateTemplate(ctx, config.DB, TemplateObj.Size, TemplateObj.Category)
+	tID, err = projectstorage.CreateTemplate(ctx, config.DB, TemplateObj.Name, TemplateObj.Size, TemplateObj.Category)
 
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)

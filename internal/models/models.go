@@ -75,8 +75,8 @@ type PersonalisedObject struct {
 	// Link of object -- Yandex disk link for retrieving the object
 	// in: string
 	Link    string     `json:"link"`
-	Type    string     `json:"link"`
-	Category    string     `json:"link"`
+	Type    string     `json:"type"`
+	Category    string     `json:"category"`
 	IsFavourite bool `json:"is_favourite"`
 	// Boolean for personal uploaded objects
 	// in: boolean
@@ -102,6 +102,7 @@ type Layout struct {
 	// Yandex Disk Link 
 	// in: string
 	CountImages    uint `json:"count_images"`
+	Size    string `json:"size"`
 	Link    string `json:"link"`
 	Data        json.RawMessage      `json:"data"`
 	IsFavourite bool `json:"is_favourite"`
@@ -171,6 +172,7 @@ type NewBlankProjectObj struct {
 	Variant string `json:"variant"`
 	Cover string `json:"cover"`
 	Surface string `json:"surface"`
+	TemplateID uint `json:"template_id"`
   }
 
 
@@ -196,6 +198,7 @@ type RequestBackground struct {
 	Limit    uint     `json:"limit"`
 	Type string `json:"type"`
 	IsFavourite bool `json:"is_favourite"`
+	IsPersonal bool `json:"is_personal"`
   }
 
 type RequestDecoration struct {
@@ -204,6 +207,7 @@ type RequestDecoration struct {
 	Type string `json:"type"`
 	Category string `json:"category"`
 	IsFavourite bool `json:"is_favourite"`
+	IsPersonal bool `json:"is_personal"`
   }
 
 type RequestLayout struct {
@@ -265,6 +269,7 @@ type ResponseTemplate struct {
 type NewTemplateObj struct {
 	Size string `json:"size"`
 	Category string `json:"category"`
+	Name string `json:"name"`
 }
 
 type RequestPhotos struct {
@@ -316,6 +321,7 @@ type ResponseBackground struct {
 	Backgrounds []Background `json:"backgrounds"`
 	CountAll    int `json:"count_all"`
 	CountFavourite    int `json:"count_favourite"`
+	CountPersonal    int `json:"count_personal"`
 	
 }
 
@@ -330,6 +336,7 @@ type ResponseDecoration struct {
 	Decorations []Decoration `json:"decorations"`
 	CountAll    int `json:"count_all"`
 	CountFavourite    int `json:"count_favourite"`
+	CountPersonal    int `json:"count_personal"`
 	
 }
 

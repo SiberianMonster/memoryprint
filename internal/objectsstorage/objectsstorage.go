@@ -145,8 +145,9 @@ func DeleteDecoration(ctx context.Context, storeDB *pgxpool.Pool, userID uint, d
 func AddBackground(ctx context.Context, storeDB *pgxpool.Pool, newDecor models.PersonalisedObject, userID uint) (uint, error) {
 
 	var bID uint
-	_, err = storeDB.Exec(ctx, "INSERT INTO backgrounds (link) VALUES ($1);",
+	_, err = storeDB.Exec(ctx, "INSERT INTO backgrounds (link, category) VALUES ($1);",
 		newDecor.Link,
+		newDecor.Type,
 	)
 	if err != nil {
 		log.Printf("Error happened when inserting a new background entry into pgx table. Err: %s", err)
@@ -287,16 +288,25 @@ func RetrieveUserPhotos(ctx context.Context, storeDB *pgxpool.Pool, userID uint,
 }
 
 // LoadBackgrounds function performs the operation of retrieving all backgrounds from the db for project editing.
-func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset uint, limit uint, btype string, isfavourite bool) (models.ResponseBackground, error) {
+func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset uint, limit uint, btype string, isfavourite bool, ispersonal bool) (models.ResponseBackground, error) {
 
 	var responseBackground models.ResponseBackground
-	var countFavourite int
-	rows, err := storeDB.Query(ctx, "SELECT backgrounds_id, link, category FROM backgrounds WHERE category = ($1) ORDER BY backgrounds_id LIMIT ($2) OFFSET ($3);", btype, limit, offset)
-	if err != nil {
-		log.Printf("Error happened when retrieving backgrounds from pgx table. Err: %s", err)
-		return responseBackground, err
-	}
-	defer rows.Close()
+	rows, err := storeDB.Query(ctx, "SELECT backgrounds_id, link, category FROM backgrounds ORDER BY backgrounds_id LIMIT ($1) OFFSET ($2);", limit, offset)
+		if err != nil {
+			log.Printf("Error happened when retrieving backgrounds from pgx table. Err: %s", err)
+			return responseBackground, err
+		}
+		defer rows.Close()
+	
+
+	if btype != "" {
+		rows, err = storeDB.Query(ctx, "SELECT backgrounds_id, link, category FROM backgrounds WHERE category = ($1) ORDER BY backgrounds_id LIMIT ($2) OFFSET ($3);", btype, limit, offset)
+		if err != nil {
+			log.Printf("Error happened when retrieving backgrounds from pgx table. Err: %s", err)
+			return responseBackground, err
+		}
+		defer rows.Close()
+		}
 
 	for rows.Next() {
 		var background models.Background
@@ -304,23 +314,38 @@ func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 			log.Printf("Error happened when scanning backgrounds. Err: %s", err)
 			return responseBackground, err
 		}
-		background.Type = btype
 		err := storeDB.QueryRow(ctx, "SELECT is_personal, is_favourite FROM users_has_backgrounds WHERE backgrounds_id = ($1) AND users_id=($2);", background.BackgroundID, userID).Scan(&background.IsPersonal, &background.IsFavourite)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			log.Printf("Error happened when retrieving background from user_background table. Err: %s", err)
 			return responseBackground, err
 		}
+		var countFavouriteString string
+		err = storeDB.QueryRow(ctx, "SELECT COUNT(backgrounds_id) FROM users_has_backgrounds WHERE is_favourite = ($1) AND users_id=($2);", true, userID).Scan(&countFavouriteString)
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				log.Printf("Error happened when counting backgrounds. Err: %s", err)
+				return responseBackground, err
+			}
+		responseBackground.CountFavourite, _ = strconv.Atoi(countFavouriteString)
+		var countPersonalString string
+		err = storeDB.QueryRow(ctx, "SELECT COUNT(backgrounds_id) FROM users_has_backgrounds WHERE is_personal = ($1) AND users_id=($2);", true, userID).Scan(&countPersonalString)
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				log.Printf("Error happened when counting backgrounds. Err: %s", err)
+				return responseBackground, err
+			}
+		responseBackground.CountPersonal, _ = strconv.Atoi(countPersonalString)
 
-		if isfavourite == true {
-			if background.IsFavourite == true {
+		if ispersonal == true {
+			if background.IsPersonal == true {
 				responseBackground.Backgrounds = append(responseBackground.Backgrounds, background)
-				countFavourite = countFavourite + 1
 			}
 		} else {
-			if background.IsFavourite == true {
-				countFavourite = countFavourite + 1
+			if isfavourite == true {
+				if background.IsFavourite == true {
+					responseBackground.Backgrounds = append(responseBackground.Backgrounds, background)
+				}
+			} else {
+				responseBackground.Backgrounds = append(responseBackground.Backgrounds, background)
 			}
-			responseBackground.Backgrounds = append(responseBackground.Backgrounds, background)
 		}
 	}
 
@@ -336,7 +361,6 @@ func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 			return responseBackground, err
 		}
 	responseBackground.CountAll, _ = strconv.Atoi(countAllString)
-	responseBackground.CountFavourite = countFavourite
 	if responseBackground.Backgrounds == nil {
 		var background models.Background
 		responseBackground.Backgrounds = append(responseBackground.Backgrounds, background)
@@ -440,42 +464,67 @@ func FavourBackground(ctx context.Context, storeDB *pgxpool.Pool, newDecor model
 }
 
 // LoadDecorations function performs the operation of retrieving all decorations from the db for project editing.
-func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset uint, limit uint, dtype string, dcategory string, isfavourite bool) (models.ResponseDecoration, error) {
+func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset uint, limit uint, dtype string, dcategory string, isfavourite bool, ispersonal bool) (models.ResponseDecoration, error) {
 
 	var responseDecoration models.ResponseDecoration
 	var countFavourite int
-	rows, err := storeDB.Query(ctx, "SELECT decorations_id, link FROM decorations WHERE type = ($1) and category = ($2) ORDER BY decorations_id LIMIT ($3) OFFSET ($4);", dtype, dcategory, limit, offset)
-	if err != nil {
-		log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
-		return responseDecoration, err
-	}
+	rows, err := storeDB.Query(ctx, "SELECT decorations_id, link, type, category FROM decorations ORDER BY decorations_id LIMIT ($1) OFFSET ($2);", limit, offset)
+		if err != nil {
+			log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
+			return responseDecoration, err
+		}
 	defer rows.Close()
+
+	if dtype != "" && dcategory != "" {
+		rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, type, category FROM decorations WHERE type = ($1) and category = ($2) ORDER BY decorations_id LIMIT ($3) OFFSET ($4);", dtype, dcategory, limit, offset)
+		if err != nil {
+			log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
+			return responseDecoration, err
+		}
+		defer rows.Close()
+	} 
 
 	for rows.Next() {
 		var decoration models.Decoration
-		if err = rows.Scan(&decoration.DecorationID, &decoration.Link); err != nil {
+		if err = rows.Scan(&decoration.DecorationID, &decoration.Link, &decoration.Type, &decoration.Category); err != nil {
 			log.Printf("Error happened when scanning decorations. Err: %s", err)
 			return responseDecoration, err
 		}
-		decoration.Type = dtype
-		decoration.Category = dcategory
 		err := storeDB.QueryRow(ctx, "SELECT is_personal, is_favourite FROM users_has_decoration WHERE decorations_id = ($1) AND users_id=($2);", decoration.DecorationID, userID).Scan(&decoration.IsPersonal, &decoration.IsFavourite)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			log.Printf("Error happened when retrieving decorations from user_decorations table. Err: %s", err)
 			return responseDecoration, err
 		}
 		
-		if isfavourite == true {
-			if decoration.IsFavourite == true {
+		var countFavouriteString string
+		err = storeDB.QueryRow(ctx, "SELECT COUNT(decorations_id) FROM users_has_decoration WHERE is_favourite = ($1) AND users_id=($2);", true, userID).Scan(&countFavouriteString)
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				log.Printf("Error happened when counting backgrounds. Err: %s", err)
+				return responseDecoration, err
+			}
+		responseDecoration.CountFavourite, _ = strconv.Atoi(countFavouriteString)
+		var countPersonalString string
+		err = storeDB.QueryRow(ctx, "SELECT COUNT(decorations_id) FROM users_has_decoration WHERE is_personal = ($1) AND users_id=($2);", true, userID).Scan(&countPersonalString)
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				log.Printf("Error happened when counting backgrounds. Err: %s", err)
+				return responseDecoration, err
+			}
+		responseDecoration.CountPersonal, _ = strconv.Atoi(countPersonalString)
+
+		if ispersonal == true {
+			if decoration.IsPersonal == true {
 				responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
-				countFavourite = countFavourite + 1
 			}
 		} else {
-			if decoration.IsFavourite == true {
-				countFavourite = countFavourite + 1
+			if isfavourite == true {
+				if decoration.IsFavourite == true {
+					responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
+				}
+			} else {
+				responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
 			}
-			responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
 		}
+	
 	}
 
 	if err = rows.Err(); err != nil {
@@ -574,13 +623,17 @@ func LoadLayouts(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset
 
 	for rows.Next() {
 		var layout models.Layout
-		var strdata string
+		var strdata *string
 		if err = rows.Scan(&layout.LayoutID, &layout.Link, &strdata); err != nil {
 			log.Printf("Error happened when scanning layouts. Err: %s", err)
 			return responseLayout, err
 		}
 		layout.CountImages = countimages
-		layout.Data = json.RawMessage(strdata)
+		if strdata != nil{
+			layout.Data = json.RawMessage(*strdata)
+		} else {
+			layout.Data = nil
+		}
 		err := storeDB.QueryRow(ctx, "SELECT is_favourite FROM users_has_layouts WHERE layouts_id = ($1) AND users_id=($2);", layout.LayoutID, userID).Scan(&layout.IsFavourite)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			log.Printf("Error happened when retrieving layouts from user_layouts table. Err: %s", err)
@@ -626,10 +679,11 @@ func AddAdminLayout(ctx context.Context, storeDB *pgxpool.Pool, newL models.Layo
 
 	var lID uint
 	strdata := string(newL.Data)
-	_, err = storeDB.Exec(ctx, "INSERT INTO layouts (link, count_images, data) VALUES ($1, $2, $3);",
+	_, err = storeDB.Exec(ctx, "INSERT INTO layouts (link, count_images, data, size) VALUES ($1, $2, $3, $4);",
 		newL.Link,
 		newL.CountImages,
 		strdata,
+		newL.Size,
 	)
 	if err != nil {
 		log.Printf("Error happened when inserting a new admin layout entry into pgx table. Err: %s", err)

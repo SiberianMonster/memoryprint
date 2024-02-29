@@ -135,43 +135,67 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, proj
 	}
 
 	pagesRange := makeRange(0, 21)
+	if projectObj.TemplateID != 0 {
+		var templatePages []models.Page
 
-	for _, num := range pagesRange {
-
-		var ptype string
-
-		if num == 21 {
-			ptype = "back"
-		} else {
-			ptype = "page"
-		}
-		if num == 0 {
-			ptype = "front"
-		}
-		_, err = storeDB.Exec(ctx, "INSERT INTO pages (last_edited_at, sort, type, is_template, projects_id) VALUES ($1, $2, $3, $4, $5);",
-			t,
-			num,
-			ptype,
-			false,
-			pID,
-		)
+		templatePages, err = RetrieveProjectPages(ctx, storeDB, projectObj.TemplateID, true)
 		if err != nil {
-			log.Printf("Error happened when inserting a new page into pgx table. Err: %s", err)
-			return pID, err
+			log.Printf("Error happened when retrieving template pages from db. Err: %s", err)
+			return 0, err
+		}
+		for _, page := range templatePages {
+			strdata := string(page.Data)
+			_, err = storeDB.Exec(ctx, "INSERT INTO pages (last_edited_at, sort, type, is_template, creating_image_link, data, projects_id) VALUES ($1, $2, $3, $4, $5, $6, $7);",
+			t,
+			page.Sort,
+			page.Type,
+			false,
+			page.CreatingImageLink,
+			strdata,
+			pID,
+			)
+			if err != nil {
+				log.Printf("Error happened when inserting a new page from template into pgx table. Err: %s", err)
+				return pID, err
+			}
+			
+		}
+	} else {
+		for _, num := range pagesRange {
+
+			var ptype string
+	
+			if num == 21 {
+				ptype = "back"
+			} else {
+				ptype = "page"
+			}
+			if num == 0 {
+				ptype = "front"
+			}
+			_, err = storeDB.Exec(ctx, "INSERT INTO pages (last_edited_at, sort, type, is_template, projects_id) VALUES ($1, $2, $3, $4, $5);",
+				t,
+				num,
+				ptype,
+				false,
+				pID,
+			)
 		}
 	}
+
+	
 	log.Printf("added new project to DB")
 	return pID, nil
 }
 
 
 // CreateTemplate function performs the operation of creating a new photobook template in pgx database with a query.
-func CreateTemplate(ctx context.Context, storeDB *pgxpool.Pool, size string, category string) (uint, error) {
+func CreateTemplate(ctx context.Context, storeDB *pgxpool.Pool, name string, size string, category string) (uint, error) {
 
 	t := time.Now()
 	var tID uint
 	err := storeDB.QueryRow(ctx, "INSERT INTO templates (name, created_at, last_edited_at, status, size, category) VALUES ($1, $2, $3, $4, $5, $6) RETURNING templates_id;",
-		"DEFAULT",
+		name,
 		t,
 		t,
 		"EDITED",

@@ -142,12 +142,13 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 
 	// layout table
 	_, err = db.Exec(ctx,
-		"CREATE TABLE IF NOT EXISTS layouts (layouts_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, count_images int NOT NULL, link varchar NOT NULL, data text NOT NULL)")
+		"CREATE TABLE IF NOT EXISTS layouts (layouts_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, count_images int NOT NULL, size varchar NOT NULL, data text NOT NULL)")
 	if err != nil {
 			log.Printf("Error happened when creating layout table. Err: %s", err)
 			return nil, false
 
 	}
+
 
 	// decorations table
 	_, err = db.Exec(ctx,
@@ -172,6 +173,18 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 			"CREATE TABLE IF NOT EXISTS templates (templates_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, name varchar, status varchar NOT NULL, category varchar, size varchar, last_edited_at timestamp NOT NULL, last_editor int, created_at timestamp NOT NULL)")
 	if err != nil {
 			log.Printf("Error happened when creating photobooks table. Err: %s", err)
+			return nil, false
+	
+	}
+	//_, err = db.Exec(ctx, "ALTER TABLE templates ADD COLUMN size varchar NOT NULL;")
+	//if err != nil {
+	//		log.Printf("Error happened when creating layout table. Err: %s", err)
+	//		return nil, false
+	//
+	//}
+	_, err = db.Exec(ctx, "ALTER TABLE layouts ADD COLUMN size varchar;")
+	if err != nil {
+			log.Printf("Error happened when creating layout table. Err: %s", err)
 			return nil, false
 	
 	}
