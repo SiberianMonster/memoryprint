@@ -182,12 +182,12 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 	//		return nil, false
 	//
 	//}
-	_, err = db.Exec(ctx, "ALTER TABLE layouts ADD COLUMN size varchar;")
-	if err != nil {
-			log.Printf("Error happened when creating layout table. Err: %s", err)
-			return nil, false
-	
-	}
+	//_, err = db.Exec(ctx, "ALTER TABLE layouts ADD COLUMN size varchar;")
+	//if err != nil {
+	//		log.Printf("Error happened when creating layout table. Err: %s", err)
+	//		return nil, false
+	//
+	//}
 
 	// photoalbums table
 	_, err = db.Exec(ctx,
