@@ -14,6 +14,7 @@ import (
 	"github.com/SiberianMonster/memoryprint/internal/projectstorage"
 	"github.com/SiberianMonster/memoryprint/internal/handlersfunc"
 	"github.com/SiberianMonster/memoryprint/internal/authservice"
+	"github.com/go-playground/validator/v10"
 	"log"
 	"net/http"
 )
@@ -32,7 +33,8 @@ type AdminBool struct {
 
 func Register(rw http.ResponseWriter, r *http.Request) {
 
-	var user models.User
+	var user models.SignUpUser
+	var signedUser models.User
 	var tBody TokenRespBody
 	rw.Header().Set("Content-Type", "application/json")
 
@@ -44,6 +46,16 @@ func Register(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleDecodeError(rw, err)
 		return
 	}
+	// Create a new validator instance
+    validate := validator.New()
+
+    // Validate the User struct
+    err = validate.Struct(user)
+    if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
 
 	log.Println(user)
 
@@ -58,7 +70,7 @@ func Register(rw http.ResponseWriter, r *http.Request) {
 	// не забываем освободить ресурс
 	defer cancel()
 
-	if userstorage.CheckUser(ctx, config.DB, user) {
+	if userstorage.CheckUser(ctx, config.DB, user.Email) {
 		handlersfunc.HandleUsernameAlreadyTaken(rw)
 		return
 	}
@@ -84,7 +96,6 @@ func Register(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	// Customer
-	user.Category = models.CustomerCategory
 	userID, err = userstorage.CreateUser(ctx, config.DB, user)
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
@@ -98,7 +109,9 @@ func Register(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accessToken, err := authservice.GenerateAccessToken(&user)
+	signedUser.Email = user.Email
+	signedUser.Password = user.Password
+	accessToken, err := authservice.GenerateAccessToken(&signedUser)
 	if err != nil {
 		log.Printf("Error happened when generating jwt token received value. Err: %s", err)
 		handlersfunc.HandleJWTError(rw)
@@ -119,7 +132,8 @@ func Register(rw http.ResponseWriter, r *http.Request) {
 
 func Login(rw http.ResponseWriter, r *http.Request) {
 
-	var user *models.User
+	var user *models.LoginUser
+	var loggedUser *models.User
 	var tBody TokenRespBody
 
 	resp := make(map[string]TokenRespBody)
@@ -129,6 +143,16 @@ func Login(rw http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("Login user")
 	log.Println(user)
+	// Create a new validator instance
+    validate := validator.New()
+
+    // Validate the User struct
+    err = validate.Struct(user)
+    if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
 
 	if user.Email == "" && user.Password == "" {
 		handlersfunc.HandleWrongCredentialsError(rw)
@@ -141,18 +165,19 @@ func Login(rw http.ResponseWriter, r *http.Request) {
 	// не забываем освободить ресурс
 	defer cancel()
 
-	if !userstorage.CheckUser(ctx, config.DB, *user) {
+	if !userstorage.CheckUser(ctx, config.DB, user.Email) {
 		handlersfunc.HandleUnregisteredUserError(rw)
 		return
 	}
 
-	dbUser, err := userstorage.CheckCredentials(ctx, config.DB, *user)
+	loggedUser.Email = user.Email
+	dbUser, err := userstorage.CheckCredentials(ctx, config.DB, *loggedUser)
 
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
 	}
-	_, err = authservice.Authenticate(user, &dbUser); 
+	_, err = authservice.Authenticate(loggedUser, &dbUser); 
 	if err != nil {
 		handlersfunc.HandleWrongCredentialsError(rw)
 		return

@@ -256,7 +256,7 @@ func PublishTemplate(ctx context.Context, storeDB *pgxpool.Pool, templateID uint
 // RetrieveUserProjects function performs the operation of retrieving user photobook projects from pgx database with a query.
 func RetrieveUserProjects(ctx context.Context, storeDB *pgxpool.Pool, userID uint) ([]models.ResponseProject, error) {
 
-	var projectslice []models.ResponseProject
+	projectslice := []models.ResponseProject{}
 	var email string
 	err = storeDB.QueryRow(ctx, "SELECT email FROM users WHERE users_id = ($1);", userID).Scan(&email)
 	if err != nil {
@@ -619,7 +619,7 @@ func ReorderPage(ctx context.Context, storeDB *pgxpool.Pool, pageID uint, projec
 // RetrieveTemplates function performs the operation of retrieving templates from pgx database with a query.
 func RetrieveTemplates(ctx context.Context, storeDB *pgxpool.Pool) ([]models.ResponseTemplate, error) {
 
-	var templateslice []models.ResponseTemplate
+	templateslice := []models.ResponseTemplate{}
 	
 	rows, err := storeDB.Query(ctx, "SELECT templates_id FROM templates WHERE status = ($1);", "PUBLISHED")
 	if err != nil {

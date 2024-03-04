@@ -103,13 +103,14 @@ func saveImage(imgByte []byte, filename string) (string, error) {
 
 }
 
-func bucketUpload(img []byte, filename string, timewebToken string) {
+func bucketUpload(img []byte, filename string, timewebToken string) error {
 
 	var retries  int 
 	retries = 3
 	filename, err = saveImage(img, filename)
 	if err != nil {
 		log.Printf("Failed to save file content %s", err)
+		return err
 	}
 	log.Println("saved image")
 	form := new(bytes.Buffer)
@@ -117,15 +118,18 @@ func bucketUpload(img []byte, filename string, timewebToken string) {
 	fw, err := writer.CreateFormFile(filename, filepath.Base(filename))
 	if err != nil {
 		log.Printf("Failed to create form file %s", err)
+		return err
 	}
 	fd, err := os.Open(filename)
 	if err != nil {
 		log.Printf("Failed to open file %s", err)
+		return err
 	}
 	defer fd.Close()
 	_, err = io.Copy(fw, fd)
 	if err != nil {
 		log.Printf("Failed to copy file content %s", err)
+		return err
 	}
 
 	writer.Close()
@@ -141,6 +145,7 @@ func bucketUpload(img []byte, filename string, timewebToken string) {
 		resp, err := client.Do(req)
 		if err != nil {
 			log.Printf("Failed to make a request to bucket %s", err)
+			return err
 		}
 		defer resp.Body.Close()
 		if resp.StatusCode != 204 {
@@ -151,6 +156,7 @@ func bucketUpload(img []byte, filename string, timewebToken string) {
             break
         }
 	}
+	return nil
 	
 }
 
@@ -269,14 +275,17 @@ func LoadImage(rw http.ResponseWriter, r *http.Request) {
 	}
 	log.Println("removed image background")
 	
-	go bucketUpload(imageObj.Image, filename, config.TimewebToken)
+	err = bucketUpload(imageObj.Image, filename, config.TimewebToken)
+	if err != nil {
+		log.Printf("Error happened in uploading image to bucket. Err: %s", err)
+		handlersfunc.HandleUploadImageError(rw)
+		return
+	}
 	log.Println("uploaded image to bucket")
 	trimmedName := strings.TrimLeft(filename, "./temp_photo/")
-
-	returnUrl := "https://s3.timeweb.com/55ad0489-946d2ae4-c74f-4d36-9b1a-b63081d8f869/photo/" + trimmedName
 	
 	rw.WriteHeader(http.StatusOK)
-	rBody.Link = returnUrl
+	rBody.Link = trimmedName
 	resp["response"] = rBody
 	jsonResp, err := json.Marshal(resp)
 	if err != nil {

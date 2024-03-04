@@ -16,6 +16,7 @@ import (
 	"github.com/SiberianMonster/memoryprint/internal/projectstorage"
 	"github.com/SiberianMonster/memoryprint/internal/objectsstorage"
 	"github.com/SiberianMonster/memoryprint/internal/handlersfunc"
+	"github.com/go-playground/validator/v10"
 	"golang.org/x/exp/slices"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
@@ -74,6 +75,16 @@ func NewPhoto(rw http.ResponseWriter, r *http.Request) {
 	}
 	
 	defer r.Body.Close()
+	// Create a new validator instance
+    validate := validator.New()
+
+    // Validate the User struct
+    err = validate.Struct(photoParams)
+    if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
 	
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
@@ -144,6 +155,16 @@ func CreateBlankProject(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	defer r.Body.Close()
+	// Create a new validator instance
+    validate := validator.New()
+
+    // Validate the User struct
+    err = validate.Struct(ProjectObj)
+    if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
 	userID := handlersfunc.UserIDContextReader(r)
@@ -253,6 +274,16 @@ func CreateDecor(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	defer r.Body.Close()
+	// Create a new validator instance
+    validate := validator.New()
+
+    // Validate the User struct
+    err = validate.Struct(DecorObj)
+    if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
 	userID := handlersfunc.UserIDContextReader(r)
@@ -318,6 +349,16 @@ func CreateBackground(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	defer r.Body.Close()
+	// Create a new validator instance
+    validate := validator.New()
+
+    // Validate the User struct
+    err = validate.Struct(BackgroundObj)
+    if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
 	userID := handlersfunc.UserIDContextReader(r)
@@ -419,6 +460,16 @@ func AdminCreateBackground(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	defer r.Body.Close()
+	// Create a new validator instance
+    validate := validator.New()
+
+    // Validate the User struct
+    err = validate.Struct(BackgroundObj)
+    if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
 	log.Printf("Create admin background for user")
@@ -590,6 +641,16 @@ func AdminCreateDecoration(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	defer r.Body.Close()
+	// Create a new validator instance
+    validate := validator.New()
+
+    // Validate the User struct
+    err = validate.Struct(DecorationObj)
+    if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
 	log.Printf("Create admin decoration for user")
@@ -761,6 +822,16 @@ func AdminCreateLayout(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	defer r.Body.Close()
+	// Create a new validator instance
+    validate := validator.New()
+
+    // Validate the User struct
+    err = validate.Struct(LayoutObj)
+    if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
 	log.Printf("Create admin layout for user")
@@ -1248,6 +1319,16 @@ func CreateTemplate(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	defer r.Body.Close()
+	// Create a new validator instance
+    validate := validator.New()
+
+    // Validate the User struct
+    err = validate.Struct(TemplateObj)
+    if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
 	

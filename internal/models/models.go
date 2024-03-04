@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/json"
 	"time"
+
 )
 
 
@@ -35,6 +36,21 @@ type User struct {
 	TokenHash string `json:"tokenhash"`
 	Category string `json:"category"`
 	Status string `json:"status"`
+}
+
+type SignUpUser struct {
+	Name string `json:"name" validate:"required,min=5,max=20"`
+	Password string `json:"password" validate:"required,min=5,max=20"`
+	Email string `json:"email" validate:"required,email"`
+}
+
+type LoginUser struct {
+	Password string `json:"password" validate:"required,min=5,max=20"`
+	Email string `json:"email" validate:"required,email"`
+}
+
+type RestoreUser struct {
+	Email string `json:"email" validate:"required,email"`
 }
 
 type VerificationDataType int
@@ -74,7 +90,7 @@ type PersonalisedObject struct {
 	ObjectID    uint     `json:"object_id"`
 	// Link of object -- Yandex disk link for retrieving the object
 	// in: string
-	Link    string     `json:"link"`
+	Link    string     `json:"link" validate:"required"`
 	Type    string     `json:"type"`
 	Category    string     `json:"category"`
 	IsFavourite bool `json:"is_favourite"`
@@ -91,7 +107,7 @@ type Photo struct {
 	PhotoID uint `json:"photo_id"`
 	// Link of object -- Yandex disk link for retrieving the object
 	// in: string
-	Link    string `json:"link"`
+	Link    string `json:"link" validate:"required"`
 }
 
 
@@ -101,10 +117,10 @@ type Layout struct {
 	LayoutID uint `json:"layout_id"`
 	// Yandex Disk Link 
 	// in: string
-	CountImages    uint `json:"count_images"`
-	Size    string `json:"size"`
-	Link    string `json:"link"`
-	Data        json.RawMessage      `json:"data"`
+	CountImages    uint `json:"count_images" validate:"gte=11,lte=6"`
+	Size    string `json:"size" validate:"required,oneof=SMALL_SQUARE SQUARE VERTICAL HORIZONTAL"`
+	Link    string `json:"link" validate:"required"`
+	Data        json.RawMessage      `json:"data" validate:"required"`
 	IsFavourite bool `json:"is_favourite"`
 }
 
@@ -112,7 +128,7 @@ type Background struct {
 
 	BackgroundID uint `json:"background_id"`
 	Link    string `json:"link"`
-	Type string `json:"type"`
+	Type string `json:"type" validate:"required,oneof=VACATION WEDDING HOLIDAYS CHILDREN ANIMAL UNIVERSAL"`
 	IsFavourite bool `json:"is_favourite"`
 	IsPersonal bool `json:"is_personal"`
 }
@@ -120,9 +136,9 @@ type Background struct {
 type Decoration struct {
 
 	DecorationID uint `json:"decoration_id"`
-	Link    string `json:"link"`
-	Category string `json:"category"`
-	Type string `json:"type"`
+	Link    string `json:"link" validate:"required"`
+	Category string `json:"category" validate:"required,oneof=RIBBON FRAME STICKER"`
+	Type string `json:"type" validate:"required,oneof=VACATION WEDDING HOLIDAYS CHILDREN ANIMAL UNIVERSAL"`
 	IsFavourite bool `json:"is_favourite"`
 	IsPersonal bool `json:"is_personal"`
 }
@@ -168,10 +184,10 @@ type ResponseProject struct {
 
 type NewBlankProjectObj struct {
 	Name string `json:"name"`
-	Size string `json:"size"`
-	Variant string `json:"variant"`
-	Cover string `json:"cover"`
-	Surface string `json:"surface"`
+	Size string `json:"size" validate:"required,oneof=SMALL_SQUARE SQUARE VERTICAL HORIZONTAL"`
+	Variant string `json:"variant"  validate:"required,oneof=STANDARD PREMIUM"`
+	Cover string `json:"cover" validate:"required,oneof=HARD LEATHERETTE"`
+	Surface string `json:"surface" validate:"required,oneof=GLOSS MATTE"`
 	TemplateID uint `json:"template_id"`
   }
 
@@ -267,9 +283,9 @@ type ResponseTemplate struct {
   }
 
 type NewTemplateObj struct {
-	Size string `json:"size"`
-	Category string `json:"category"`
-	Name string `json:"name"`
+	Size string `json:"size" validate:"required,oneof=SMALL_SQUARE SQUARE VERTICAL HORIZONTAL"`
+	Category string `json:"category" validate:"required,oneof=VACATION WEDDING HOLIDAYS CHILDREN ANIMAL UNIVERSAL"`
+	Name string `json:"name" validate:"required,min=2,max=40"`
 }
 
 type RequestPhotos struct {

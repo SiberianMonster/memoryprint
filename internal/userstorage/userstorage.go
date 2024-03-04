@@ -26,10 +26,10 @@ func Hash(value, key string) (string, error) {
 	return fmt.Sprintf("%x", mac.Sum(nil)), err
 }
 
-func CheckUser(ctx context.Context, storeDB *pgxpool.Pool, u models.User) bool {
+func CheckUser(ctx context.Context, storeDB *pgxpool.Pool, email string) bool {
 
 	var userBool bool
-	err := storeDB.QueryRow(ctx, "SELECT EXISTS (SELECT users_id FROM users WHERE email = ($1));", u.Email).Scan(&userBool)
+	err := storeDB.QueryRow(ctx, "SELECT EXISTS (SELECT users_id FROM users WHERE email = ($1));", email).Scan(&userBool)
 	if err != nil {
 		log.Printf("Error happened when checking if user is in db. Err: %s", err)
 		return userBool
@@ -62,7 +62,7 @@ func GetUserID(ctx context.Context, storeDB *pgxpool.Pool, userEmail string) (ui
 	return userID, nil
 }
 
-func CreateUser(ctx context.Context, storeDB *pgxpool.Pool, u models.User) (uint, error) {
+func CreateUser(ctx context.Context, storeDB *pgxpool.Pool, u models.SignUpUser) (uint, error) {
 
 	var userID uint
 	t := time.Now()
@@ -78,8 +78,8 @@ func CreateUser(ctx context.Context, storeDB *pgxpool.Pool, u models.User) (uint
 		pwdHash,
 		u.Email,
 		tokenHash,
-		u.Category,
-		u.Status,
+		"CUSTOMER",
+		"UNVERIFIED",
 		models.UnverifiedStatus,
 		t,
 		t,
@@ -126,7 +126,7 @@ func CheckUserCategory(ctx context.Context, storeDB *pgxpool.Pool, userID uint) 
 // UpdatePassword updates the user password
 func UpdatePassword(ctx context.Context, storeDB *pgxpool.Pool, user models.User) (uint, error) {
 
-	if !CheckUser(ctx, storeDB, user) {
+	if !CheckUser(ctx, storeDB, user.Email) {
 		return user.ID, nil
 	}
 	t := time.Now()
@@ -150,7 +150,7 @@ func UpdatePassword(ctx context.Context, storeDB *pgxpool.Pool, user models.User
 
 func UpdateUserCategory(ctx context.Context, storeDB *pgxpool.Pool, u models.User) (uint, error) {
 
-	if !CheckUser(ctx, storeDB, u) {
+	if !CheckUser(ctx, storeDB, u.Email) {
 		return u.ID, nil
 	}
 
@@ -184,7 +184,7 @@ func MakeUserAdmin(ctx context.Context, storeDB *pgxpool.Pool, userID uint) {
 
 func UpdateUserStatus(ctx context.Context, storeDB *pgxpool.Pool, u models.User) (uint, error) {
 
-	if !CheckUser(ctx, storeDB, u) {
+	if !CheckUser(ctx, storeDB, u.Email) {
 		return u.ID, nil
 	}
 

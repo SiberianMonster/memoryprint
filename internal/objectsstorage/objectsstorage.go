@@ -250,6 +250,7 @@ func DeletePhoto(ctx context.Context, storeDB *pgxpool.Pool, photoID uint) (uint
 func RetrieveUserPhotos(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset uint, limit uint) (models.ResponsePhotos, error) {
 
 	var responsePhoto models.ResponsePhotos
+	responsePhoto.Photos = []models.Photo{}
 	rows, err := storeDB.Query(ctx, "SELECT photos_id, link FROM photos WHERE users_id = ($1) ORDER BY photos_id LIMIT ($2) OFFSET ($3);", userID, limit, offset)
 	if err != nil {
 		log.Printf("Error happened when retrieving photos from pgx table. Err: %s", err)
@@ -278,10 +279,6 @@ func RetrieveUserPhotos(ctx context.Context, storeDB *pgxpool.Pool, userID uint,
 			return responsePhoto, err
 		}
 	responsePhoto.CountAll, _ = strconv.Atoi(countAllString)
-	if responsePhoto.Photos == nil {
-		var photo models.Photo
-		responsePhoto.Photos = append(responsePhoto.Photos, photo)
-	}
 
 	return responsePhoto, nil
 
@@ -291,6 +288,7 @@ func RetrieveUserPhotos(ctx context.Context, storeDB *pgxpool.Pool, userID uint,
 func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset uint, limit uint, btype string, isfavourite bool, ispersonal bool) (models.ResponseBackground, error) {
 
 	var responseBackground models.ResponseBackground
+	responseBackground.Backgrounds = []models.Background{}
 	rows, err := storeDB.Query(ctx, "SELECT backgrounds_id, link, category FROM backgrounds ORDER BY backgrounds_id LIMIT ($1) OFFSET ($2);", limit, offset)
 		if err != nil {
 			log.Printf("Error happened when retrieving backgrounds from pgx table. Err: %s", err)
@@ -355,16 +353,12 @@ func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 	}
 
 	var countAllString string
-	err = storeDB.QueryRow(ctx, "SELECT COUNT(backgrounds_id) FROM backgrounds;", btype).Scan(&countAllString)
+	err = storeDB.QueryRow(ctx, "SELECT COUNT(backgrounds_id) FROM backgrounds;").Scan(&countAllString)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			log.Printf("Error happened when counting backgrounds. Err: %s", err)
 			return responseBackground, err
 		}
 	responseBackground.CountAll, _ = strconv.Atoi(countAllString)
-	if responseBackground.Backgrounds == nil {
-		var background models.Background
-		responseBackground.Backgrounds = append(responseBackground.Backgrounds, background)
-	}
 
 	return responseBackground, nil
 
@@ -467,6 +461,7 @@ func FavourBackground(ctx context.Context, storeDB *pgxpool.Pool, newDecor model
 func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset uint, limit uint, dtype string, dcategory string, isfavourite bool, ispersonal bool) (models.ResponseDecoration, error) {
 
 	var responseDecoration models.ResponseDecoration
+	responseDecoration.Decorations = []models.Decoration{}
 	var countFavourite int
 	rows, err := storeDB.Query(ctx, "SELECT decorations_id, link, type, category FROM decorations ORDER BY decorations_id LIMIT ($1) OFFSET ($2);", limit, offset)
 		if err != nil {
@@ -476,7 +471,7 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 	defer rows.Close()
 
 	if dtype != "" && dcategory != "" {
-		rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, type, category FROM decorations WHERE type = ($1) and category = ($2) ORDER BY decorations_id LIMIT ($3) OFFSET ($4);", dtype, dcategory, limit, offset)
+		rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, type, category FROM decorations WHERE type = ($1) and category = ($2) ORDER BY decorations_id LIMIT ($3) OFFSET ($4);", dcategory, dtype, limit, offset)
 		if err != nil {
 			log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
 			return responseDecoration, err
@@ -540,11 +535,7 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 		}
 	responseDecoration.CountAll, _ = strconv.Atoi(countAllString)
 	responseDecoration.CountFavourite = countFavourite
-	if responseDecoration.Decorations == nil {
-		var decoration models.Decoration
-		responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
-	}
-
+	
 	return responseDecoration, nil
 
 }
@@ -612,6 +603,7 @@ func FavourDecoration(ctx context.Context, storeDB *pgxpool.Pool, newDecor model
 func LoadLayouts(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset uint, limit uint, countimages uint, isfavourite bool) (models.ResponseLayout, error) {
 
 	var responseLayout models.ResponseLayout
+	responseLayout.Layouts = []models.Layout{}
 	countFavourite := 0
 
 	rows, err := storeDB.Query(ctx, "SELECT layouts_id, link, data FROM layouts WHERE count_images = ($1) ORDER BY layouts_id LIMIT ($2) OFFSET ($3);", countimages, limit, offset)
@@ -665,10 +657,6 @@ func LoadLayouts(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset
 		}
 	responseLayout.CountAll, _ = strconv.Atoi(countAllString)
 	responseLayout.CountFavourite = countFavourite
-	if responseLayout.Layouts == nil {
-		var layout models.Layout
-		responseLayout.Layouts = append(responseLayout.Layouts, layout)
-	}
 
 	return responseLayout, nil
 

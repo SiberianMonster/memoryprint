@@ -8,6 +8,7 @@ import (
 	"github.com/SiberianMonster/memoryprint/internal/userstorage"
 	"github.com/SiberianMonster/memoryprint/internal/handlersfunc"
 	"github.com/SiberianMonster/memoryprint/internal/emailutils"
+	"github.com/go-playground/validator/v10"
 	"fmt"
 	"log"
 	"net/http"
@@ -37,7 +38,8 @@ func GenerateTempPass(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
 	resp := make(map[string]int)
 
-	var user *models.User
+	var user *models.RestoreUser
+	var dbUser models.User
 
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
@@ -45,13 +47,33 @@ func GenerateTempPass(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	defer r.Body.Close()
+	// Create a new validator instance
+    validate := validator.New()
+
+    // Validate the User struct
+    err = validate.Struct(user)
+    if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
 
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	// не забываем освободить ресурс
 	defer cancel()
 
-	if !userstorage.CheckUser(ctx, config.DB, *user) {
+	if !userstorage.CheckUser(ctx, config.DB, user.Email) {
 		handlersfunc.HandleUnregisteredUserError(rw)
+		return
+	}
+	dbUser.ID, err = userstorage.GetUserID(ctx, config.DB, user.Email) 
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
+	dbUser, err = userstorage.GetUserData(ctx, config.DB, dbUser.ID)
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
 		return
 	}
 	tempPass := emailutils.GenerateRandomString(8)
@@ -63,7 +85,7 @@ func GenerateTempPass(rw http.ResponseWriter, r *http.Request) {
 	subject := "Temporary Login Details for MemoryPrint"
 	mailType := emailutils.MailPassTemp
 	mailData := &emailutils.MailData{
-		Username: user.Name,
+		Username: dbUser.Name,
 		Code: 	tempPass,
 	}
 
@@ -77,18 +99,14 @@ func GenerateTempPass(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleMailSendError(rw)
 		return
 	}
-
-	user.Password, err = userstorage.Hash(fmt.Sprintf("%s:password", tempPass), config.Key)
+	
+	dbUser.Password, err = userstorage.Hash(fmt.Sprintf("%s:password", tempPass), config.Key)
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
 	}
-	user.ID, err = userstorage.GetUserID(ctx, config.DB, user.Email) 
-	if err != nil {
-		handlersfunc.HandleDatabaseServerError(rw)
-		return
-	}
-	_, err = userstorage.UpdatePassword(ctx, config.DB, *user)
+	
+	_, err = userstorage.UpdatePassword(ctx, config.DB, dbUser)
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return

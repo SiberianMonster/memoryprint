@@ -4,6 +4,7 @@ import (
 	//"context"
 	"encoding/json"
 	"github.com/SiberianMonster/memoryprint/internal/config"
+    "github.com/go-playground/validator/v10"
 	"log"
 	"net/http"
     "errors"
@@ -15,6 +16,38 @@ import (
 type ErrorBody struct {
     ErrorCode    uint     `json:"error_code"`
     ErrorMessage    string     `json:"error_message"`
+}
+
+type ApiError struct {
+    Field string
+    Msg   string
+}
+
+type ValidationErrorBody struct {
+    ErrorCode    uint     `json:"error_code"`
+    ErrorMessage    string     `json:"error_message"`
+    Errors   []ApiError     `json:"errors"`
+}
+
+func msgForTag(tag string) string {
+    switch tag {
+    case "required":
+        return "required"
+    case "email":
+        return "email"
+    
+    case "oneof":
+        return "enum"
+    case "min":
+        return "length"
+    case "max":
+        return "length"
+    case "lte":
+        return "enum"
+    case "gte":
+        return "enum"
+    }
+    return ""
 }
 
 func UserIDContextReader(r *http.Request) (uint) {
@@ -235,6 +268,21 @@ func HandleRemoveBackgroundError(rw http.ResponseWriter) {
     rw.Write(jsonResp)
 }
 
+func HandleUploadImageError(rw http.ResponseWriter) {
+    rw.WriteHeader(http.StatusOK)
+    resp := make(map[string]ErrorBody)
+    var errorB ErrorBody
+    errorB.ErrorCode = 500
+    errorB.ErrorMessage = "Failed to upload image to s3 bucket"
+
+    resp["error"] = errorB
+    jsonResp, err := json.Marshal(resp)
+    if err != nil {
+        log.Printf("Error happened in JSON marshal. Err: %s", err)
+        return
+    }
+    rw.Write(jsonResp)
+}
 
 func HandleNotAllPagesPassedError(rw http.ResponseWriter) {
     rw.WriteHeader(http.StatusOK)
@@ -277,4 +325,28 @@ func HandlePromocodeError(rw http.ResponseWriter, resp map[string]string, err er
         rw.Write(jsonResp)
     }
 
+}
+
+func HandleValidationError(rw http.ResponseWriter, err error) {
+    rw.WriteHeader(http.StatusOK)
+    resp := make(map[string]ValidationErrorBody)
+    var errorB ValidationErrorBody
+    errorB.ErrorCode = 422
+    errorB.ErrorMessage = "Validation failed"
+    var ve validator.ValidationErrors
+    if errors.As(err, &ve) {
+            out := make([]ApiError, len(ve))
+            for i, fe := range ve {
+                out[i] = ApiError{fe.Field(), msgForTag(fe.Tag())}
+            }
+            errorB.Errors = out
+    }
+    
+    resp["error"] = errorB
+    jsonResp, err := json.Marshal(resp)
+    if err != nil {
+        log.Printf("Error happened in JSON marshal. Err: %s", err)
+        return
+    }
+    rw.Write(jsonResp)
 }
