@@ -41,7 +41,7 @@ func CheckUser(ctx context.Context, storeDB *pgxpool.Pool, email string) bool {
 func GetUserData(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (models.User, error) {
 
 	var dbUser models.User
-	err := storeDB.QueryRow(ctx, "SELECT username, email, tokenhash FROM users WHERE users_id = ($1);", userID).Scan(&dbUser.Name, &dbUser.Email, &dbUser.TokenHash)
+	err := storeDB.QueryRow(ctx, "SELECT users_id, username, email, tokenhash FROM users WHERE users_id = ($1);", userID).Scan(&dbUser.ID, &dbUser.Name, &dbUser.Email, &dbUser.TokenHash)
 	if err != nil {
 		log.Printf("Error happened when checking if user is in db. Err: %s", err)
 		return dbUser, err

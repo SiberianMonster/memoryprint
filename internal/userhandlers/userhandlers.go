@@ -171,6 +171,7 @@ func Login(rw http.ResponseWriter, r *http.Request) {
 	}
 	log.Println("checked user")
 	loggedUser.Email = user.Email
+	loggedUser.Password = user.Password
 	log.Println(loggedUser)
 	dbUser, err := userstorage.CheckCredentials(ctx, config.DB, loggedUser)
 

@@ -49,6 +49,7 @@ func GenerateTempPass(rw http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	// Create a new validator instance
     validate := validator.New()
+	log.Println(user)
 
     // Validate the User struct
     err = validate.Struct(user)
@@ -66,16 +67,19 @@ func GenerateTempPass(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleUnregisteredUserError(rw)
 		return
 	}
+	log.Println(user)
 	dbUser.ID, err = userstorage.GetUserID(ctx, config.DB, user.Email) 
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
 	}
+	log.Println(dbUser)
 	dbUser, err = userstorage.GetUserData(ctx, config.DB, dbUser.ID)
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
 	}
+	log.Println(dbUser)
 	tempPass := emailutils.GenerateRandomString(8)
 	log.Println(tempPass)
 
@@ -105,7 +109,7 @@ func GenerateTempPass(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
 	}
-	
+	log.Println(dbUser)
 	_, err = userstorage.UpdatePassword(ctx, config.DB, dbUser)
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
