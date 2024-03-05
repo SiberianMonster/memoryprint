@@ -42,7 +42,7 @@ type AccessTokenCustomClaims struct {
 }
 
 
-func Authenticate(u *models.User, dbUser *models.User) (bool, error) {
+func Authenticate(u models.User, dbUser *models.User) (bool, error) {
 
 	pwdHash, err := Hash(fmt.Sprintf("%s:password", u.Password), config.Key)
 	if err != nil {

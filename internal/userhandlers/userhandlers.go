@@ -132,8 +132,8 @@ func Register(rw http.ResponseWriter, r *http.Request) {
 
 func Login(rw http.ResponseWriter, r *http.Request) {
 
-	var user *models.LoginUser
-	var loggedUser *models.User
+	var user models.LoginUser
+	var loggedUser models.User
 	var tBody TokenRespBody
 
 	resp := make(map[string]TokenRespBody)
@@ -153,7 +153,7 @@ func Login(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleValidationError(rw, err)
         return
     }
-
+	log.Println("validated user")
 	if user.Email == "" && user.Password == "" {
 		handlersfunc.HandleWrongCredentialsError(rw)
 		return
@@ -169,9 +169,10 @@ func Login(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleUnregisteredUserError(rw)
 		return
 	}
-
+	log.Println("checked user")
 	loggedUser.Email = user.Email
-	dbUser, err := userstorage.CheckCredentials(ctx, config.DB, *loggedUser)
+	log.Println(loggedUser)
+	dbUser, err := userstorage.CheckCredentials(ctx, config.DB, loggedUser)
 
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
