@@ -1,3 +1,4 @@
+swagger: "2.0"
 openapi: 3.0.3
 info:
   title: Memory Print - OpenAPI 3.0
@@ -39,10 +40,14 @@ paths:
               properties:
                 name:          
                   type: string
+                  minLength: 1
+                  maxLength: 20
                 email:    
                   type: string
                 password:    
                   type: string
+                  minLength: 5
+                  maxLength: 20
         required: true
       responses:
         '200':
@@ -67,6 +72,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '422':
+          description: validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
   /auth/login:
     post:
       tags:
@@ -83,6 +94,8 @@ paths:
                   type: string
                 password:    
                   type: string
+                  minLength: 5
+                  maxLength: 20
         required: true
       responses:
         '200':
@@ -107,6 +120,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '422':
+          description: validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
   /auth/restore:
     post:
       tags:
@@ -145,6 +164,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '422':
+          description: validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
   /auth/get-user:
     get:
       tags:
@@ -167,7 +192,7 @@ paths:
         '401':
           description: Unauthorized
   /load-backgrounds:
-    post:
+    get:
       tags:
         - backgrounds
       summary: Load all backgrounds from database
@@ -178,12 +203,39 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RequestBackground'
-        required: true
+        - in: query
+          name: offset
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: limit
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: type
+          required: true
+          schema:
+            type: string
+            description: Type of object -- applicable for decorations and backgrounds 
+            enum:
+              - "VACATION"
+              - "WEDDING"
+              - "HOLIDAYS"
+              - "CHILDREN"
+              - "ANIMAL"
+              - "UNIVERSAL"
+        - in: query
+          name: is_favourite
+          required: true
+          schema:
+            type: boolean
+        - in: query
+          name: is_personal
+          required: true
+          schema:
+            type: boolean
       responses:
         '200':
           description: Successful operation
@@ -222,6 +274,12 @@ paths:
           description: Unauthorized
         '403':
           description: Need higher permission level
+        '422':
+          description: validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
   /admin/update-background/{id}:
     post:
       tags:
@@ -316,15 +374,6 @@ paths:
               properties:
                 link:    
                   type: string
-                type:    
-                  type: string
-                  enum:
-                    - "VACATION"
-                    - "WEDDING"
-                    - "HOLIDAYS"
-                    - "CHILDREN"
-                    - "ANIMAL"
-                    - "UNIVERSAL"
         required: true
       responses:
         '200':
@@ -335,6 +384,12 @@ paths:
                 $ref: '#/components/schemas/ResponseCreatedBackground'
         '401':
           description: Unauthorized
+        '422':
+          description: validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
   /delete-background/{id}:
     get:
       tags:
@@ -420,12 +475,49 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RequestDecoration'
-        required: true
+        - in: query
+          name: offset
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: limit
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: type
+          required: true
+          schema:
+            type: string
+            description: Type of object -- applicable for decorations and backgrounds 
+            enum:
+              - "VACATION"
+              - "WEDDING"
+              - "HOLIDAYS"
+              - "CHILDREN"
+              - "ANIMAL"
+              - "UNIVERSAL"
+        - in: query
+          name: category
+          required: true
+          schema:
+            type: string
+            description: Type of object -- applicable for decorations. 
+            enum:
+              - "RIBBON"
+              - "FRAME"
+              - "STICKER"
+        - in: query
+          required: true
+          name: is_favourite
+          schema:
+            type: boolean
+        - in: query
+          name: is_personal
+          required: true
+          schema:
+            type: boolean
       responses:
         '200':
           description: Successful operation
@@ -464,6 +556,12 @@ paths:
           description: Unauthorized
         '403':
           description: Need higher permission level
+        '422':
+          description: validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
   /admin/update-decoration/{id}:
     post:
       tags:
@@ -558,21 +656,6 @@ paths:
               properties:
                 link:    
                   type: string
-                type:    
-                  type: string
-                  enum:
-                    - "VACATION"
-                    - "WEDDING"
-                    - "HOLIDAYS"
-                    - "CHILDREN"
-                    - "ANIMAL"
-                    - "UNIVERSAL"
-                category:    
-                  type: string
-                  enum:
-                    - "FRAME"
-                    - "RIBBON"
-                    - "STICKER"
         required: true
       responses:
         '200':
@@ -583,6 +666,12 @@ paths:
                 $ref: '#/components/schemas/ResponseCreatedDecoration'
         '401':
           description: Unauthorized
+        '422':
+          description: validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
   /delete-decoration/{id}:
     get:
       tags:
@@ -657,7 +746,7 @@ paths:
         '401':
           description: Unauthorized
   /load-layouts:
-    post:
+    get:
       tags:
         - layouts
       summary: Load all layouts from database
@@ -668,12 +757,26 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RequestLayout'
-        required: true
+        - in: query
+          name: offset
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: limit
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: count_images
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: is_favourite
+          required: true
+          schema:
+            type: boolean
       responses:
         '200':
           description: Successful operation
@@ -712,8 +815,14 @@ paths:
           description: Unauthorized
         '403':
           description: Need higher permission level
+        '422':
+          description: validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
   /admin/delete-layout/{id}:
-    get:
+    post:
       tags:
         - layouts
       summary: Delete existing layout
@@ -865,6 +974,12 @@ paths:
                 $ref: '#/components/schemas/ResponseCreatedProject'
         '401':
           description: Unauthorized
+        '422':
+          description: validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
   /save-project-pages/{id}:
     post:
       tags:
@@ -1099,6 +1214,10 @@ paths:
                   - "CHILDREN"
                   - "ANIMAL"
                   - "UNIVERSAL"
+                name:    
+                  type: string 
+                  minLength: 2
+                  maxLength: 40
         required: true
       responses:
         '200':
@@ -1111,6 +1230,12 @@ paths:
           description: Unauthorized
         '403':
           description: Need higher permission level
+        '422':
+          description: validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
   /admin/save-template-pages/{id}:
     post:
       tags:
@@ -1340,7 +1465,7 @@ paths:
         '403':
           description: Need higher permission level
   /load-photos:
-    post:
+    get:
       tags:
         - photos
       summary: Load user photos
@@ -1351,12 +1476,17 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RequestPhotos'
-        required: true
+        - in: query
+          name: offset
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: limit
+          required: true
+          schema:
+            type: integer
+     
       responses:
         '200':
           description: Successful operation
@@ -1393,8 +1523,14 @@ paths:
                 $ref: '#/components/schemas/ResponseUploadedPhoto'
         '401':
           description: Unauthorized
+        '422':
+          description: validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
   /delete-photo/{id}:
-    get:
+    post:
       tags:
         - photos
       summary: Delete user photo
@@ -1480,6 +1616,28 @@ components:
       required:
         - code
         - message
+    ValidationError:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/SingleError'
+      required:
+        - code
+        - message
+        - data
+    SingleError:
+      type: object
+      properties:
+        field:
+          type: string
+        msg:
+          type: string
     IsAdmin:
       type: object
       properties:
@@ -1490,40 +1648,6 @@ components:
       properties:
         user:
           $ref: '#/components/schemas/IsAdmin'
-    PersonalisedObject:
-      type: object
-      properties:
-        object_id:
-          type: integer
-          description: ID of object -- can be decorations and backgrounds uploaded or liked by the user
-          format: int
-          example: 10
-        link:
-          type: string
-          description: timeweb s3 storage link for the object
-        type:
-          type: string
-          description: Type of object -- applicable for decorations and backgrounds 
-          enum:
-            - "VACATION"
-            - "WEDDING"
-            - "HOLIDAYS"
-            - "CHILDREN"
-            - "ANIMAL"
-            - "UNIVERSAL"
-        category:
-          type: string
-          description: Type of object -- applicable for decorations. 
-          enum:
-            - "RIBBON"
-            - "FRAME"
-            - "STICKER"
-        is_favourite:
-          type: boolean
-          description: Boolean for liked objects
-        is_personal:
-          type: boolean
-          description: Boolean for personal uploaded objects
     Photo:
       required:
           - link
@@ -1541,6 +1665,7 @@ components:
           - link
           - count_images
           - data
+          - size
       type: object
       properties:
         layout_id:
@@ -1554,9 +1679,20 @@ components:
           type: integer
           format: int
           description: Number of photos in layout
+          minimum: 1
+          maximum: 6
+        size:
+          type: string
+          enum:
+            - "SMALL_SQUARE"
+            - "SQUARE"
+            - "VERTICAL"
+            - "HORIZONTAL"
         data:
           type: object
           description: Json data generated by FabricJS
+        is_favourite:
+          type: boolean
     Decoration:
       required:
           - link
@@ -1723,6 +1859,9 @@ components:
           enum:
             - "GLOSS"
             - "MATTE"
+        template_id:
+          type: integer
+          description: template used as the base for the new project
     Page:
       required:
           - page_id
@@ -1797,95 +1936,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Page'
-    RequestBackground:
-      required:
-          - offset
-          - limit
-          - type
-      type: object
-      properties:
-        offset:
-          type: integer
-          format: int
-          example: 10
-        limit:
-          type: integer
-          format: int
-          example: 10
-        type:
-          type: string
-          description: Type of object -- applicable for decorations and backgrounds 
-          enum:
-            - "VACATION"
-            - "WEDDING"
-            - "HOLIDAYS"
-            - "CHILDREN"
-            - "ANIMAL"
-            - "UNIVERSAL"
-    RequestDecoration:
-      required:
-          - offset
-          - limit
-          - type
-          - category
-      type: object
-      properties:
-        offset:
-          type: integer
-          format: int
-          example: 10
-        limit:
-          type: integer
-          format: int
-          example: 10
-        type:
-          type: string
-          description: Type of object -- applicable for decorations and backgrounds 
-          enum:
-            - "VACATION"
-            - "WEDDING"
-            - "HOLIDAYS"
-            - "CHILDREN"
-            - "ANIMAL"
-            - "UNIVERSAL"
-        category:
-          type: string
-          description: Type of object -- applicable for decorations. 
-          enum:
-            - "RIBBON"
-            - "FRAME"
-            - "STICKER"
-    RequestLayout:
-      required:
-          - offset
-          - limit
-          - count_images
-      type: object
-      properties:
-        offset:
-          type: integer
-          format: int
-          example: 10
-        limit:
-          type: integer
-          format: int
-          example: 10
-        count_images:
-          type: integer
-    RequestPhotos:
-      required:
-          - offset
-          - limit
-      type: object
-      properties:
-        offset:
-          type: integer
-          format: int
-          example: 10
-        limit:
-          type: integer
-          format: int
-          example: 10
     RequestSavePages:
       required:
           - pages
@@ -2031,12 +2081,15 @@ components:
     ResponsePhotos:
       required:
           - photos
+          - count_all
       type: object
       properties:
         photos:
           type: array
           items:
             $ref: '#/components/schemas/Photo'
+        count_all:
+          type: integer
     ResponseUploadedPhoto:
       required:
           - photo_id
@@ -2069,6 +2122,7 @@ components:
       required:
           - layouts
           - count_all
+          - count_favourite
       type: object
       properties:
         layouts:
@@ -2081,6 +2135,7 @@ components:
       required:
           - decorations
           - count_all
+          - count_favourite
       type: object
       properties:
         decorations:
@@ -2088,6 +2143,10 @@ components:
           items:
             $ref: '#/components/schemas/Decoration'
         count_all:
+          type: integer
+        count_favourite:
+          type: integer
+        count_personal:
           type: integer
     ResponseBackground:
       required:
@@ -2100,6 +2159,10 @@ components:
           items:
             $ref: '#/components/schemas/Background'
         count_all:
+          type: integer
+        count_favourite:
+          type: integer
+        count_personal:
           type: integer
     ImageRespBody:
       required:

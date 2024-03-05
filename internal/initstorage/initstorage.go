@@ -142,7 +142,7 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 
 	// layout table
 	_, err = db.Exec(ctx,
-		"CREATE TABLE IF NOT EXISTS layouts (layouts_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, count_images int NOT NULL, size varchar NOT NULL, data text NOT NULL)")
+		"CREATE TABLE IF NOT EXISTS layouts (layouts_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, count_images int NOT NULL, link varchar NOT NULL, size varchar NOT NULL, data text NOT NULL)")
 	if err != nil {
 			log.Printf("Error happened when creating layout table. Err: %s", err)
 			return nil, false
@@ -176,18 +176,6 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 			return nil, false
 	
 	}
-	//_, err = db.Exec(ctx, "ALTER TABLE templates ADD COLUMN size varchar NOT NULL;")
-	//if err != nil {
-	//		log.Printf("Error happened when creating layout table. Err: %s", err)
-	//		return nil, false
-	//
-	//}
-	//_, err = db.Exec(ctx, "ALTER TABLE layouts ADD COLUMN size varchar;")
-	//if err != nil {
-	//		log.Printf("Error happened when creating layout table. Err: %s", err)
-	//		return nil, false
-	//
-	//}
 
 	// photoalbums table
 	_, err = db.Exec(ctx,
