@@ -192,7 +192,7 @@ func HandleMailSendError(rw http.ResponseWriter) {
     rw.WriteHeader(http.StatusOK)
     resp := make(map[string]ErrorBody)
     var errorB ErrorBody
-    errorB.ErrorCode = 500
+    errorB.ErrorCode = 424
     errorB.ErrorMessage = "unable to send email"
 
     resp["error"] = errorB

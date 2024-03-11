@@ -15,6 +15,7 @@ import (
 	"strings"
 	"strconv"
 	"io/ioutil"
+	"errors"
 
 	"crypto/md5"
 	"time"
@@ -105,8 +106,6 @@ func saveImage(imgByte []byte, filename string) (string, error) {
 
 func bucketUpload(img []byte, filename string, timewebToken string) error {
 
-	var retries  int 
-	retries = 3
 	filename, err = saveImage(img, filename)
 	if err != nil {
 		log.Printf("Failed to save file content %s", err)
@@ -141,21 +140,19 @@ func bucketUpload(img []byte, filename string, timewebToken string) error {
 	}
 	req.Header.Set("Authorization", "Bearer " + timewebToken)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
-	for retries > 0 {
-		resp, err := client.Do(req)
-		if err != nil {
+	resp, err := client.Do(req)
+	if err != nil {
 			log.Printf("Failed to make a request to bucket %s", err)
 			return err
-		}
-		defer resp.Body.Close()
-		if resp.StatusCode != 204 {
-            log.Println(resp.StatusCode)
-            retries -= 1
-        } else {
-			log.Println("successful upload")
-            break
-        }
 	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 204 {
+            log.Println(resp.StatusCode)
+			err = errors.New("error uploading image to bucket")
+            return err
+    } else {
+			log.Println("successful upload")
+    }
 	return nil
 	
 }
