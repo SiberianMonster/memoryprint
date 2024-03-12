@@ -317,20 +317,6 @@ func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 			log.Printf("Error happened when retrieving background from user_background table. Err: %s", err)
 			return responseBackground, err
 		}
-		var countFavouriteString string
-		err = storeDB.QueryRow(ctx, "SELECT COUNT(backgrounds_id) FROM users_has_backgrounds WHERE is_favourite = ($1) AND users_id=($2);", true, userID).Scan(&countFavouriteString)
-			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-				log.Printf("Error happened when counting backgrounds. Err: %s", err)
-				return responseBackground, err
-			}
-		responseBackground.CountFavourite, _ = strconv.Atoi(countFavouriteString)
-		var countPersonalString string
-		err = storeDB.QueryRow(ctx, "SELECT COUNT(backgrounds_id) FROM users_has_backgrounds WHERE is_personal = ($1) AND users_id=($2);", true, userID).Scan(&countPersonalString)
-			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-				log.Printf("Error happened when counting backgrounds. Err: %s", err)
-				return responseBackground, err
-			}
-		responseBackground.CountPersonal, _ = strconv.Atoi(countPersonalString)
 
 		if ispersonal == true {
 			if background.IsPersonal == true {
@@ -342,7 +328,9 @@ func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 					responseBackground.Backgrounds = append(responseBackground.Backgrounds, background)
 				}
 			} else {
-				responseBackground.Backgrounds = append(responseBackground.Backgrounds, background)
+				if background.IsPersonal == false && background.Type != "" {
+					responseBackground.Backgrounds = append(responseBackground.Backgrounds, background)
+				}
 			}
 		}
 	}
@@ -353,12 +341,34 @@ func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 	}
 
 	var countAllString string
-	err = storeDB.QueryRow(ctx, "SELECT COUNT(backgrounds_id) FROM backgrounds;").Scan(&countAllString)
+	err = storeDB.QueryRow(ctx, "SELECT COUNT(backgrounds_id) FROM backgrounds WHERE category <> '';").Scan(&countAllString)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			log.Printf("Error happened when counting backgrounds. Err: %s", err)
 			return responseBackground, err
 		}
-	responseBackground.CountAll, _ = strconv.Atoi(countAllString)
+		responseBackground.CountAll, _ = strconv.Atoi(countAllString)
+	if btype != "" {
+		err = storeDB.QueryRow(ctx, "SELECT COUNT(backgrounds_id) FROM backgrounds WHERE category = ($1);", btype).Scan(&countAllString)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			log.Printf("Error happened when counting backgrounds. Err: %s", err)
+			return responseBackground, err
+		}
+		responseBackground.CountAll, _ = strconv.Atoi(countAllString)
+	} 
+	var countFavouriteString string
+	err = storeDB.QueryRow(ctx, "SELECT COUNT(backgrounds_id) FROM users_has_backgrounds WHERE is_favourite = ($1) AND users_id=($2);", true, userID).Scan(&countFavouriteString)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				log.Printf("Error happened when counting backgrounds. Err: %s", err)
+				return responseBackground, err
+	}
+	responseBackground.CountFavourite, _ = strconv.Atoi(countFavouriteString)
+	var countPersonalString string
+	err = storeDB.QueryRow(ctx, "SELECT COUNT(backgrounds_id) FROM users_has_backgrounds WHERE is_personal = ($1) AND users_id=($2);", true, userID).Scan(&countPersonalString)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				log.Printf("Error happened when counting backgrounds. Err: %s", err)
+				return responseBackground, err
+	}
+	responseBackground.CountPersonal, _ = strconv.Atoi(countPersonalString)
 
 	return responseBackground, nil
 
@@ -462,7 +472,6 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 
 	var responseDecoration models.ResponseDecoration
 	responseDecoration.Decorations = []models.Decoration{}
-	var countFavourite int
 	rows, err := storeDB.Query(ctx, "SELECT decorations_id, link, type, category FROM decorations ORDER BY decorations_id LIMIT ($1) OFFSET ($2);", limit, offset)
 		if err != nil {
 			log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
@@ -490,21 +499,6 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 			log.Printf("Error happened when retrieving decorations from user_decorations table. Err: %s", err)
 			return responseDecoration, err
 		}
-		
-		var countFavouriteString string
-		err = storeDB.QueryRow(ctx, "SELECT COUNT(decorations_id) FROM users_has_decoration WHERE is_favourite = ($1) AND users_id=($2);", true, userID).Scan(&countFavouriteString)
-			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-				log.Printf("Error happened when counting backgrounds. Err: %s", err)
-				return responseDecoration, err
-			}
-		responseDecoration.CountFavourite, _ = strconv.Atoi(countFavouriteString)
-		var countPersonalString string
-		err = storeDB.QueryRow(ctx, "SELECT COUNT(decorations_id) FROM users_has_decoration WHERE is_personal = ($1) AND users_id=($2);", true, userID).Scan(&countPersonalString)
-			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-				log.Printf("Error happened when counting backgrounds. Err: %s", err)
-				return responseDecoration, err
-			}
-		responseDecoration.CountPersonal, _ = strconv.Atoi(countPersonalString)
 
 		if ispersonal == true {
 			if decoration.IsPersonal == true {
@@ -516,7 +510,9 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 					responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
 				}
 			} else {
-				responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
+				if decoration.IsPersonal == false && decoration.Category != "" {
+					responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
+				}
 			}
 		}
 	
@@ -528,13 +524,35 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 	}
 
 	var countAllString string
-	err = storeDB.QueryRow(ctx, "SELECT COUNT(decorations_id) FROM decorations;").Scan(&countAllString)
+	err = storeDB.QueryRow(ctx, "SELECT COUNT(decorations_id) FROM decorations WHERE category <> '';").Scan(&countAllString)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			log.Printf("Error happened when counting decorations. Err: %s", err)
 			return responseDecoration, err
 		}
 	responseDecoration.CountAll, _ = strconv.Atoi(countAllString)
-	responseDecoration.CountFavourite = countFavourite
+	if dtype != "" && dcategory != "" {
+		err = storeDB.QueryRow(ctx, "SELECT COUNT(decorations_id) FROM decorations WHERE type = ($1) and category = ($2);", dcategory, dtype).Scan(&countAllString)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			log.Printf("Error happened when counting decorations. Err: %s", err)
+			return responseDecoration, err
+		}
+		responseDecoration.CountAll, _ = strconv.Atoi(countAllString)
+	} 
+	
+	var countFavouriteString string
+	err = storeDB.QueryRow(ctx, "SELECT COUNT(decorations_id) FROM users_has_decoration WHERE is_favourite = ($1) AND users_id=($2);", true, userID).Scan(&countFavouriteString)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				log.Printf("Error happened when counting backgrounds. Err: %s", err)
+				return responseDecoration, err
+	}
+	responseDecoration.CountFavourite, _ = strconv.Atoi(countFavouriteString)
+	var countPersonalString string
+	err = storeDB.QueryRow(ctx, "SELECT COUNT(decorations_id) FROM users_has_decoration WHERE is_personal = ($1) AND users_id=($2);", true, userID).Scan(&countPersonalString)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				log.Printf("Error happened when counting backgrounds. Err: %s", err)
+				return responseDecoration, err
+	}
+	responseDecoration.CountPersonal, _ = strconv.Atoi(countPersonalString)
 	
 	return responseDecoration, nil
 
