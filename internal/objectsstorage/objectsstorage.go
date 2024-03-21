@@ -623,7 +623,7 @@ func LoadLayouts(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset
 	var responseLayout models.ResponseLayout
 	responseLayout.Layouts = []models.Layout{}
 	countFavourite := 0
-	rows, err := storeDB.Query(ctx, "SELECT layouts_id, count_images, link, data FROM layouts ORDER BY layouts_id LIMIT ($1) OFFSET ($2);", limit, offset)
+	rows, err := storeDB.Query(ctx, "SELECT layouts_id, link, data, count_images FROM layouts ORDER BY layouts_id LIMIT ($1) OFFSET ($2);", limit, offset)
 		if err != nil {
 			log.Printf("Error happened when retrieving layouts from pgx table. Err: %s", err)
 			return responseLayout, err
@@ -631,7 +631,7 @@ func LoadLayouts(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset
 	defer rows.Close()
 
 	if size != "" {
-		rows, err := storeDB.Query(ctx, "SELECT layouts_id, count_images, link, data FROM layouts WHERE size = ($1) ORDER BY layouts_id LIMIT ($2) OFFSET ($3);", size, limit, offset)
+		rows, err := storeDB.Query(ctx, "SELECT layouts_id, link, data, count_images FROM layouts WHERE size = ($1) ORDER BY layouts_id LIMIT ($2) OFFSET ($3);", size, limit, offset)
 		if err != nil {
 			log.Printf("Error happened when retrieving layouts from pgx table. Err: %s", err)
 			return responseLayout, err
