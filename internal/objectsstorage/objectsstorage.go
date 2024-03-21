@@ -653,22 +653,24 @@ func LoadLayouts(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset
 		} else {
 			layout.Data = nil
 		}
-		if countimages != 0 && countimages == countImages{
-			err := storeDB.QueryRow(ctx, "SELECT is_favourite FROM users_has_layouts WHERE layouts_id = ($1) AND users_id=($2);", layout.LayoutID, userID).Scan(&layout.IsFavourite)
-			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-				log.Printf("Error happened when retrieving layouts from user_layouts table. Err: %s", err)
-				return responseLayout, err
-			}
-			if isfavourite == true {
-				if layout.IsFavourite == true {
+		if countimages != 0 {
+			if countimages == countImages{
+				err := storeDB.QueryRow(ctx, "SELECT is_favourite FROM users_has_layouts WHERE layouts_id = ($1) AND users_id=($2);", layout.LayoutID, userID).Scan(&layout.IsFavourite)
+				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+					log.Printf("Error happened when retrieving layouts from user_layouts table. Err: %s", err)
+					return responseLayout, err
+				}
+				if isfavourite == true {
+					if layout.IsFavourite == true {
+						responseLayout.Layouts = append(responseLayout.Layouts, layout)
+						countFavourite = countFavourite + 1
+					}
+				} else {
+					if layout.IsFavourite == true {
+						countFavourite = countFavourite + 1
+					}
 					responseLayout.Layouts = append(responseLayout.Layouts, layout)
-					countFavourite = countFavourite + 1
 				}
-			} else {
-				if layout.IsFavourite == true {
-					countFavourite = countFavourite + 1
-				}
-				responseLayout.Layouts = append(responseLayout.Layouts, layout)
 			}
 		} else {
 			err := storeDB.QueryRow(ctx, "SELECT is_favourite FROM users_has_layouts WHERE layouts_id = ($1) AND users_id=($2);", layout.LayoutID, userID).Scan(&layout.IsFavourite)
