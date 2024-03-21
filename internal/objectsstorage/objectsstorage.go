@@ -618,47 +618,75 @@ func FavourDecoration(ctx context.Context, storeDB *pgxpool.Pool, newDecor model
 }
 
 // LoadLayouts function performs the operation of retrieving all layouts from the db for project editing.
-func LoadLayouts(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset uint, limit uint, countimages uint, isfavourite bool) (models.ResponseLayout, error) {
+func LoadLayouts(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset uint, limit uint, size string, countimages uint, isfavourite bool) (models.ResponseLayout, error) {
 
 	var responseLayout models.ResponseLayout
 	responseLayout.Layouts = []models.Layout{}
 	countFavourite := 0
-
-	rows, err := storeDB.Query(ctx, "SELECT layouts_id, link, data FROM layouts WHERE count_images = ($1) ORDER BY layouts_id LIMIT ($2) OFFSET ($3);", countimages, limit, offset)
-	if err != nil {
-		log.Printf("Error happened when retrieving layouts from pgx table. Err: %s", err)
-		return responseLayout, err
-	}
+	rows, err := storeDB.Query(ctx, "SELECT layouts_id, count_images, link, data FROM layouts ORDER BY layouts_id LIMIT ($1) OFFSET ($2);", limit, offset)
+		if err != nil {
+			log.Printf("Error happened when retrieving layouts from pgx table. Err: %s", err)
+			return responseLayout, err
+		}
 	defer rows.Close()
+
+	if size != "" {
+		rows, err := storeDB.Query(ctx, "SELECT layouts_id, count_images, link, data FROM layouts WHERE size = ($1) ORDER BY layouts_id LIMIT ($2) OFFSET ($3);", size, limit, offset)
+		if err != nil {
+			log.Printf("Error happened when retrieving layouts from pgx table. Err: %s", err)
+			return responseLayout, err
+		}
+		defer rows.Close()
+	} 
 
 	for rows.Next() {
 		var layout models.Layout
 		var strdata *string
-		if err = rows.Scan(&layout.LayoutID, &layout.Link, &strdata); err != nil {
+		var countImages uint
+		if err = rows.Scan(&layout.LayoutID, &layout.Link, &strdata, &countImages); err != nil {
 			log.Printf("Error happened when scanning layouts. Err: %s", err)
 			return responseLayout, err
 		}
-		layout.CountImages = countimages
+		layout.CountImages = countImages
 		if strdata != nil{
 			layout.Data = json.RawMessage(*strdata)
 		} else {
 			layout.Data = nil
 		}
-		err := storeDB.QueryRow(ctx, "SELECT is_favourite FROM users_has_layouts WHERE layouts_id = ($1) AND users_id=($2);", layout.LayoutID, userID).Scan(&layout.IsFavourite)
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			log.Printf("Error happened when retrieving layouts from user_layouts table. Err: %s", err)
-			return responseLayout, err
-		}
-		if isfavourite == true {
-			if layout.IsFavourite == true {
+		if countimages != 0 && countimages == countImages{
+			err := storeDB.QueryRow(ctx, "SELECT is_favourite FROM users_has_layouts WHERE layouts_id = ($1) AND users_id=($2);", layout.LayoutID, userID).Scan(&layout.IsFavourite)
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				log.Printf("Error happened when retrieving layouts from user_layouts table. Err: %s", err)
+				return responseLayout, err
+			}
+			if isfavourite == true {
+				if layout.IsFavourite == true {
+					responseLayout.Layouts = append(responseLayout.Layouts, layout)
+					countFavourite = countFavourite + 1
+				}
+			} else {
+				if layout.IsFavourite == true {
+					countFavourite = countFavourite + 1
+				}
 				responseLayout.Layouts = append(responseLayout.Layouts, layout)
-				countFavourite = countFavourite + 1
 			}
 		} else {
-			if layout.IsFavourite == true {
-				countFavourite = countFavourite + 1
+			err := storeDB.QueryRow(ctx, "SELECT is_favourite FROM users_has_layouts WHERE layouts_id = ($1) AND users_id=($2);", layout.LayoutID, userID).Scan(&layout.IsFavourite)
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				log.Printf("Error happened when retrieving layouts from user_layouts table. Err: %s", err)
+				return responseLayout, err
 			}
-			responseLayout.Layouts = append(responseLayout.Layouts, layout)
+			if isfavourite == true {
+				if layout.IsFavourite == true {
+					responseLayout.Layouts = append(responseLayout.Layouts, layout)
+					countFavourite = countFavourite + 1
+				}
+			} else {
+				if layout.IsFavourite == true {
+					countFavourite = countFavourite + 1
+				}
+				responseLayout.Layouts = append(responseLayout.Layouts, layout)
+			}
 		}
 		
 	}
@@ -668,11 +696,35 @@ func LoadLayouts(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset
 		return responseLayout, err
 	}
 	var countAllString string
-	err = storeDB.QueryRow(ctx, "SELECT COUNT(layouts_id) FROM layouts WHERE count_images = ($1);", countimages).Scan(&countAllString)
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			log.Printf("Error happened when counting layouts. Err: %s", err)
-			return responseLayout, err
+	if countimages != 0 {
+		if size != "" {
+			err = storeDB.QueryRow(ctx, "SELECT COUNT(layouts_id) FROM layouts WHERE count_images = ($1) AND size =($2);", countimages, size).Scan(&countAllString)
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				log.Printf("Error happened when counting layouts. Err: %s", err)
+				return responseLayout, err
+			}
+		} else {
+			err = storeDB.QueryRow(ctx, "SELECT COUNT(layouts_id) FROM layouts WHERE count_images = ($1);", countimages).Scan(&countAllString)
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				log.Printf("Error happened when counting layouts. Err: %s", err)
+				return responseLayout, err
+			}
 		}
+	} else {
+		if size != "" {
+			err = storeDB.QueryRow(ctx, "SELECT COUNT(layouts_id) FROM layouts WHERE size =($1);", size).Scan(&countAllString)
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				log.Printf("Error happened when counting layouts. Err: %s", err)
+				return responseLayout, err
+			}
+		} else {
+			err = storeDB.QueryRow(ctx, "SELECT COUNT(layouts_id) FROM layouts;").Scan(&countAllString)
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				log.Printf("Error happened when counting layouts. Err: %s", err)
+				return responseLayout, err
+			}
+		}
+	}
 	responseLayout.CountAll, _ = strconv.Atoi(countAllString)
 	responseLayout.CountFavourite = countFavourite
 

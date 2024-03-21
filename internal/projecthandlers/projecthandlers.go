@@ -809,6 +809,7 @@ func LoadLayouts(rw http.ResponseWriter, r *http.Request) {
 	requestL.Offset = uint(rOffset)
 	requestL.Limit = uint(rLimit)
 	requestL.CountImages = uint(rCountImages)
+	requestL.Size = strings.ToUpper(r.URL.Query().Get("size"))
 	requestL.IsFavourite, _ = strconv.ParseBool(r.URL.Query().Get("is_favourite"))
 
 	defer r.Body.Close()
@@ -819,7 +820,7 @@ func LoadLayouts(rw http.ResponseWriter, r *http.Request) {
 	
 	
 	
-	layoutSet, err := objectsstorage.LoadLayouts(ctx, config.DB, userID, requestL.Offset, requestL.Limit, requestL.CountImages, requestL.IsFavourite)
+	layoutSet, err := objectsstorage.LoadLayouts(ctx, config.DB, userID, requestL.Offset, requestL.Limit, requestL.Size, requestL.CountImages, requestL.IsFavourite)
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
