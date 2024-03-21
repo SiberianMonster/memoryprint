@@ -258,6 +258,34 @@ func LoadProject(rw http.ResponseWriter, r *http.Request) {
 	rw.Write(jsonResp)
 }
 
+func LoadTemplate(rw http.ResponseWriter, r *http.Request) {
+
+	resp := make(map[string]models.SavedTemplateObj)
+	var retrievedProject models.SavedTemplateObj
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	defer cancel()
+	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
+	projectID := uint(aByteToInt)
+	defer r.Body.Close()
+
+	userID := handlersfunc.UserIDContextReader(r)
+	log.Printf("Load template %d for user %d",projectID, userID)
+
+	retrievedProject, err = projectstorage.LoadTemplate(ctx, config.DB, projectID)
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
+	rw.WriteHeader(http.StatusOK)
+	resp["response"] = retrievedProject
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("Error happened in JSON marshal. Err: %s", err)
+		return
+	}
+	rw.Write(jsonResp)
+}
+
 
 
 func CreateDecor(rw http.ResponseWriter, r *http.Request) {
@@ -930,11 +958,6 @@ func LoadProjects(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(projects) == 0 {
-		handlersfunc.HandleNoContent(rw)
-		return
-	}
-
 	rw.WriteHeader(http.StatusOK)
 	resp["response"] = projects
 	jsonResp, err := json.Marshal(resp)
@@ -1279,19 +1302,25 @@ func ReorderTemplatePages(rw http.ResponseWriter, r *http.Request) {
 
 func LoadTemplates(rw http.ResponseWriter, r *http.Request) {
 
-	resp := make(map[string][]models.ResponseTemplate)
+	resp := make(map[string]models.ResponseTemplates)
+	
+	var requestT models.RequestTemplate
+
+	tOffset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+	tLimit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+
+	requestT.Offset = uint(tOffset)
+	requestT.Limit = uint(tLimit)
+	requestT.Category = strings.ToUpper(r.URL.Query().Get("category"))
+
 	defer r.Body.Close()
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
-	templates, err := projectstorage.RetrieveTemplates(ctx, config.DB)
+
+	templates, err := projectstorage.RetrieveTemplates(ctx, config.DB, requestT.Offset, requestT.Limit, requestT.Category)
 
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
-		return
-	}
-
-	if len(templates) == 0 {
-		handlersfunc.HandleNoContent(rw)
 		return
 	}
 

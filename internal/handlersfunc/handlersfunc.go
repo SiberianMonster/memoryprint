@@ -18,15 +18,10 @@ type ErrorBody struct {
     ErrorMessage    string     `json:"error_message"`
 }
 
-type ApiError struct {
-    Field string
-    Msg   string
-}
-
 type ValidationErrorBody struct {
     ErrorCode    uint     `json:"error_code"`
     ErrorMessage    string     `json:"error_message"`
-    Errors   []ApiError     `json:"errors"`
+    Errors   map[string][]string     `json:"data"`
 }
 
 func msgForTag(tag string) string {
@@ -335,9 +330,9 @@ func HandleValidationError(rw http.ResponseWriter, err error) {
     errorB.ErrorMessage = "Validation failed"
     var ve validator.ValidationErrors
     if errors.As(err, &ve) {
-            out := make([]ApiError, len(ve))
-            for i, fe := range ve {
-                out[i] = ApiError{fe.Field(), msgForTag(fe.Tag())}
+            out := make(map[string][]string, len(ve))
+            for _, fe := range ve {
+                out[strings.ToLower(fe.Field())] = []string{msgForTag(fe.Tag())}
             }
             errorB.Errors = out
     }

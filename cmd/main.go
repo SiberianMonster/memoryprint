@@ -159,6 +159,7 @@ func main() {
 	authRouter.HandleFunc("/api/v1/save-project-pages/{id}", projecthandlers.SavePage).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/load-projects", projecthandlers.LoadProjects).Methods("GET","OPTIONS")
 	authRouter.HandleFunc("/api/v1/load-project/{id}", projecthandlers.LoadProject).Methods("GET","OPTIONS")
+	authRouter.HandleFunc("/api/v1/load-template/{id}", projecthandlers.LoadTemplate).Methods("GET","OPTIONS")
 	authRouter.HandleFunc("/api/v1/add-pages/{id}", projecthandlers.AddProjectPages).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/delete-pages/{id}", projecthandlers.DeletePages).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/reorder-pages/{id}", projecthandlers.ReorderPages).Methods("POST","OPTIONS")

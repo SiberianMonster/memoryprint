@@ -117,7 +117,7 @@ type Layout struct {
 	LayoutID uint `json:"layout_id"`
 	// Yandex Disk Link 
 	// in: string
-	CountImages    uint `json:"count_images" validate:"gte=11,lte=6"`
+	CountImages    uint `json:"count_images" validate:"gte=1,lte=6"`
 	Size    string `json:"size" validate:"required,oneof=SMALL_SQUARE SQUARE VERTICAL HORIZONTAL"`
 	Link    string `json:"link" validate:"required"`
 	Data        json.RawMessage      `json:"data" validate:"required"`
@@ -148,8 +148,8 @@ type ProjectObj struct {
 	Name string `json:"name"`
 	Size string `json:"size"`
 	Variant string `json:"variant"`
-	LastEditedAt string `json:"last_edited_at"`
-	CreatedAt string `json:"created_at"`
+	LastEditedAt int64`json:"updated_at"`
+	CreatedAt int64 `json:"created_at"`
   }
 
 // swagger:model Page
@@ -165,10 +165,26 @@ type Page struct {
 	
   }
 
-// swagger:model SavedProjectObj
-type SavedProjectObj struct {
-	Project    ProjectObj     `json:"project"`
-	Pages []Page `json:"pages"`
+
+// swagger:model TemplatePage
+type TemplatePage struct {
+	// PageID of the project page. The model is used to save changes made on the page
+	// in: int
+	PageID uint `json:"page_id"`
+	Type string `json:"type"`
+	Sort uint `json:"sort"`
+	CreatingImageLink *string `json:"creating_image_link"`
+	
+  }
+
+
+// swagger:model SavedTemplateObj
+type SavedTemplateObj struct {
+	Name string `json:"name"`
+	Size string `json:"size"`
+	LastEditedAt int64 `json:"updated_at"`
+	CreatedAt int64 `json:"created_at"`
+	Pages []TemplatePage `json:"pages"`
   }
 
 
@@ -179,7 +195,7 @@ type ResponseProject struct {
 	PreviewImageLink *string `json:"preview_image_link"`
 	Size string `json:"size"`
 	Variant string `json:"variant"`
-	LastEditedAt string `json:"last_edited_at"`
+	LastEditedAt int64 `json:"updated_at"`
   }
 
 type NewBlankProjectObj struct {
@@ -226,9 +242,16 @@ type RequestDecoration struct {
 	IsPersonal bool `json:"is_personal"`
   }
 
+type RequestTemplate struct {
+	Offset    uint     `json:"offset"`
+	Limit    uint     `json:"limit"`
+	Category string `json:"category"`
+  }
+
 type RequestLayout struct {
 	Offset    uint     `json:"offset"`
 	Limit    uint     `json:"limit"`
+	Size    string     `json:"size"`
 	CountImages uint `json:"count_images"`
 	IsFavourite bool `json:"is_favourite"`
   }
@@ -272,14 +295,30 @@ type RequestReorderPage struct {
 
   }
 
-type ResponseTemplate struct {
+type ResponseTemplates struct {
+
+	Templates []Template `json:"templates"`
+	CountAll    int `json:"count_all"`
+	
+}
+
+// swagger:model SavedProjectObj
+type SavedProjectObj struct {
+	Project    ProjectObj     `json:"project"`
+	Pages []Page `json:"pages"`
+  }
+
+type Template struct {
 	TemplateID    uint     `json:"template_id"`
 	Name string `json:"name"`
 	Size string `json:"size"`
-	Category string `json:"category"`
-	CreatedAt string `json:"created_at"`
-	LastEditedAt string `json:"last_edited_at"`
-	Pages []Page `json:"pages"`
+	PreviewImageLink string `json:"preview_image_link"`
+	FrontPage FrontPage `json:"front_page"`
+  }
+
+type FrontPage struct {
+	CreatingImageLink *string `json:"creating_image_link"`
+	Data        json.RawMessage      `json:"data"`
   }
 
 type NewTemplateObj struct {
