@@ -734,8 +734,12 @@ func RetrieveTemplates(ctx context.Context, storeDB *pgxpool.Pool, offset uint, 
 			log.Printf("Error happened when retrieving template pages from db. Err: %s", err)
 			return templateset, err
 		}
-		templateObj.PreviewImageLink = *frontPage.PreviewImageLink
-		templateObj.FrontPage.CreatingImageLink = frontPage.CreatingImageLink
+		if frontPage.PreviewImageLink != nil {
+			templateObj.PreviewImageLink = *frontPage.PreviewImageLink
+		}
+		if frontPage.CreatingImageLink != nil {
+			templateObj.FrontPage.CreatingImageLink = frontPage.CreatingImageLink
+		}
 		templateObj.FrontPage.Data = frontPage.Data
 		templateset.Templates = append(templateset.Templates, templateObj)
 	}
