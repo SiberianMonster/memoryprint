@@ -735,8 +735,8 @@ func RetrieveTemplates(ctx context.Context, storeDB *pgxpool.Pool, offset uint, 
 			return templateset, err
 		}
 		templateObj.PreviewImageLink = *frontPage.PreviewImageLink
-		templateObj.FrontPage.CreatingImageLink = *frontPage.CreatingImageLink
-		templateObj.FrontPage.Data = *frontPage.Data
+		templateObj.FrontPage.CreatingImageLink = frontPage.CreatingImageLink
+		templateObj.FrontPage.Data = frontPage.Data
 		templateset.Templates = append(templateset.Templates, templateObj)
 	}
 
