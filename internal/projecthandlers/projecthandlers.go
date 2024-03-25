@@ -447,7 +447,11 @@ func LoadBackground(rw http.ResponseWriter, r *http.Request) {
 	rLimit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	requestB.Offset = uint(rOffset)
 	requestB.Limit = uint(rLimit)
-	requestB.Type = strings.ToUpper(r.URL.Query().Get("type")) 
+	qtype := r.URL.Query().Get("type")
+
+    if qtype != "" {
+		requestB.Type = strings.ToUpper(r.URL.Query().Get("type"))
+	}
 	requestB.IsFavourite, _ = strconv.ParseBool(r.URL.Query().Get("isfavourite"))
 	requestB.IsPersonal, _ = strconv.ParseBool(r.URL.Query().Get("ispersonal"))
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
@@ -626,8 +630,17 @@ func LoadDecoration(rw http.ResponseWriter, r *http.Request) {
 
 	requestD.Offset = uint(rOffset)
 	requestD.Limit = uint(rLimit)
-	requestD.Type = strings.ToUpper(r.URL.Query().Get("type"))
-	requestD.Category = strings.ToUpper(r.URL.Query().Get("category"))
+	category := r.URL.Query().Get("category")
+
+    if category != "" {
+		requestD.Category = strings.ToUpper(r.URL.Query().Get("category"))
+	}
+	qtype := r.URL.Query().Get("type")
+
+    if qtype != "" {
+		requestD.Type = strings.ToUpper(r.URL.Query().Get("type"))
+	}
+
 	requestD.IsFavourite, _ = strconv.ParseBool(r.URL.Query().Get("isfavourite"))
 	requestD.IsPersonal, _ = strconv.ParseBool(r.URL.Query().Get("ispersonal"))
 
@@ -1312,11 +1325,16 @@ func LoadTemplates(rw http.ResponseWriter, r *http.Request) {
 
 	requestT.Offset = uint(tOffset)
 	requestT.Limit = uint(tLimit)
-	requestT.Category = strings.ToUpper(r.URL.Query().Get("category"))
+	
+	category := r.URL.Query().Get("category")
 
+    if category != "" {
+		requestT.Category = strings.ToUpper(r.URL.Query().Get("category"))
+	}
 	defer r.Body.Close()
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
+	log.Printf("Retrieving templates")
 
 	templates, err := projectstorage.RetrieveTemplates(ctx, config.DB, requestT.Offset, requestT.Limit, requestT.Category)
 

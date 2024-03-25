@@ -349,6 +349,10 @@ func LoadTemplate(ctx context.Context, storeDB *pgxpool.Pool, pID uint) (models.
 	projectObj.LastEditedAt = updateTimeStorage.Unix()
 	projectObj.CreatedAt = createTimeStorage.Unix()
 	projectObj.Pages, err = RetrieveTemplatePages(ctx, storeDB, pID)
+	if err != nil {
+		log.Printf("Error happened when retrieving template pages from pgx table. Err: %s", err)
+		return projectObj, err
+	}
 
 	return projectObj, nil
 
@@ -724,13 +728,15 @@ func RetrieveTemplates(ctx context.Context, storeDB *pgxpool.Pool, offset uint, 
 		templateObj.TemplateID = tID
 		
 		frontPage, err = RetrieveFrontPage(ctx, storeDB, tID, true) 
+		log.Printf("Retrieving templates pages")
+		log.Println(frontPage)
 		if err != nil {
 			log.Printf("Error happened when retrieving template pages from db. Err: %s", err)
 			return templateset, err
 		}
 		templateObj.PreviewImageLink = *frontPage.PreviewImageLink
-		templateObj.FrontPage.CreatingImageLink = frontPage.CreatingImageLink
-		templateObj.FrontPage.Data = frontPage.Data
+		templateObj.FrontPage.CreatingImageLink = *frontPage.CreatingImageLink
+		templateObj.FrontPage.Data = *frontPage.Data
 		templateset.Templates = append(templateset.Templates, templateObj)
 	}
 

@@ -128,7 +128,7 @@ type Background struct {
 
 	BackgroundID uint `json:"background_id"`
 	Link    string `json:"link"`
-	Type string `json:"type" validate:"required,oneof=VACATION WEDDING HOLIDAYS CHILDREN ANIMAL UNIVERSAL"`
+	Type string `json:"type" validate:"required,oneof=VACATION WEDDING HOLIDAYS CHILDREN ANIMALS UNIVERSAL"`
 	IsFavourite bool `json:"is_favourite"`
 	IsPersonal bool `json:"is_personal"`
 }
@@ -138,7 +138,7 @@ type Decoration struct {
 	DecorationID uint `json:"decoration_id"`
 	Link    string `json:"link" validate:"required"`
 	Category string `json:"category" validate:"required,oneof=RIBBON FRAME STICKER"`
-	Type string `json:"type" validate:"required,oneof=VACATION WEDDING HOLIDAYS CHILDREN ANIMAL UNIVERSAL"`
+	Type string `json:"type" validate:"required,oneof=VACATION WEDDING HOLIDAYS CHILDREN ANIMALS UNIVERSAL"`
 	IsFavourite bool `json:"is_favourite"`
 	IsPersonal bool `json:"is_personal"`
 }
@@ -323,7 +323,7 @@ type FrontPage struct {
 
 type NewTemplateObj struct {
 	Size string `json:"size" validate:"required,oneof=SMALL_SQUARE SQUARE VERTICAL HORIZONTAL"`
-	Category string `json:"category" validate:"required,oneof=VACATION WEDDING HOLIDAYS CHILDREN ANIMAL UNIVERSAL"`
+	Category string `json:"category" validate:"required,oneof=VACATION WEDDING HOLIDAYS CHILDREN ANIMALS UNIVERSAL"`
 	Name string `json:"name" validate:"required,min=2,max=40"`
 }
 

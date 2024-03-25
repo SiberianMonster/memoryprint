@@ -134,7 +134,7 @@ func main() {
 	adminRouter.HandleFunc("/api/v1/admin/add-template-pages/{id}", projecthandlers.AddTemplatePages).Methods("POST","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/delete-template-pages/{id}", projecthandlers.DeleteTemplatePages).Methods("POST","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/reorder-template-pages/{id}", projecthandlers.ReorderTemplatePages).Methods("POST","OPTIONS")
-	adminRouter.HandleFunc("/api/v1/admin/publish-template/{id}", projecthandlers.PublishTemplate).Methods("GET","OPTIONS")
+	adminRouter.HandleFunc("/api/v1/admin/publish-template/{id}", projecthandlers.PublishTemplate).Methods("POST","OPTIONS")
 
 	
 	adminRouter.HandleFunc("/api/v1/admin/create-background", projecthandlers.AdminCreateBackground).Methods("POST","OPTIONS")
