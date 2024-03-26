@@ -114,6 +114,7 @@ func main() {
 	noAuthRouter.HandleFunc("/api/v1/auth/signup", userhandlers.Register).Methods("POST","OPTIONS")
 	noAuthRouter.HandleFunc("/api/v1/auth/login", userhandlers.Login).Methods("POST","OPTIONS")
 	noAuthRouter.HandleFunc("/api/v1/load-templates", projecthandlers.LoadTemplates).Methods("GET","OPTIONS")
+	noAuthRouter.HandleFunc("/api/v1/load-template/{id}", projecthandlers.LoadTemplate).Methods("GET","OPTIONS")
 	
 	noAuthRouter.HandleFunc("/api/v1/greet", authhandlers.Greet).Methods("GET","OPTIONS")
 	noAuthRouter.HandleFunc("/api/v1/auth/restore", authhandlers.GenerateTempPass).Methods("POST","OPTIONS")
@@ -159,7 +160,6 @@ func main() {
 	authRouter.HandleFunc("/api/v1/save-project-pages/{id}", projecthandlers.SavePage).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/load-projects", projecthandlers.LoadProjects).Methods("GET","OPTIONS")
 	authRouter.HandleFunc("/api/v1/load-project/{id}", projecthandlers.LoadProject).Methods("GET","OPTIONS")
-	authRouter.HandleFunc("/api/v1/load-template/{id}", projecthandlers.LoadTemplate).Methods("GET","OPTIONS")
 	authRouter.HandleFunc("/api/v1/add-pages/{id}", projecthandlers.AddProjectPages).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/delete-pages/{id}", projecthandlers.DeletePages).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/reorder-pages/{id}", projecthandlers.ReorderPages).Methods("POST","OPTIONS")
