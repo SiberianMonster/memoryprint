@@ -146,7 +146,7 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, proj
 			return 0, err
 		}
 		for _, page := range templatePages {
-			strdata := page.Data
+			strdata := string(page.Data)
 			_, err = storeDB.Exec(ctx, "INSERT INTO pages (last_edited_at, sort, type, is_template, creating_image_link, data, projects_id) VALUES ($1, $2, $3, $4, $5, $6, $7);",
 			t,
 			page.Sort,
@@ -371,14 +371,15 @@ func RetrieveProjectPages(ctx context.Context, storeDB *pgxpool.Pool, projectID 
 
 	for rows.Next() {
 		var page models.Page
-		var strdata sql.NullString
+		var strdata *string
 		
 		if err = rows.Scan(&page.PageID, &page.Type, &page.Sort, &page.CreatingImageLink, &strdata); err != nil {
 			log.Printf("Error happened when scanning pages. Err: %s", err)
 			return nil, err
 		}
-		if strdata.Valid {
-			page.Data = json.RawMessage(strdata.String)
+
+		if strdata != nil{
+			page.Data = json.RawMessage(*strdata)
 		} else {
 			page.Data = nil
 		}
@@ -439,14 +440,14 @@ func RetrieveTemplatePages(ctx context.Context, storeDB *pgxpool.Pool, projectID
 func RetrieveFrontPage(ctx context.Context, storeDB *pgxpool.Pool, projectID uint, isTemplate bool) (models.SavePage, error) {
 
 	var page models.SavePage
-	var strData sql.NullString
+	var strData *string
 	err := storeDB.QueryRow(ctx, "SELECT creating_image_link, preview_link, data FROM pages WHERE projects_id = ($1) AND is_template = ($2) AND type = ($3);", projectID, isTemplate, "front").Scan(&page.CreatingImageLink, &page.PreviewImageLink, &strData)
 	if err != nil && err != pgx.ErrNoRows{
 		log.Printf("Error happened when retrieving pages from pgx table. Err: %s", err)
 		return page, err
 	}
-	if strData.Valid {
-		page.Data = json.RawMessage(strData.String)
+	if strData != nil{
+		page.Data = json.RawMessage(*strData)
 	} else {
 		page.Data = nil
 	}
