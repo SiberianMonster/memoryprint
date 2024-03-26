@@ -339,7 +339,7 @@ func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 	}
 
 	var countAllString string
-	err = storeDB.QueryRow(ctx, "SELECT COUNT(backgrounds_id) FROM backgrounds;").Scan(&countAllString)
+	err = storeDB.QueryRow(ctx, "SELECT COUNT(backgrounds_id) FROM backgrounds WHERE category <> '';").Scan(&countAllString)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			log.Printf("Error happened when counting backgrounds. Err: %s", err)
 			return responseBackground, err
@@ -538,7 +538,7 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 	}
 
 	var countAllString string
-	err = storeDB.QueryRow(ctx, "SELECT COUNT(decorations_id) FROM decorations;").Scan(&countAllString)
+	err = storeDB.QueryRow(ctx, "SELECT COUNT(decorations_id) FROM decorations WHERE category <> '';").Scan(&countAllString)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			log.Printf("Error happened when counting decorations. Err: %s", err)
 			return responseDecoration, err

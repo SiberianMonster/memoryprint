@@ -146,7 +146,7 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, proj
 			return 0, err
 		}
 		for _, page := range templatePages {
-			strdata := string(page.Data)
+			strdata := page.Data
 			_, err = storeDB.Exec(ctx, "INSERT INTO pages (last_edited_at, sort, type, is_template, creating_image_link, data, projects_id) VALUES ($1, $2, $3, $4, $5, $6, $7);",
 			t,
 			page.Sort,
@@ -382,7 +382,7 @@ func RetrieveProjectPages(ctx context.Context, storeDB *pgxpool.Pool, projectID 
 		} else {
 			page.Data = nil
 		}
-		
+		page.UsedPhotoIDs = []uint
 		photorows, err := storeDB.Query(ctx, "SELECT photos_id FROM page_has_photos WHERE pages_id = ($1);", page.PageID)
 		if err != nil {
 			log.Printf("Error happened when retrieving page photos from pgx table. Err: %s", err)
