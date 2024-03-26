@@ -440,7 +440,7 @@ func RetrieveFrontPage(ctx context.Context, storeDB *pgxpool.Pool, projectID uin
 
 	var page models.SavePage
 	var strData sql.NullString
-	err := storeDB.QueryRow(ctx, "SELECT creating_image_link, preview_link, data FROM pages WHERE projects_id = ($1) AND is_template = ($2);", projectID, isTemplate).Scan(&page.CreatingImageLink, &page.PreviewImageLink, &strData)
+	err := storeDB.QueryRow(ctx, "SELECT creating_image_link, preview_link, data FROM pages WHERE projects_id = ($1) AND is_template = ($2) AND type = ($3);", projectID, isTemplate, "front").Scan(&page.CreatingImageLink, &page.PreviewImageLink, &strData)
 	if err != nil && err != pgx.ErrNoRows{
 		log.Printf("Error happened when retrieving pages from pgx table. Err: %s", err)
 		return page, err
@@ -689,7 +689,7 @@ func ReorderPage(ctx context.Context, storeDB *pgxpool.Pool, pageID uint, projec
 }
 
 // RetrieveTemplates function performs the operation of retrieving templates from pgx database with a query.
-func RetrieveTemplates(ctx context.Context, storeDB *pgxpool.Pool, offset uint, limit uint, tcategory string) (models.ResponseTemplates, error) {
+func RetrieveTemplates(ctx context.Context, storeDB *pgxpool.Pool, offset uint, limit uint, tcategory string, tsize string) (models.ResponseTemplates, error) {
 
 	templateset := models.ResponseTemplates{}
 	templateset.Templates = []models.Template{}
@@ -741,7 +741,13 @@ func RetrieveTemplates(ctx context.Context, storeDB *pgxpool.Pool, offset uint, 
 			templateObj.FrontPage.CreatingImageLink = frontPage.CreatingImageLink
 		}
 		templateObj.FrontPage.Data = frontPage.Data
-		templateset.Templates = append(templateset.Templates, templateObj)
+		if tsize != "" {
+			if tsize == templateObj.Size {
+				templateset.Templates = append(templateset.Templates, templateObj)
+			}
+		} else {
+			templateset.Templates = append(templateset.Templates, templateObj)
+		}
 	}
 
 	if err = rows.Err(); err != nil {
@@ -755,13 +761,28 @@ func RetrieveTemplates(ctx context.Context, storeDB *pgxpool.Pool, offset uint, 
 			log.Printf("Error happened when counting templates in pgx table. Err: %s", err)
 			return templateset, err
 		}
-	
-
-	if tcategory != "" {
-		err = storeDB.QueryRow(ctx, "SELECT COUNT(templates_id) FROM templates WHERE status = ($1) AND category = ($2);", "PUBLISHED", tcategory).Scan(&countAllString)
+	if tsize != "" {
+		err = storeDB.QueryRow(ctx, "SELECT COUNT(templates_id) FROM templates WHERE status = ($1) AND size = ($2);", "PUBLISHED", tsize).Scan(&countAllString)
 		if err != nil && err != pgx.ErrNoRows{
 			log.Printf("Error happened when counting templates in pgx table. Err: %s", err)
 			return templateset, err
+		}
+	}
+
+	if tcategory != "" {
+		if tsize != "" {
+			err = storeDB.QueryRow(ctx, "SELECT COUNT(templates_id) FROM templates WHERE status = ($1) AND size = ($2) AND category = ($3);", "PUBLISHED", tsize, tcategory).Scan(&countAllString)
+			if err != nil && err != pgx.ErrNoRows{
+				log.Printf("Error happened when counting templates in pgx table. Err: %s", err)
+				return templateset, err
+			}
+		} else {
+
+			err = storeDB.QueryRow(ctx, "SELECT COUNT(templates_id) FROM templates WHERE status = ($1) AND category = ($2);", "PUBLISHED", tcategory).Scan(&countAllString)
+			if err != nil && err != pgx.ErrNoRows{
+				log.Printf("Error happened when counting templates in pgx table. Err: %s", err)
+				return templateset, err
+			}
 		}
 	} 
 	

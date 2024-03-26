@@ -242,12 +242,13 @@ func LoadProject(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
 	}
+	log.Println(retrievedProject)
 	retrievedProject.Pages, err = projectstorage.RetrieveProjectPages(ctx, config.DB, projectID, false)
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
 	}
-
+	log.Println(retrievedProject)
 	rw.WriteHeader(http.StatusOK)
 	resp["response"] = retrievedProject
 	jsonResp, err := json.Marshal(resp)
@@ -1331,12 +1332,17 @@ func LoadTemplates(rw http.ResponseWriter, r *http.Request) {
     if category != "" {
 		requestT.Category = strings.ToUpper(r.URL.Query().Get("category"))
 	}
+	size := r.URL.Query().Get("size")
+
+    if size != "" {
+		requestT.Size = strings.ToUpper(r.URL.Query().Get("size"))
+	}
 	defer r.Body.Close()
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
 	log.Printf("Retrieving templates")
 
-	templates, err := projectstorage.RetrieveTemplates(ctx, config.DB, requestT.Offset, requestT.Limit, requestT.Category)
+	templates, err := projectstorage.RetrieveTemplates(ctx, config.DB, requestT.Offset, requestT.Limit, requestT.Category, requestT.Size)
 
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
