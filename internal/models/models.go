@@ -137,8 +137,8 @@ type Decoration struct {
 
 	DecorationID uint `json:"decoration_id"`
 	Link    string `json:"link" validate:"required"`
-	Category string `json:"category" validate:"required,oneof=RIBBON FRAME STICKER"`
-	Type string `json:"type" validate:"required,oneof=VACATION WEDDING HOLIDAYS CHILDREN ANIMALS UNIVERSAL"`
+	Category string `json:"category" validate:"required,oneof=VACATION WEDDING HOLIDAYS CHILDREN ANIMALS UNIVERSAL"`
+	Type string `json:"type" validate:"required,oneof=RIBBON FRAME STICKER"` 
 	IsFavourite bool `json:"is_favourite"`
 	IsPersonal bool `json:"is_personal"`
 }
