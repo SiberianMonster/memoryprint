@@ -40,12 +40,12 @@ type User struct {
 
 type SignUpUser struct {
 	Name string `json:"name" validate:"required,min=1,max=20"`
-	Password string `json:"password" validate:"required,min=5,max=20"`
+	Password string `json:"password" validate:"required,min=6,max=20"`
 	Email string `json:"email" validate:"required,email"`
 }
 
 type LoginUser struct {
-	Password string `json:"password" validate:"required,min=5,max=20"`
+	Password string `json:"password" validate:"required,min=6,max=20"`
 	Email string `json:"email" validate:"required,email"`
 }
 
@@ -213,7 +213,7 @@ type SavePage struct {
 	// in: int
 	PageID uint `json:"page_id"`
 	PreviewImageLink *string `json:"preview_image_link"`
-	CreatingImageLink *string `json:"creating_image_link"`
+	CreatingImageLink *string `json:"сreating_image_link"`
 	Data        json.RawMessage      `json:"data"`
 	UsedPhotoIDs []uint `json:"used_photo_ids"`
   }
@@ -246,6 +246,7 @@ type RequestTemplate struct {
 	Offset    uint     `json:"offset"`
 	Limit    uint     `json:"limit"`
 	Category string `json:"category"`
+	Size string `json:"size"`
   }
 
 type RequestLayout struct {
