@@ -382,7 +382,7 @@ func RetrieveProjectPages(ctx context.Context, storeDB *pgxpool.Pool, projectID 
 		} else {
 			page.Data = nil
 		}
-		page.UsedPhotoIDs = []uint
+		page.UsedPhotoIDs = []uint{}
 		photorows, err := storeDB.Query(ctx, "SELECT photos_id FROM page_has_photos WHERE pages_id = ($1);", page.PageID)
 		if err != nil {
 			log.Printf("Error happened when retrieving page photos from pgx table. Err: %s", err)
