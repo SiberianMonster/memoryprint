@@ -269,9 +269,6 @@ func LoadTemplate(rw http.ResponseWriter, r *http.Request) {
 	projectID := uint(aByteToInt)
 	defer r.Body.Close()
 
-	userID := handlersfunc.UserIDContextReader(r)
-	log.Printf("Load template %d for user %d",projectID, userID)
-
 	retrievedProject, err = projectstorage.LoadTemplate(ctx, config.DB, projectID)
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
