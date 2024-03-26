@@ -146,7 +146,12 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, proj
 			return 0, err
 		}
 		for _, page := range templatePages {
-			strdata := string(page.Data)
+			var strdata *string
+			err = storeDB.QueryRow(ctx, "SELECT data FROM pages WHERE pages_id = ($1);", page.PageID).Scan(&strdata)
+			if err != nil {
+					log.Printf("Error happened when retrieving template page data from db. Err: %s", err)
+					return 0, err
+			}
 			_, err = storeDB.Exec(ctx, "INSERT INTO pages (last_edited_at, sort, type, is_template, creating_image_link, data, projects_id) VALUES ($1, $2, $3, $4, $5, $6, $7);",
 			t,
 			page.Sort,
