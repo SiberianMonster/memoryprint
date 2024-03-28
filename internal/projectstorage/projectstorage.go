@@ -519,9 +519,11 @@ func AddProjectPage(ctx context.Context, storeDB *pgxpool.Pool, projectID uint, 
 		log.Printf("Error happened when retrieving pages from pgx table. Err: %s", err)
 		return newPage, err
 	}
+
 	t := time.Now()
-	err = storeDB.QueryRow(ctx, "INSERT INTO pages (sort, is_template, last_edited_at, projects_id) VALUES ($1, $2, $3, $4) RETURNING pages_id;",
+	err = storeDB.QueryRow(ctx, "INSERT INTO pages (sort, type, is_template, last_edited_at, projects_id) VALUES ($1, $2, $3, $4, $5) RETURNING pages_id;",
 			sort,
+			"page",
 			isTemplate,
 			t,
 			projectID,
