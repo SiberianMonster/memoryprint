@@ -166,7 +166,7 @@ func DeleteDecoration(ctx context.Context, storeDB *pgxpool.Pool, userID uint, d
 func AddBackground(ctx context.Context, storeDB *pgxpool.Pool, newDecor models.PersonalisedObject, userID uint) (uint, error) {
 
 	var bID uint
-	_, err = storeDB.Exec(ctx, "INSERT INTO backgrounds (link, category) VALUES ($1);",
+	_, err = storeDB.Exec(ctx, "INSERT INTO backgrounds (link, category) VALUES ($1, $2);",
 		newDecor.Link,
 		newDecor.Type,
 	)
@@ -310,63 +310,75 @@ func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 
 	var responseBackground models.ResponseBackground
 	responseBackground.Backgrounds = []models.Background{}
-	rows, err := storeDB.Query(ctx, "SELECT backgrounds_id, link, category FROM backgrounds ORDER BY backgrounds_id LIMIT ($1) OFFSET ($2);", limit, offset)
-		if err != nil {
-			log.Printf("Error happened when retrieving backgrounds from pgx table. Err: %s", err)
-			return responseBackground, err
-		}
-	defer rows.Close()
-	if ispersonal != true {
-		rows, err := storeDB.Query(ctx, "SELECT * FROM (SELECT backgrounds_id, link, category FROM backgrounds WHERE category <> '') AS selectedB ORDER BY selectedB.backgrounds_id LIMIT ($1) OFFSET ($2);", limit, offset)
+	if isfavourite != true && ispersonal != true {
+		rows, err := storeDB.Query(ctx, "SELECT backgrounds_id, link, category FROM backgrounds ORDER BY backgrounds_id LIMIT ($1) OFFSET ($2);", limit, offset)
 		if err != nil {
 			log.Printf("Error happened when retrieving backgrounds from pgx table. Err: %s", err)
 			return responseBackground, err
 		}
 		defer rows.Close()
-	} 
-	
-	if btype != "" {
-		rows, err = storeDB.Query(ctx, "SELECT backgrounds_id, link, category FROM backgrounds WHERE category = ($1) ORDER BY backgrounds_id LIMIT ($2) OFFSET ($3);", btype, limit, offset)
-		if err != nil {
-			log.Printf("Error happened when retrieving backgrounds from pgx table. Err: %s", err)
-			return responseBackground, err
+		if btype != "" {
+			rows, err = storeDB.Query(ctx, "SELECT backgrounds_id, link, category FROM backgrounds WHERE category = ($1) ORDER BY backgrounds_id LIMIT ($2) OFFSET ($3);", btype, limit, offset)
+			if err != nil {
+				log.Printf("Error happened when retrieving backgrounds from pgx table. Err: %s", err)
+				return responseBackground, err
+			}
+			defer rows.Close()
+			}
+		for rows.Next() {
+			var background models.Background
+			if err = rows.Scan(&background.BackgroundID, &background.Link, &background.Type); err != nil {
+				log.Printf("Error happened when scanning backgrounds. Err: %s", err)
+				return responseBackground, err
+			}
+			err := storeDB.QueryRow(ctx, "SELECT is_personal, is_favourite FROM users_has_backgrounds WHERE backgrounds_id = ($1) AND users_id=($2);", background.BackgroundID, userID).Scan(&background.IsPersonal, &background.IsFavourite)
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				log.Printf("Error happened when retrieving background from user_background table. Err: %s", err)
+				return responseBackground, err
+			}
+			responseBackground.Backgrounds = append(responseBackground.Backgrounds, background)
 		}
+
+	} else if isfavourite == true {
+		rows, err := storeDB.Query(ctx, "SELECT backgrounds_id, is_favourite, is_personal FROM users_has_backgrounds WHERE users_id = ($1) AND is_favourite = ($2);", userID, true)
+				if err != nil {
+					log.Printf("Error happened when retrieving user_decorations from pgx table. Err: %s", err)
+					return responseBackground, err
+				}
 		defer rows.Close()
-		}
-
-	for rows.Next() {
-		var background models.Background
-		if err = rows.Scan(&background.BackgroundID, &background.Link, &background.Type); err != nil {
-			log.Printf("Error happened when scanning backgrounds. Err: %s", err)
-			return responseBackground, err
-		}
-		err := storeDB.QueryRow(ctx, "SELECT is_personal, is_favourite FROM users_has_backgrounds WHERE backgrounds_id = ($1) AND users_id=($2);", background.BackgroundID, userID).Scan(&background.IsPersonal, &background.IsFavourite)
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			log.Printf("Error happened when retrieving background from user_background table. Err: %s", err)
-			return responseBackground, err
-		}
-		persBackground := CheckBackgroundISPersonal(ctx, storeDB, background.BackgroundID)
-		if isfavourite == true {
-			if background.IsFavourite == true {
-				responseBackground.Backgrounds = append(responseBackground.Backgrounds, background)
+		for rows.Next() {
+			var background models.Background
+			if err = rows.Scan(&background.BackgroundID, &background.IsPersonal, &background.IsFavourite); err != nil {
+				log.Printf("Error happened when scanning backgrounds. Err: %s", err)
+				return responseBackground, err
 			}
-		} else {
-			if ispersonal == true {
-				if background.IsPersonal == true {
-					responseBackground.Backgrounds = append(responseBackground.Backgrounds, background)
-				}
-			} else {
-				if !persBackground{
-					responseBackground.Backgrounds = append(responseBackground.Backgrounds, background)
-				}
-				
+			err := storeDB.QueryRow(ctx, "SELECT link, category FROM backgrounds WHERE backgrounds_id = ($1);", background.BackgroundID).Scan(&background.Link, &background.Type)
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				log.Printf("Error happened when retrieving backgrounds from backgrounds table. Err: %s", err)
+				return responseBackground, err
 			}
+			responseBackground.Backgrounds = append(responseBackground.Backgrounds, background)
 		}
-	}
-
-	if err = rows.Err(); err != nil {
-		log.Printf("Error happened when retrieving backgrounds from pgx table. Err: %s", err)
-		return responseBackground, err
+	} else if ispersonal == true {
+		rows, err := storeDB.Query(ctx, "SELECT backgrounds_id, is_favourite, is_personal FROM users_has_backgrounds WHERE users_id = ($1) AND is_personal = ($2);", userID, true)
+				if err != nil {
+					log.Printf("Error happened when retrieving user_decorations from pgx table. Err: %s", err)
+					return responseBackground, err
+				}
+		defer rows.Close()
+		for rows.Next() {
+			var background models.Background
+			if err = rows.Scan(&background.BackgroundID, &background.IsPersonal, &background.IsFavourite); err != nil {
+				log.Printf("Error happened when scanning backgrounds. Err: %s", err)
+				return responseBackground, err
+			}
+			err := storeDB.QueryRow(ctx, "SELECT link, category FROM backgrounds WHERE backgrounds_id = ($1);", background.BackgroundID).Scan(&background.Link, &background.Type)
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				log.Printf("Error happened when retrieving backgrounds from backgrounds table. Err: %s", err)
+				return responseBackground, err
+			}
+			responseBackground.Backgrounds = append(responseBackground.Backgrounds, background)
+		}
 	}
 
 	var countFavouriteString string
@@ -508,83 +520,97 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 
 	var responseDecoration models.ResponseDecoration
 	responseDecoration.Decorations = []models.Decoration{}
-	rows, err := storeDB.Query(ctx, "SELECT decorations_id, link, type, category FROM decorations ORDER BY decorations_id LIMIT ($1) OFFSET ($2);", limit, offset)
-			if err != nil {
-				log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
-				return responseDecoration, err
-			}
-	defer rows.Close()
-	if ispersonal != true {
+	if isfavourite != true && ispersonal != true {
 		rows, err := storeDB.Query(ctx, "SELECT * FROM (SELECT decorations_id, link, type, category FROM decorations WHERE category <> '') AS selectedD ORDER BY selectedD.decorations_id LIMIT ($1) OFFSET ($2);", limit, offset)
-			if err != nil {
-				log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
-				return responseDecoration, err
-			}
+				if err != nil {
+					log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
+					return responseDecoration, err
+				}
 		defer rows.Close()
-	} 
-	if dtype != "" {
-		if dcategory != "" {
-			rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, type, category FROM decorations WHERE type = ($1) AND category = ($2) ORDER BY decorations_id LIMIT ($3) OFFSET ($4);", dtype, dcategory, limit, offset)
-			if err != nil {
-				log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
-				return responseDecoration, err
-			}
-			defer rows.Close()
-		} else {
-			rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, type, category FROM decorations WHERE type = ($1) ORDER BY decorations_id LIMIT ($2) OFFSET ($3);",  dtype, limit, offset)
-			if err != nil {
-				log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
-				return responseDecoration, err
-			}
-			defer rows.Close()
-		}
-	} else {
-		if dcategory != "" {
-			rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, type, category FROM decorations WHERE category = ($1) ORDER BY decorations_id LIMIT ($2) OFFSET ($3);", dcategory, limit, offset)
-			if err != nil {
-				log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
-				return responseDecoration, err
-			}
-			defer rows.Close()
-		} 
-	}
-
-	for rows.Next() {
-		var decoration models.Decoration
-		if err = rows.Scan(&decoration.DecorationID, &decoration.Link, &decoration.Type, &decoration.Category); err != nil {
-			log.Printf("Error happened when scanning decorations. Err: %s", err)
-			return responseDecoration, err
-		}
-		err := storeDB.QueryRow(ctx, "SELECT is_personal, is_favourite FROM users_has_decoration WHERE decorations_id = ($1) AND users_id=($2);", decoration.DecorationID, userID).Scan(&decoration.IsPersonal, &decoration.IsFavourite)
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			log.Printf("Error happened when retrieving decorations from user_decorations table. Err: %s", err)
-			return responseDecoration, err
-		}
-		persDecor := CheckDecorISPersonal(ctx, storeDB, decoration.DecorationID)
-		if isfavourite == true {
-			if decoration.IsFavourite == true {
-				responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
-			}
-		} else {
-			if ispersonal == true {
-				if decoration.IsPersonal == true {
-					responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
+		
+		if dtype != "" {
+			if dcategory != "" {
+				rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, type, category FROM decorations WHERE type = ($1) AND category = ($2) ORDER BY decorations_id LIMIT ($3) OFFSET ($4);", dtype, dcategory, limit, offset)
+				if err != nil {
+					log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
+					return responseDecoration, err
 				}
+				defer rows.Close()
 			} else {
-				if !persDecor{
-					responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
+				rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, type, category FROM decorations WHERE type = ($1) ORDER BY decorations_id LIMIT ($2) OFFSET ($3);",  dtype, limit, offset)
+				if err != nil {
+					log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
+					return responseDecoration, err
 				}
-				
+				defer rows.Close()
 			}
+		} else {
+			if dcategory != "" {
+				rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, type, category FROM decorations WHERE category = ($1) ORDER BY decorations_id LIMIT ($2) OFFSET ($3);", dcategory, limit, offset)
+				if err != nil {
+					log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
+					return responseDecoration, err
+				}
+				defer rows.Close()
+			} 
 		}
-	
+
+		for rows.Next() {
+			var decoration models.Decoration
+			if err = rows.Scan(&decoration.DecorationID, &decoration.Link, &decoration.Type, &decoration.Category); err != nil {
+				log.Printf("Error happened when scanning decorations. Err: %s", err)
+				return responseDecoration, err
+			}
+			err := storeDB.QueryRow(ctx, "SELECT is_personal, is_favourite FROM users_has_decoration WHERE decorations_id = ($1) AND users_id=($2);", decoration.DecorationID, userID).Scan(&decoration.IsPersonal, &decoration.IsFavourite)
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				log.Printf("Error happened when retrieving decorations from user_decorations table. Err: %s", err)
+				return responseDecoration, err
+			}
+			responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
+		}
+	} else if isfavourite == true {
+		rows, err := storeDB.Query(ctx, "SELECT decorations_id, is_favourite, is_personal FROM users_has_decoration WHERE users_id = ($1) AND is_favourite = ($2);", userID, true)
+				if err != nil {
+					log.Printf("Error happened when retrieving user_decorations from pgx table. Err: %s", err)
+					return responseDecoration, err
+				}
+		defer rows.Close()
+		for rows.Next() {
+			var decoration models.Decoration
+			if err = rows.Scan(&decoration.DecorationID, &decoration.IsPersonal, &decoration.IsFavourite); err != nil {
+				log.Printf("Error happened when scanning decorations. Err: %s", err)
+				return responseDecoration, err
+			}
+			err := storeDB.QueryRow(ctx, "SELECT link, type, category FROM decorations WHERE decorations_id = ($1);", decoration.DecorationID).Scan(&decoration.Link, &decoration.Type, &decoration.Category)
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				log.Printf("Error happened when retrieving decorations from decorations table. Err: %s", err)
+				return responseDecoration, err
+			}
+			responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
+		}
+	} else if ispersonal == true {
+		rows, err := storeDB.Query(ctx, "SELECT decorations_id, is_favourite, is_personal FROM users_has_decoration WHERE users_id = ($1) AND is_personal = ($2);", userID, true)
+				if err != nil {
+					log.Printf("Error happened when retrieving user_decorations from pgx table. Err: %s", err)
+					return responseDecoration, err
+				}
+		defer rows.Close()
+		for rows.Next() {
+			var decoration models.Decoration
+			if err = rows.Scan(&decoration.DecorationID, &decoration.IsPersonal, &decoration.IsFavourite); err != nil {
+				log.Printf("Error happened when scanning decorations. Err: %s", err)
+				return responseDecoration, err
+			}
+			err := storeDB.QueryRow(ctx, "SELECT link, type, category FROM decorations WHERE decorations_id = ($1);", decoration.DecorationID).Scan(&decoration.Link, &decoration.Type, &decoration.Category)
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				log.Printf("Error happened when retrieving decorations from decorations table. Err: %s", err)
+				return responseDecoration, err
+			}
+			responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
+		}
 	}
 
-	if err = rows.Err(); err != nil {
-		log.Printf("Error happened when retrieving backgrounds from pgx table. Err: %s", err)
-		return responseDecoration, err
-	}
-	
+
 	var countFavouriteString string
 	err = storeDB.QueryRow(ctx, "SELECT COUNT(decorations_id) FROM users_has_decoration WHERE is_favourite = ($1) AND users_id=($2);", true, userID).Scan(&countFavouriteString)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
