@@ -315,8 +315,8 @@ func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 			log.Printf("Error happened when retrieving backgrounds from pgx table. Err: %s", err)
 			return responseBackground, err
 		}
-		defer rows.Close()
-	if ispersonal == false {
+	defer rows.Close()
+	if ispersonal != true {
 		rows, err := storeDB.Query(ctx, "SELECT backgrounds_id, link, category FROM backgrounds WHERE category <> '' ORDER BY backgrounds_id LIMIT ($1) OFFSET ($2);", limit, offset)
 		if err != nil {
 			log.Printf("Error happened when retrieving backgrounds from pgx table. Err: %s", err)
@@ -513,8 +513,8 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 				log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
 				return responseDecoration, err
 			}
-		defer rows.Close()
-	if ispersonal == false {
+	defer rows.Close()
+	if ispersonal != true {
 		rows, err := storeDB.Query(ctx, "SELECT decorations_id, link, type, category FROM decorations WHERE category <> '' ORDER BY decorations_id LIMIT ($1) OFFSET ($2);", limit, offset)
 			if err != nil {
 				log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
