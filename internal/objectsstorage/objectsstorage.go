@@ -316,8 +316,15 @@ func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 			return responseBackground, err
 		}
 		defer rows.Close()
+	if ispersonal == false {
+		rows, err := storeDB.Query(ctx, "SELECT backgrounds_id, link, category FROM backgrounds WHERE category <> '' ORDER BY backgrounds_id LIMIT ($1) OFFSET ($2);", limit, offset)
+		if err != nil {
+			log.Printf("Error happened when retrieving backgrounds from pgx table. Err: %s", err)
+			return responseBackground, err
+		}
+		defer rows.Close()
+	} 
 	
-
 	if btype != "" {
 		rows, err = storeDB.Query(ctx, "SELECT backgrounds_id, link, category FROM backgrounds WHERE category = ($1) ORDER BY backgrounds_id LIMIT ($2) OFFSET ($3);", btype, limit, offset)
 		if err != nil {
@@ -502,12 +509,19 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 	var responseDecoration models.ResponseDecoration
 	responseDecoration.Decorations = []models.Decoration{}
 	rows, err := storeDB.Query(ctx, "SELECT decorations_id, link, type, category FROM decorations ORDER BY decorations_id LIMIT ($1) OFFSET ($2);", limit, offset)
-		if err != nil {
-			log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
-			return responseDecoration, err
-		}
-	defer rows.Close()
-
+			if err != nil {
+				log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
+				return responseDecoration, err
+			}
+		defer rows.Close()
+	if ispersonal == false {
+		rows, err := storeDB.Query(ctx, "SELECT decorations_id, link, type, category FROM decorations WHERE category <> '' ORDER BY decorations_id LIMIT ($1) OFFSET ($2);", limit, offset)
+			if err != nil {
+				log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
+				return responseDecoration, err
+			}
+		defer rows.Close()
+	} 
 	if dtype != "" {
 		if dcategory != "" {
 			rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, type, category FROM decorations WHERE type = ($1) AND category = ($2) ORDER BY decorations_id LIMIT ($3) OFFSET ($4);", dtype, dcategory, limit, offset)
