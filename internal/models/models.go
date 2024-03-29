@@ -213,7 +213,7 @@ type SavePage struct {
 	// in: int
 	PageID uint `json:"page_id"`
 	PreviewImageLink *string `json:"preview_image_link"`
-	CreatingImageLink *string `json:"сreating_image_link"`
+	CreatingImageLink *string `json:"creating_image_link"`
 	Data        json.RawMessage      `json:"data"`
 	UsedPhotoIDs []uint `json:"used_photo_ids"`
   }
