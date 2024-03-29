@@ -85,7 +85,7 @@ func CheckAllPagesPassed(ctx context.Context, storeDB *pgxpool.Pool, slicePassed
 		return false
 	}
 
-
+	slicePassed = slicePassed + 2
 	if slicePassed != countPage {
 		log.Printf("Error not all pages passed. Err: %s", err)
 		return false

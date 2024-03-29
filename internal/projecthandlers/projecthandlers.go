@@ -791,7 +791,7 @@ func FavourDecoration(rw http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	userID := handlersfunc.UserIDContextReader(r)
 	log.Printf("Favour decoration for user %d", userID)
-	err = objectsstorage.FavourBackground(ctx, config.DB, DecorationObj, userID)
+	err = objectsstorage.FavourDecoration(ctx, config.DB, DecorationObj, userID)
 
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
@@ -989,6 +989,7 @@ func SavePage(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleDecodeError(rw, err)
 		return
 	}
+	log.Println(savedPages)
 	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
 	projectID := uint(aByteToInt)
 	defer r.Body.Close()
@@ -1212,13 +1213,12 @@ func ReorderPages(rw http.ResponseWriter, r *http.Request) {
 
 	lenSlice := make([]int, len(sortNumbers))
 	for _, v := range lenSlice {
-		if !slices.Contains(sortNumbers, uint(v)){
+		if !slices.Contains(sortNumbers, uint(v)) && v != 0 && v != len(lenSlice) {
 			handlersfunc.HandleWrongOrderError(rw)
 			return
 		}
 		
 	}
-
 	if !projectstorage.CheckAllPagesPassed(ctx, config.DB, uint(len(sortNumbers)), projectID, false){
 		handlersfunc.HandleNotAllPagesPassedError(rw)
 		return
@@ -1273,7 +1273,7 @@ func ReorderTemplatePages(rw http.ResponseWriter, r *http.Request) {
 
 	lenSlice := make([]int, len(sortNumbers))
 	for _, v := range lenSlice {
-		if !slices.Contains(sortNumbers, uint(v)){
+		if !slices.Contains(sortNumbers, uint(v)) && v != 0 && v != len(lenSlice) {
 			handlersfunc.HandleWrongOrderError(rw)
 			return
 		}
