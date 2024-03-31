@@ -345,3 +345,19 @@ func HandleValidationError(rw http.ResponseWriter, err error) {
     }
     rw.Write(jsonResp)
 }
+
+func HandleWrongImageFormatError(rw http.ResponseWriter) {
+    rw.WriteHeader(http.StatusOK)
+    resp := make(map[string]ErrorBody)
+    var errorB ErrorBody
+    errorB.ErrorCode = 415
+    errorB.ErrorMessage = "Image format is not allowed"
+
+    resp["error"] = errorB
+    jsonResp, err := json.Marshal(resp)
+    if err != nil {
+        log.Printf("Error happened in JSON marshal. Err: %s", err)
+        return
+    }
+    rw.Write(jsonResp)
+}

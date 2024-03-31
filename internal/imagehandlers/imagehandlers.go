@@ -34,6 +34,12 @@ import (
 	_ "github.com/lib/pq"
 )
 
+var imageContentTypes = map[string]string{
+    "png":  "image/png",
+    "jpg":  "image/jpeg",
+    "jpeg": "image/jpeg",
+    "svg":  "image/svg+xml",
+}
 var err error
 var resp map[string]string
 
@@ -113,17 +119,33 @@ func DownloadFile(filepath string, url string) error {
 
 func saveImage(imgByte []byte, filename string) (string, error) {
 
-    img, _, err := image.Decode(bytes.NewReader(imgByte))
-    if err != nil {
-        log.Printf("Image decoding error%s", err)
-		return "", err
-    }
-    out, _ := os.Create(filename)
-    defer out.Close()
-	err = png.Encode(out, img)
-	if err != nil {
-		log.Printf("Image saving error%s", err)
+	
+	if strings.Contains(filename, "svg") {
+		dst, err := os.Create(filename)
+        if err != nil {
+            log.Println("error creating file", err)
+            return "", err
+        }
+        defer dst.Close()
+		err = os.WriteFile(filename, imgByte, 0644)
+		if err != nil { 
+			log.Printf("SVG decoding error%s", err)
+			return "", err
+		}
+	} else {
+		img, _, err := image.Decode(bytes.NewReader(imgByte))
+		if err != nil {
+			log.Printf("Image decoding error%s", err)
+			return "", err
+		}
+		out, _ := os.Create(filename)
+		defer out.Close()
+		err = png.Encode(out, img)
+		if err != nil {
+			log.Printf("Image saving error%s", err)
+		}
 	}
+
 	return filename, err
 
 }
@@ -304,6 +326,13 @@ func LoadImage(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 	imageObj.Extention = r.PostFormValue("extention")
+	log.Println(imageObj.Extention)
+	_, found := imageContentTypes[imageObj.Extention]
+    if !found {
+        handlersfunc.HandleWrongImageFormatError(rw)
+		return
+    }
+	
 	imageObj.RemoveBackground, _ = strconv.ParseBool(r.PostFormValue("remove_background"))
 	file, _, err := r.FormFile("image")    
 	defer file.Close()
@@ -318,9 +347,11 @@ func LoadImage(rw http.ResponseWriter, r *http.Request) {
 		return 
 	}
 	imageObj.Image = buf.Bytes()
+	log.Println(imageObj.Image)
 	log.Println("processed image")
 	code := GetToken(10)
-	filename = "./temp_photo/"+code+"_img.png"
+	filename = "./temp_photo/"+code+"_img."+imageObj.Extention
+	log.Println(filename)
 	if imageObj.Extention == "jpeg" {
 
 		// JpegToPng converts a JPEG image to PNG format
@@ -332,7 +363,7 @@ func LoadImage(rw http.ResponseWriter, r *http.Request) {
 		}
 	}
 	log.Println("converted image to jpg")
-	if imageObj.RemoveBackground {
+	if imageObj.RemoveBackground && imageObj.Extention != "svg" {
 
 		imageObj.Image, err = removeBackground(imageObj.Image, filename, config.BalaToken)
 		if err != nil {
