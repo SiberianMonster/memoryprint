@@ -340,7 +340,7 @@ func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 		}
 
 	} else if isfavourite == true {
-		rows, err := storeDB.Query(ctx, "SELECT backgrounds_id, is_favourite, is_personal FROM users_has_backgrounds WHERE users_id = ($1) AND is_favourite = ($2);", userID, true)
+		rows, err := storeDB.Query(ctx, "SELECT backgrounds_id, is_favourite, is_personal FROM users_has_backgrounds WHERE users_id = ($1) AND is_favourite = ($2) ORDER BY backgrounds_id DESC;", userID, true)
 				if err != nil {
 					log.Printf("Error happened when retrieving user_decorations from pgx table. Err: %s", err)
 					return responseBackground, err
@@ -360,7 +360,7 @@ func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 			responseBackground.Backgrounds = append(responseBackground.Backgrounds, background)
 		}
 	} else if ispersonal == true {
-		rows, err := storeDB.Query(ctx, "SELECT backgrounds_id, is_favourite, is_personal FROM users_has_backgrounds WHERE users_id = ($1) AND is_personal = ($2);", userID, true)
+		rows, err := storeDB.Query(ctx, "SELECT backgrounds_id, is_favourite, is_personal FROM users_has_backgrounds WHERE users_id = ($1) AND is_personal = ($2) ORDER BY backgrounds_id DESC;", userID, true)
 				if err != nil {
 					log.Printf("Error happened when retrieving user_decorations from pgx table. Err: %s", err)
 					return responseBackground, err
@@ -569,7 +569,7 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 			responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
 		}
 	} else if isfavourite == true {
-		rows, err := storeDB.Query(ctx, "SELECT decorations_id, is_favourite, is_personal FROM users_has_decoration WHERE users_id = ($1) AND is_favourite = ($2);", userID, true)
+		rows, err := storeDB.Query(ctx, "SELECT decorations_id, is_favourite, is_personal FROM users_has_decoration WHERE users_id = ($1) AND is_favourite = ($2) ORDER BY decorations_id DESC;", userID, true)
 				if err != nil {
 					log.Printf("Error happened when retrieving user_decorations from pgx table. Err: %s", err)
 					return responseDecoration, err
@@ -589,7 +589,7 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 			responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
 		}
 	} else if ispersonal == true {
-		rows, err := storeDB.Query(ctx, "SELECT decorations_id, is_favourite, is_personal FROM users_has_decoration WHERE users_id = ($1) AND is_personal = ($2);", userID, true)
+		rows, err := storeDB.Query(ctx, "SELECT decorations_id, is_favourite, is_personal FROM users_has_decoration WHERE users_id = ($1) AND is_personal = ($2) ORDER BY decorations_id DESC;", userID, true)
 				if err != nil {
 					log.Printf("Error happened when retrieving user_decorations from pgx table. Err: %s", err)
 					return responseDecoration, err
