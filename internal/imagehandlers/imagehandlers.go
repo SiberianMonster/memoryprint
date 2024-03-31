@@ -5,6 +5,7 @@ package imagehandlers
 
 import (
 	"encoding/json"
+	"context"
 	"log"
 	"net/http"
 	"image"
@@ -16,6 +17,8 @@ import (
 	"strconv"
 	"io/ioutil"
 	"errors"
+	"github.com/pdfcpu/pdfcpu/pkg/api"
+	"github.com/gorilla/mux"
 
 	"crypto/md5"
 	"time"
@@ -27,6 +30,7 @@ import (
 	"github.com/SiberianMonster/memoryprint/internal/config"
 	"github.com/SiberianMonster/memoryprint/internal/models"
 	"github.com/SiberianMonster/memoryprint/internal/handlersfunc"
+	"github.com/SiberianMonster/memoryprint/internal/projectstorage"
 	_ "github.com/lib/pq"
 )
 
@@ -66,9 +70,11 @@ type ImageRespBody struct {
 	Link string `json:"link"`
 }
 
+
 func GetToken(index int) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprint(time.Now()))))[0:index]
 }
+
 
 // JpegToPng converts a JPEG image to PNG format
 func JpegToPng(imageBytes []byte) ([]byte, error) { 
@@ -85,6 +91,24 @@ func JpegToPng(imageBytes []byte) ([]byte, error) {
     }
 
     return buf.Bytes(), nil
+}
+
+func DownloadFile(filepath string, url string) error {
+
+    resp, err := http.Get(url)
+    if err != nil {
+        return err
+    }
+    defer resp.Body.Close()
+
+    out, err := os.Create(filepath)
+    if err != nil {
+        return err
+    }
+    defer out.Close()
+
+    _, err = io.Copy(out, resp.Body)
+    return err
 }
 
 func saveImage(imgByte []byte, filename string) (string, error) {
@@ -149,6 +173,53 @@ func bucketUpload(img []byte, filename string, timewebToken string) error {
 	if resp.StatusCode != 204 {
             log.Println(resp.StatusCode)
 			err = errors.New("error uploading image to bucket")
+            return err
+    } else {
+			log.Println("successful upload")
+    }
+	return nil
+	
+}
+
+func bucketPdfUpload(filename string, timewebToken string) error {
+
+	form := new(bytes.Buffer)
+	writer := multipart.NewWriter(form)
+	fw, err := writer.CreateFormFile(filename, filepath.Base(filename))
+	if err != nil {
+		log.Printf("Failed to create form file %s", err)
+		return err
+	}
+	fd, err := os.Open(filename)
+	if err != nil {
+		log.Printf("Failed to open file %s", err)
+		return err
+	}
+	defer fd.Close()
+	_, err = io.Copy(fw, fd)
+	if err != nil {
+		log.Printf("Failed to copy file content %s", err)
+		return err
+	}
+
+	writer.Close()
+
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", "https://api.timeweb.cloud/api/v1/storages/buckets/225285/object-manager/upload?;path=photo/", form)
+	if err != nil {
+		log.Printf("Failed to create a request to bucket %s", err)
+	}
+	req.Header.Set("Authorization", "Bearer " + timewebToken)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	resp, err := client.Do(req)
+	if err != nil {
+			log.Printf("Failed to make a request to bucket %s", err)
+			return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 204 {
+            log.Println(resp.StatusCode)
+			err = errors.New("error uploading pdf to bucket")
             return err
     } else {
 			log.Println("successful upload")
@@ -283,6 +354,86 @@ func LoadImage(rw http.ResponseWriter, r *http.Request) {
 	
 	rw.WriteHeader(http.StatusOK)
 	rBody.Link = trimmedName
+	resp["response"] = rBody
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("Error happened in JSON marshal. Err: %s", err)
+		return
+	}
+	rw.Write(jsonResp)
+}
+
+
+func CreatePDFVisualization(rw http.ResponseWriter, r *http.Request) {
+
+	resp := make(map[string]ImageRespBody)
+	var rBody ImageRespBody
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	defer cancel()
+	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
+	projectID := uint(aByteToInt)
+	print(projectID)
+	defer r.Body.Close()
+
+	userID := handlersfunc.UserIDContextReader(r)
+	log.Printf("Create project visualization %d for user %d",projectID, userID)
+
+	userCheck := projectstorage.CheckUserHasProject(ctx, config.DB, userID, projectID)
+
+	if !userCheck {
+		handlersfunc.HandlePermissionError(rw)
+		return
+	}
+	
+	pages, err := projectstorage.RetrieveProjectPages(ctx, config.DB, projectID, false)
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
+	var pdfName string
+	pdfName = "pdflink_" + strconv.Itoa(aByteToInt) + ".pdf"
+	var pagesImages []string
+	dir, _ := ioutil.TempDir("", strconv.Itoa(aByteToInt))
+	if err != nil {
+		log.Printf("Error happened in creating temp dir for the images. Err: %s", err)
+		handlersfunc.HandleUploadImageError(rw)
+	}
+	defer os.RemoveAll(dir)
+	for _, page := range pages {
+
+		strCreatingImageLink := *page.CreatingImageLink
+		imageURL := config.ImageHost+strCreatingImageLink
+		localPath := dir + "strCreatingImageLink"
+		err = DownloadFile(localPath, imageURL) 
+		if err != nil {
+			log.Printf("Error happened in loading the creating images. Err: %s", err)
+			handlersfunc.HandleUploadImageError(rw)
+		}
+		pagesImages = append(pagesImages, localPath)
+		log.Println(imageURL)
+	}
+	
+	err = api.ImportImagesFile(pagesImages, pdfName, nil, nil)
+	if err != nil {
+		log.Printf("Error happened in merging images to pdf. Err: %s", err)
+		handlersfunc.HandleUploadImageError(rw)
+		return
+	}
+	err = bucketPdfUpload(pdfName, config.TimewebToken)
+	if err != nil {
+		log.Printf("Error happened in uploading image to bucket. Err: %s", err)
+		handlersfunc.HandleUploadImageError(rw)
+		return
+	}
+	err = os.Remove(pdfName) 
+    if err != nil { 
+        log.Printf("Error happened in removing pdf after bucket upload. Err: %s", err)
+		handlersfunc.HandleUploadImageError(rw)
+		return
+    } 
+
+	rw.WriteHeader(http.StatusOK)
+	rBody.Link = pdfName
 	resp["response"] = rBody
 	jsonResp, err := json.Marshal(resp)
 	if err != nil {

@@ -40,7 +40,7 @@ import (
 )
 
 var err error
-var host, connStr, accrualStr, adminEmail, yandexKey, timewebToken, balaToken *string
+var host, connStr, accrualStr, adminEmail, yandexKey, timewebToken, balaToken, imageHost *string
 var db *pgxpool.Pool
 
 func init() {
@@ -58,6 +58,7 @@ func init() {
 	yandexKey = config.GetEnv("YANDEX_PASSWORD", flag.String("yp", section.Key("yandexkey").String(), "YANDEX_PASSWORD"))
 	timewebToken = config.GetEnv("TW_TOKEN", flag.String("tw", section.Key("timeweb").String(), "TW_TOKEN"))
 	balaToken = config.GetEnv("BL_TOKEN", flag.String("bl", section.Key("bala").String(), "BL_TOKEN"))
+	imageHost = config.GetEnv("IMAGE_HOST", flag.String("img", section.Key("imagehost").String(), "IMAGE_HOST"))
 
 }
 
@@ -96,6 +97,7 @@ func main() {
 	config.YandexApiKey = *yandexKey
 	config.TimewebToken = *timewebToken
 	config.BalaToken = *balaToken
+	config.ImageHost = *imageHost
 
 	router := mux.NewRouter()
 	router.Use(middleware.MiddlewareCORSHeaders)
@@ -157,6 +159,7 @@ func main() {
 	authRouter.HandleFunc("/api/v1/delete-decoration/{id}", projecthandlers.DeleteDecor).Methods("GET","OPTIONS")
 	authRouter.HandleFunc("/api/v1/delete-background/{id}", projecthandlers.DeleteBackground).Methods("GET","OPTIONS")
 	authRouter.HandleFunc("/api/v1/create-project", projecthandlers.CreateBlankProject).Methods("POST","OPTIONS")
+	authRouter.HandleFunc("/api/v1/create-pdf-link/{id}", imagehandlers.CreatePDFVisualization).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/save-project-pages/{id}", projecthandlers.SavePage).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/load-projects", projecthandlers.LoadProjects).Methods("GET","OPTIONS")
 	authRouter.HandleFunc("/api/v1/load-project/{id}", projecthandlers.LoadProject).Methods("GET","OPTIONS")

@@ -43,6 +43,7 @@ var AdminEmail string
 var YandexApiKey string
 var TimewebToken string
 var BalaToken string
+var ImageHost string
 
 func GetEnv(key string, fallback *string) *string {
 	if value, ok := os.LookupEnv(key); ok {
