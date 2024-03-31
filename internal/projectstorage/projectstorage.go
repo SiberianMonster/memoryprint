@@ -287,7 +287,7 @@ func RetrieveUserProjects(ctx context.Context, storeDB *pgxpool.Pool, userID uin
 			return nil, err
 		}
 
-		err = storeDB.QueryRow(ctx, "SELECT name, preview_image_link, count_pages, size, variant, last_edited_at FROM projects WHERE projects_id = ($1) ORDER BY last_edited_at;", pID).Scan(&projectObj.Name, &projectObj.PreviewImageLink, &projectObj.CountPages, &projectObj.Size, &projectObj.Variant, &updateTimeStorage)
+		err = storeDB.QueryRow(ctx, "SELECT name, preview_image_link, count_pages, size, variant, last_edited_at FROM projects WHERE projects_id = ($1) ORDER BY last_edited_at DESC;", pID).Scan(&projectObj.Name, &projectObj.PreviewImageLink, &projectObj.CountPages, &projectObj.Size, &projectObj.Variant, &updateTimeStorage)
 		if err != nil && err != pgx.ErrNoRows {
 			log.Printf("Error happened when retrieving project data from db. Err: %s", err)
 			return nil, err
@@ -702,7 +702,7 @@ func RetrieveTemplates(ctx context.Context, storeDB *pgxpool.Pool, offset uint, 
 	templateset := models.ResponseTemplates{}
 	templateset.Templates = []models.Template{}
 
-	rows, err := storeDB.Query(ctx, "SELECT templates_id FROM templates WHERE status = ($1) ORDER BY templates_id LIMIT ($2) OFFSET ($3);", "PUBLISHED", limit, offset)
+	rows, err := storeDB.Query(ctx, "SELECT templates_id FROM templates WHERE status = ($1) ORDER BY templates_id DESC LIMIT ($2) OFFSET ($3);", "PUBLISHED", limit, offset)
 		if err != nil {
 			log.Printf("Error happened when retrieving templates from pgx table. Err: %s", err)
 			return templateset, err
@@ -710,7 +710,7 @@ func RetrieveTemplates(ctx context.Context, storeDB *pgxpool.Pool, offset uint, 
 	defer rows.Close()
 
 	if tcategory != "" {
-		rows, err = storeDB.Query(ctx, "SELECT templates_id FROM templates WHERE status = ($1) AND category = ($2) ORDER BY templates_id LIMIT ($3) OFFSET ($4);", "PUBLISHED", tcategory, limit, offset)
+		rows, err = storeDB.Query(ctx, "SELECT templates_id FROM templates WHERE status = ($1) AND category = ($2) ORDER BY templates_id DESC LIMIT ($3) OFFSET ($4);", "PUBLISHED", tcategory, limit, offset)
 		if err != nil {
 			log.Printf("Error happened when retrieving templates from pgx table. Err: %s", err)
 			return templateset, err
@@ -728,7 +728,7 @@ func RetrieveTemplates(ctx context.Context, storeDB *pgxpool.Pool, offset uint, 
 			return templateset, err
 		}
 
-		err = storeDB.QueryRow(ctx, "SELECT name, size FROM templates WHERE templates_id = ($1) ORDER BY last_edited_at;", tID).Scan(&templateObj.Name, &templateObj.Size)
+		err = storeDB.QueryRow(ctx, "SELECT name, size FROM templates WHERE templates_id = ($1) ORDER BY last_edited_at DESC;", tID).Scan(&templateObj.Name, &templateObj.Size)
 		if err != nil && err != pgx.ErrNoRows {
 			log.Printf("Error happened when retrieving template data from db. Err: %s", err)
 			return templateset, err

@@ -272,7 +272,7 @@ func RetrieveUserPhotos(ctx context.Context, storeDB *pgxpool.Pool, userID uint,
 
 	var responsePhoto models.ResponsePhotos
 	responsePhoto.Photos = []models.Photo{}
-	rows, err := storeDB.Query(ctx, "SELECT photos_id, link FROM photos WHERE users_id = ($1) ORDER BY photos_id LIMIT ($2) OFFSET ($3);", userID, limit, offset)
+	rows, err := storeDB.Query(ctx, "SELECT photos_id, link FROM photos WHERE users_id = ($1) ORDER BY photos_id DESC LIMIT ($2) OFFSET ($3);", userID, limit, offset)
 	if err != nil {
 		log.Printf("Error happened when retrieving photos from pgx table. Err: %s", err)
 		return responsePhoto, err
@@ -311,14 +311,14 @@ func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 	var responseBackground models.ResponseBackground
 	responseBackground.Backgrounds = []models.Background{}
 	if isfavourite != true && ispersonal != true {
-		rows, err := storeDB.Query(ctx, "SELECT backgrounds_id, link, category FROM backgrounds ORDER BY backgrounds_id LIMIT ($1) OFFSET ($2);", limit, offset)
+		rows, err := storeDB.Query(ctx, "SELECT backgrounds_id, link, category FROM backgrounds ORDER BY backgrounds_id DESC LIMIT ($1) OFFSET ($2);", limit, offset)
 		if err != nil {
 			log.Printf("Error happened when retrieving backgrounds from pgx table. Err: %s", err)
 			return responseBackground, err
 		}
 		defer rows.Close()
 		if btype != "" {
-			rows, err = storeDB.Query(ctx, "SELECT backgrounds_id, link, category FROM backgrounds WHERE category = ($1) ORDER BY backgrounds_id LIMIT ($2) OFFSET ($3);", btype, limit, offset)
+			rows, err = storeDB.Query(ctx, "SELECT backgrounds_id, link, category FROM backgrounds WHERE category = ($1) ORDER BY backgrounds_id DESC LIMIT ($2) OFFSET ($3);", btype, limit, offset)
 			if err != nil {
 				log.Printf("Error happened when retrieving backgrounds from pgx table. Err: %s", err)
 				return responseBackground, err
@@ -521,7 +521,7 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 	var responseDecoration models.ResponseDecoration
 	responseDecoration.Decorations = []models.Decoration{}
 	if isfavourite != true && ispersonal != true {
-		rows, err := storeDB.Query(ctx, "SELECT * FROM (SELECT decorations_id, link, type, category FROM decorations WHERE category <> '') AS selectedD ORDER BY selectedD.decorations_id LIMIT ($1) OFFSET ($2);", limit, offset)
+		rows, err := storeDB.Query(ctx, "SELECT * FROM (SELECT decorations_id, link, type, category FROM decorations WHERE category <> '') AS selectedD ORDER BY selectedD.decorations_id DESC LIMIT ($1) OFFSET ($2);", limit, offset)
 				if err != nil {
 					log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
 					return responseDecoration, err
@@ -530,14 +530,14 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 		
 		if dtype != "" {
 			if dcategory != "" {
-				rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, type, category FROM decorations WHERE type = ($1) AND category = ($2) ORDER BY decorations_id LIMIT ($3) OFFSET ($4);", dtype, dcategory, limit, offset)
+				rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, type, category FROM decorations WHERE type = ($1) AND category = ($2) ORDER BY decorations_id DESC LIMIT ($3) OFFSET ($4);", dtype, dcategory, limit, offset)
 				if err != nil {
 					log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
 					return responseDecoration, err
 				}
 				defer rows.Close()
 			} else {
-				rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, type, category FROM decorations WHERE type = ($1) ORDER BY decorations_id LIMIT ($2) OFFSET ($3);",  dtype, limit, offset)
+				rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, type, category FROM decorations WHERE type = ($1) ORDER BY decorations_id DESC LIMIT ($2) OFFSET ($3);",  dtype, limit, offset)
 				if err != nil {
 					log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
 					return responseDecoration, err
@@ -546,7 +546,7 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 			}
 		} else {
 			if dcategory != "" {
-				rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, type, category FROM decorations WHERE category = ($1) ORDER BY decorations_id LIMIT ($2) OFFSET ($3);", dcategory, limit, offset)
+				rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, type, category FROM decorations WHERE category = ($1) ORDER BY decorations_id DESC LIMIT ($2) OFFSET ($3);", dcategory, limit, offset)
 				if err != nil {
 					log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
 					return responseDecoration, err
@@ -733,7 +733,7 @@ func LoadLayouts(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset
 	var responseLayout models.ResponseLayout
 	responseLayout.Layouts = []models.Layout{}
 	countFavourite := 0
-	rows, err := storeDB.Query(ctx, "SELECT layouts_id, link, data, count_images FROM layouts ORDER BY layouts_id LIMIT ($1) OFFSET ($2);", limit, offset)
+	rows, err := storeDB.Query(ctx, "SELECT layouts_id, link, data, count_images FROM layouts ORDER BY layouts_id DESC LIMIT ($1) OFFSET ($2);", limit, offset)
 		if err != nil {
 			log.Printf("Error happened when retrieving layouts from pgx table. Err: %s", err)
 			return responseLayout, err
@@ -741,7 +741,7 @@ func LoadLayouts(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset
 	defer rows.Close()
 
 	if size != "" {
-		rows, err := storeDB.Query(ctx, "SELECT layouts_id, link, data, count_images FROM layouts WHERE size = ($1) ORDER BY layouts_id LIMIT ($2) OFFSET ($3);", size, limit, offset)
+		rows, err := storeDB.Query(ctx, "SELECT layouts_id, link, data, count_images FROM layouts WHERE size = ($1) ORDER BY layouts_id DESC LIMIT ($2) OFFSET ($3);", size, limit, offset)
 		if err != nil {
 			log.Printf("Error happened when retrieving layouts from pgx table. Err: %s", err)
 			return responseLayout, err
