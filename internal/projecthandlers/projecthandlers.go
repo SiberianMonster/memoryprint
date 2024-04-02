@@ -816,12 +816,12 @@ func LoadLayouts(rw http.ResponseWriter, r *http.Request) {
 
 	rOffset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 	rLimit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	rCountImages, _ := strconv.Atoi(r.URL.Query().Get("count_images"))
+	rCountImages, _ := strconv.Atoi(r.URL.Query().Get("countimages"))
 	requestL.Offset = uint(rOffset)
 	requestL.Limit = uint(rLimit)
 	requestL.CountImages = uint(rCountImages)
 	requestL.Size = strings.ToUpper(r.URL.Query().Get("size"))
-	requestL.IsFavourite, _ = strconv.ParseBool(r.URL.Query().Get("is_favourite"))
+	requestL.IsFavourite, _ = strconv.ParseBool(r.URL.Query().Get("isfavourite"))
 
 	defer r.Body.Close()
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
