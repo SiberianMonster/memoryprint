@@ -803,13 +803,13 @@ func LoadLayouts(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset
 			var layout models.Layout
 			var strdata sql.NullString
 			var countImages uint
-			if err = rows.Scan(&layout.LayoutID, layout.IsFavourite); err != nil {
+			if err = rows.Scan(&layout.LayoutID, &layout.IsFavourite); err != nil {
 				log.Printf("Error happened when scanning layouts. Err: %s", err)
 				return responseLayout, err
 			}
-			err := storeDB.QueryRow(ctx, "SELECT link, data, size, count_images FROM layouts WHERE layouts_id = ($1);", layout.LayoutID).Scan(&layout.Link, &strdata, &layout.Size, countImages)
+			err := storeDB.QueryRow(ctx, "SELECT link, data, size, count_images FROM layouts WHERE layouts_id = ($1);", layout.LayoutID).Scan(&layout.Link, &strdata, &layout.Size, &countImages)
 			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-				log.Printf("Error happened when retrieving layouts from decorations table. Err: %s", err)
+				log.Printf("Error happened when retrieving layouts from layouts table. Err: %s", err)
 				return responseLayout, err
 			}
 			layout.CountImages = countImages
