@@ -644,7 +644,7 @@ func DeletePage(ctx context.Context, storeDB *pgxpool.Pool, pageID uint, project
 		var sortNum uint
 		var newsortNum uint
 		var existingID uint
-		if err = rows.Scan(&sortNum, &existingID); err != nil {
+		if err = rows.Scan(&existingID, &sortNum); err != nil {
 			log.Printf("Error happened when scanning pages sort. Err: %s", err)
 			return err
 		}

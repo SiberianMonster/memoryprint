@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"time"
 	"github.com/SiberianMonster/memoryprint/internal/models"
+	"database/sql"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -732,114 +733,138 @@ func LoadLayouts(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset
 
 	var responseLayout models.ResponseLayout
 	responseLayout.Layouts = []models.Layout{}
-	countFavourite := 0
-	rows, err := storeDB.Query(ctx, "SELECT layouts_id, link, data, count_images FROM layouts ORDER BY layouts_id DESC LIMIT ($1) OFFSET ($2);", limit, offset)
-		if err != nil {
-			log.Printf("Error happened when retrieving layouts from pgx table. Err: %s", err)
-			return responseLayout, err
-		}
-	defer rows.Close()
 
-	if size != "" {
-		rows, err := storeDB.Query(ctx, "SELECT layouts_id, link, data, count_images FROM layouts WHERE size = ($1) ORDER BY layouts_id DESC LIMIT ($2) OFFSET ($3);", size, limit, offset)
-		if err != nil {
-			log.Printf("Error happened when retrieving layouts from pgx table. Err: %s", err)
-			return responseLayout, err
-		}
-		defer rows.Close()
-	} 
-
-	for rows.Next() {
-		var layout models.Layout
-		var strdata *string
-		var countImages uint
-		if err = rows.Scan(&layout.LayoutID, &layout.Link, &strdata, &countImages); err != nil {
-			log.Printf("Error happened when scanning layouts. Err: %s", err)
-			return responseLayout, err
-		}
-		layout.CountImages = countImages
-		if strdata != nil{
-			layout.Data = json.RawMessage(*strdata)
-		} else {
-			layout.Data = nil
-		}
-		if countimages != 0 {
-			if countimages == countImages{
-				err := storeDB.QueryRow(ctx, "SELECT is_favourite FROM users_has_layouts WHERE layouts_id = ($1) AND users_id=($2);", layout.LayoutID, userID).Scan(&layout.IsFavourite)
-				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-					log.Printf("Error happened when retrieving layouts from user_layouts table. Err: %s", err)
+	if isfavourite != true {
+		rows, err := storeDB.Query(ctx, "SELECT * FROM (SELECT layouts_id, link, data, size, count_images FROM layouts) AS selectedL ORDER BY selectedL.layouts_id DESC LIMIT ($1) OFFSET ($2);", limit, offset)
+				if err != nil {
+					log.Printf("Error happened when retrieving layouts from pgx table. Err: %s", err)
 					return responseLayout, err
 				}
-				if isfavourite == true {
-					if layout.IsFavourite == true {
-						responseLayout.Layouts = append(responseLayout.Layouts, layout)
-						countFavourite = countFavourite + 1
-					}
-				} else {
-					if layout.IsFavourite == true {
-						countFavourite = countFavourite + 1
-					}
-					responseLayout.Layouts = append(responseLayout.Layouts, layout)
+		defer rows.Close()
+		
+		if size != "" {
+			if countimages != 0 {
+				rows, err = storeDB.Query(ctx, "SELECT layouts_id, link, data, size, count_images FROM layouts WHERE size = ($1) AND count_images = ($2) ORDER BY layouts_id DESC LIMIT ($3) OFFSET ($4);", size, countimages, limit, offset)
+				if err != nil {
+					log.Printf("Error happened when retrieving layouts from pgx table. Err: %s", err)
+					return responseLayout, err
 				}
+				defer rows.Close()
+			} else {
+				rows, err = storeDB.Query(ctx, "SELECT layouts_id, link, data, size, count_images FROM layouts WHERE size = ($1) ORDER BY layouts_id DESC LIMIT ($2) OFFSET ($3);",  size, limit, offset)
+				if err != nil {
+					log.Printf("Error happened when retrieving layouts from pgx table. Err: %s", err)
+					return responseLayout, err
+				}
+				defer rows.Close()
 			}
 		} else {
+			if countimages != 0 {
+				rows, err = storeDB.Query(ctx, "SELECT layouts_id, link, data, size, count_images FROM layouts WHERE count_images = ($1) ORDER BY layouts_id DESC LIMIT ($2) OFFSET ($3);", countimages, limit, offset)
+				if err != nil {
+					log.Printf("Error happened when retrieving layouts from pgx table. Err: %s", err)
+					return responseLayout, err
+				}
+				defer rows.Close()
+			} 
+		}
+
+		for rows.Next() {
+			var layout models.Layout
+			var strdata sql.NullString
+			var countImages uint
+
+			if err = rows.Scan(&layout.LayoutID, &layout.Link, &strdata, &layout.Size, &countImages); err != nil {
+				log.Printf("Error happened when scanning layouts. Err: %s", err)
+				return responseLayout, err
+			}
+
+			layout.CountImages = countImages
+			if strdata.Valid {
+				layout.Data = json.RawMessage(strdata.String)
+			} else {
+				layout.Data = nil
+			}
 			err := storeDB.QueryRow(ctx, "SELECT is_favourite FROM users_has_layouts WHERE layouts_id = ($1) AND users_id=($2);", layout.LayoutID, userID).Scan(&layout.IsFavourite)
 			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-				log.Printf("Error happened when retrieving layouts from user_layouts table. Err: %s", err)
+				log.Printf("Error happened when retrieving layouts from users_has_layouts table. Err: %s", err)
 				return responseLayout, err
 			}
-			if isfavourite == true {
-				if layout.IsFavourite == true {
-					responseLayout.Layouts = append(responseLayout.Layouts, layout)
-					countFavourite = countFavourite + 1
+			responseLayout.Layouts = append(responseLayout.Layouts, layout)
+		}
+	} else if isfavourite == true {
+		rows, err := storeDB.Query(ctx, "SELECT layouts_id, is_favourite FROM users_has_layouts WHERE users_id = ($1) AND is_favourite = ($2) ORDER BY layouts_id DESC LIMIT ($3) OFFSET ($4);", userID, true, limit, offset)
+				if err != nil {
+					log.Printf("Error happened when retrieving users_has_layouts from pgx table. Err: %s", err)
+					return responseLayout, err
+				}
+		defer rows.Close()
+		for rows.Next() {
+			var layout models.Layout
+			var strdata sql.NullString
+			var countImages uint
+			if err = rows.Scan(&layout.LayoutID, layout.IsFavourite); err != nil {
+				log.Printf("Error happened when scanning layouts. Err: %s", err)
+				return responseLayout, err
+			}
+			err := storeDB.QueryRow(ctx, "SELECT link, data, size, count_images FROM layouts WHERE layouts_id = ($1);", layout.LayoutID).Scan(&layout.Link, &strdata, &layout.Size, countImages)
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				log.Printf("Error happened when retrieving layouts from decorations table. Err: %s", err)
+				return responseLayout, err
+			}
+			layout.CountImages = countImages
+			if strdata.Valid {
+				layout.Data = json.RawMessage(strdata.String)
+			} else {
+				layout.Data = nil
+			}
+			responseLayout.Layouts = append(responseLayout.Layouts, layout)
+		}
+	} 
+
+	var countFavouriteString string
+	err = storeDB.QueryRow(ctx, "SELECT COUNT(layouts_id) FROM users_has_layouts WHERE is_favourite = ($1) AND users_id=($2);", true, userID).Scan(&countFavouriteString)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				log.Printf("Error happened when counting layouts. Err: %s", err)
+				return responseLayout, err
+	}
+	responseLayout.CountFavourite, _ = strconv.Atoi(countFavouriteString)
+
+	var countAllString string
+	if isfavourite == true {
+		responseLayout.CountAll = responseLayout.CountFavourite
+	}  else {
+		err = storeDB.QueryRow(ctx, "SELECT COUNT(layouts_id) FROM layouts;").Scan(&countAllString)
+		if err != nil {
+					log.Printf("Error happened when counting layouts from pgx table. Err: %s", err)
+					return responseLayout, err
+		}
+		if size != "" {
+			if countimages != 0 {
+				err = storeDB.QueryRow(ctx, "SELECT COUNT(layouts_id) FROM layouts WHERE size = ($1) AND count_images = ($2);", size, countimages).Scan(&countAllString)
+				if err != nil {
+					log.Printf("Error happened when counting layouts from pgx table. Err: %s", err)
+					return responseLayout, err
 				}
 			} else {
-				if layout.IsFavourite == true {
-					countFavourite = countFavourite + 1
+				err = storeDB.QueryRow(ctx, "SELECT COUNT(layouts_id) FROM layouts WHERE size = ($1);", size).Scan(&countAllString)
+				if err != nil {
+					log.Printf("Error happened when counting layouts from pgx table. Err: %s", err)
+					return responseLayout, err
 				}
-				responseLayout.Layouts = append(responseLayout.Layouts, layout)
-			}
-		}
-		
-	}
-
-	if err = rows.Err(); err != nil {
-		log.Printf("Error happened when retrieving layouts from pgx table. Err: %s", err)
-		return responseLayout, err
-	}
-	var countAllString string
-	if countimages != 0 {
-		if size != "" {
-			err = storeDB.QueryRow(ctx, "SELECT COUNT(layouts_id) FROM layouts WHERE count_images = ($1) AND size =($2);", countimages, size).Scan(&countAllString)
-			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-				log.Printf("Error happened when counting layouts. Err: %s", err)
-				return responseLayout, err
 			}
 		} else {
-			err = storeDB.QueryRow(ctx, "SELECT COUNT(layouts_id) FROM layouts WHERE count_images = ($1);", countimages).Scan(&countAllString)
-			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-				log.Printf("Error happened when counting layouts. Err: %s", err)
-				return responseLayout, err
-			}
+			if countimages != 0 {
+				err = storeDB.QueryRow(ctx, "SELECT COUNT(layouts_id) FROM layouts WHERE count_images = ($1);", countimages).Scan(&countAllString)
+				if err != nil {
+					log.Printf("Error happened when counting layouts from pgx table. Err: %s", err)
+					return responseLayout, err
+				}
+			} 
 		}
-	} else {
-		if size != "" {
-			err = storeDB.QueryRow(ctx, "SELECT COUNT(layouts_id) FROM layouts WHERE size =($1);", size).Scan(&countAllString)
-			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-				log.Printf("Error happened when counting layouts. Err: %s", err)
-				return responseLayout, err
-			}
-		} else {
-			err = storeDB.QueryRow(ctx, "SELECT COUNT(layouts_id) FROM layouts;").Scan(&countAllString)
-			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-				log.Printf("Error happened when counting layouts. Err: %s", err)
-				return responseLayout, err
-			}
-		}
+		responseLayout.CountAll, _ = strconv.Atoi(countAllString)
 	}
-	responseLayout.CountAll, _ = strconv.Atoi(countAllString)
-	responseLayout.CountFavourite = countFavourite
-
+	
 	return responseLayout, nil
 
 }

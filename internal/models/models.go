@@ -253,8 +253,8 @@ type RequestLayout struct {
 	Offset    uint     `json:"offset"`
 	Limit    uint     `json:"limit"`
 	Size    string     `json:"size"`
-	CountImages uint `json:"count_images"`
-	IsFavourite bool `json:"is_favourite"`
+	CountImages uint `json:"countimages"`
+	IsFavourite bool `json:"isfavourite"`
   }
 
 type RequestSavePages struct {
