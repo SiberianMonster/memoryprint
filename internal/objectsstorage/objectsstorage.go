@@ -522,7 +522,7 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 	var responseDecoration models.ResponseDecoration
 	responseDecoration.Decorations = []models.Decoration{}
 	if isfavourite != true && ispersonal != true {
-		rows, err := storeDB.Query(ctx, "SELECT * FROM (SELECT decorations_id, link, type, category FROM decorations WHERE category <> '') AS selectedD ORDER BY selectedD.decorations_id DESC LIMIT ($1) OFFSET ($2);", limit, offset)
+		rows, err := storeDB.Query(ctx, "SELECT * FROM (SELECT decorations_id, link, category, type FROM decorations WHERE category <> '') AS selectedD ORDER BY selectedD.decorations_id DESC LIMIT ($1) OFFSET ($2);", limit, offset)
 				if err != nil {
 					log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
 					return responseDecoration, err
@@ -531,14 +531,14 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 		
 		if dtype != "" {
 			if dcategory != "" {
-				rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, category, type FROM decorations WHERE type = ($1) AND category = ($2) ORDER BY decorations_id DESC LIMIT ($3) OFFSET ($4);", dtype, dcategory, limit, offset)
+				rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, category, type FROM decorations WHERE category = ($1) AND type = ($2) ORDER BY decorations_id DESC LIMIT ($3) OFFSET ($4);", dtype, dcategory, limit, offset)
 				if err != nil {
 					log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
 					return responseDecoration, err
 				}
 				defer rows.Close()
 			} else {
-				rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, category, type FROM decorations WHERE type = ($1) ORDER BY decorations_id DESC LIMIT ($2) OFFSET ($3);",  dtype, limit, offset)
+				rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, category, type FROM decorations WHERE category = ($1) ORDER BY decorations_id DESC LIMIT ($2) OFFSET ($3);",  dtype, limit, offset)
 				if err != nil {
 					log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
 					return responseDecoration, err
@@ -547,7 +547,7 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 			}
 		} else {
 			if dcategory != "" {
-				rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, category, type FROM decorations WHERE category = ($1) ORDER BY decorations_id DESC LIMIT ($2) OFFSET ($3);", dcategory, limit, offset)
+				rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, category, type FROM decorations WHERE type = ($1) ORDER BY decorations_id DESC LIMIT ($2) OFFSET ($3);", dcategory, limit, offset)
 				if err != nil {
 					log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
 					return responseDecoration, err
@@ -640,13 +640,13 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 		}
 		if dtype != "" {
 			if dcategory != "" {
-				err = storeDB.QueryRow(ctx, "SELECT COUNT(decorations_id) FROM decorations WHERE type = ($1) AND category = ($2);", dtype, dcategory).Scan(&countAllString)
+				err = storeDB.QueryRow(ctx, "SELECT COUNT(decorations_id) FROM decorations WHERE category = ($1) AND type = ($2);", dtype, dcategory).Scan(&countAllString)
 				if err != nil {
 					log.Printf("Error happened when counting decorations from pgx table. Err: %s", err)
 					return responseDecoration, err
 				}
 			} else {
-				err = storeDB.QueryRow(ctx, "SELECT COUNT(decorations_id) FROM decorations WHERE type = ($1);", dtype).Scan(&countAllString)
+				err = storeDB.QueryRow(ctx, "SELECT COUNT(decorations_id) FROM decorations WHERE category = ($1);", dtype).Scan(&countAllString)
 				if err != nil {
 					log.Printf("Error happened when counting decorations from pgx table. Err: %s", err)
 					return responseDecoration, err
@@ -654,7 +654,7 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 			}
 		} else {
 			if dcategory != "" {
-				err = storeDB.QueryRow(ctx, "SELECT COUNT(decorations_id) FROM decorations WHERE category = ($1);", dcategory).Scan(&countAllString)
+				err = storeDB.QueryRow(ctx, "SELECT COUNT(decorations_id) FROM decorations WHERE type = ($1);", dcategory).Scan(&countAllString)
 				if err != nil {
 					log.Printf("Error happened when counting decorations from pgx table. Err: %s", err)
 					return responseDecoration, err
