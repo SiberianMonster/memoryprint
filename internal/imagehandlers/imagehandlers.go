@@ -438,7 +438,8 @@ func CreatePDFVisualization(rw http.ResponseWriter, r *http.Request) {
 
 		strCreatingImageLink := *page.CreatingImageLink
 		imageURL := config.ImageHost+strCreatingImageLink
-		localPath := dir + "strCreatingImageLink"
+		localPath := dir + strCreatingImageLink
+		log.Println(localPath)
 		err = DownloadFile(localPath, imageURL) 
 		if err != nil {
 			log.Printf("Error happened in loading the creating images. Err: %s", err)
