@@ -107,7 +107,7 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, proj
 		"EDITED",
 		projectObj.Size,
 		projectObj.Variant,
-		21,
+		23,
 		userID,
 		userID,
 		projectObj.Cover,
@@ -136,7 +136,7 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, proj
 		return 0, err
 	}
 
-	pagesRange := makeRange(0, 21)
+	pagesRange := makeRange(0, 22)
 	if projectObj.TemplateID != 0 {
 		var templatePages []models.Page
 
@@ -172,7 +172,7 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, proj
 
 			var ptype string
 	
-			if num == 21 {
+			if num == 22 {
 				ptype = "back"
 			} else {
 				ptype = "page"
@@ -214,12 +214,12 @@ func CreateTemplate(ctx context.Context, storeDB *pgxpool.Pool, name string, siz
 		return tID, err
 	}
 
-	pagesRange := makeRange(0, 21)
+	pagesRange := makeRange(0, 22)
 
 	for _, num := range pagesRange {
 		var ptype string
 
-		if num == 21 {
+		if num == 22 {
 			ptype = "back"
 		} else {
 			ptype = "page"
@@ -710,7 +710,7 @@ func RetrieveTemplates(ctx context.Context, storeDB *pgxpool.Pool, offset uint, 
 	defer rows.Close()
 
 	if tcategory != "" {
-		rows, err = storeDB.Query(ctx, "SELECT templates_id FROM templates WHERE status = ($1) AND category = ($2) ORDER BY templates_id DESC LIMIT ($3) OFFSET ($4);", "PUBLISHED", tcategory, limit, offset)
+		rows, err = storeDB.Query(ctx, "SELECT * FROM (SELECT templates_id FROM templates WHERE status = ($1) AND category = ($2)) AS selectedT ORDER BY selectedT.templates_id DESC LIMIT ($3) OFFSET ($4);", "PUBLISHED", tcategory, limit, offset)
 		if err != nil {
 			log.Printf("Error happened when retrieving templates from pgx table. Err: %s", err)
 			return templateset, err

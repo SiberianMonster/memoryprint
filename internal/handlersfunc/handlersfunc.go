@@ -361,3 +361,19 @@ func HandleWrongImageFormatError(rw http.ResponseWriter) {
     }
     rw.Write(jsonResp)
 }
+
+func HandleMissingImageDataError(rw http.ResponseWriter) {
+    rw.WriteHeader(http.StatusOK)
+    resp := make(map[string]ErrorBody)
+    var errorB ErrorBody
+    errorB.ErrorCode = 406
+    errorB.ErrorMessage = "Image bytes were not passed"
+
+    resp["error"] = errorB
+    jsonResp, err := json.Marshal(resp)
+    if err != nil {
+        log.Printf("Error happened in JSON marshal. Err: %s", err)
+        return
+    }
+    rw.Write(jsonResp)
+}

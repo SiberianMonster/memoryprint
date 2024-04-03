@@ -347,12 +347,16 @@ func LoadImage(rw http.ResponseWriter, r *http.Request) {
 		return 
 	}
 	imageObj.Image = buf.Bytes()
-	log.Println(imageObj.Image)
+	if len(imageObj.Image) == 0 {
+		log.Printf("Error happened in reading image. Empty bytes slice. Err: %s", err)
+		handlersfunc.HandleMissingImageDataError(rw)
+		return
+	}
 	log.Println("processed image")
 	code := GetToken(10)
 	filename = "./temp_photo/"+code+"_img."+imageObj.Extention
 	log.Println(filename)
-	if imageObj.Extention == "jpeg" {
+	if imageObj.Extention == "jpeg" || imageObj.Extention == "jpg" {
 
 		// JpegToPng converts a JPEG image to PNG format
 		imageObj.Image, err = JpegToPng(imageObj.Image)
@@ -362,7 +366,7 @@ func LoadImage(rw http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	log.Println("converted image to jpg")
+	log.Println("converted image to png")
 	if imageObj.RemoveBackground && imageObj.Extention != "svg" {
 
 		imageObj.Image, err = removeBackground(imageObj.Image, filename, config.BalaToken)
