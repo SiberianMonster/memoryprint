@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	"image"
-    "image/jpeg"
 	"image/png"
     "os"
     "bytes"
@@ -33,12 +32,11 @@ import (
 	"github.com/SiberianMonster/memoryprint/internal/projectstorage"
 	_ "github.com/lib/pq"
 )
-
+const BINARY = "/usr/bin/inkscape"
 var imageContentTypes = map[string]string{
     "png":  "image/png",
     "jpg":  "image/jpeg",
     "jpeg": "image/jpeg",
-    "svg":  "image/svg+xml",
 }
 var err error
 var resp map[string]string
@@ -81,23 +79,6 @@ func GetToken(index int) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprint(time.Now()))))[0:index]
 }
 
-
-// JpegToPng converts a JPEG image to PNG format
-func JpegToPng(imageBytes []byte) ([]byte, error) { 
-    img, err := jpeg.Decode(bytes.NewReader(imageBytes))
-
-    if err != nil {
-        return nil, err
-    }
-
-    buf := new(bytes.Buffer)
-
-    if err := png.Encode(buf, img); err != nil {
-        return nil, err
-    }
-
-    return buf.Bytes(), nil
-}
 
 func DownloadFile(filepath string, url string) error {
 
@@ -356,17 +337,7 @@ func LoadImage(rw http.ResponseWriter, r *http.Request) {
 	code := GetToken(10)
 	filename = "./temp_photo/"+code+"_img."+imageObj.Extention
 	log.Println(filename)
-	if imageObj.Extention == "jpeg" || imageObj.Extention == "jpg" {
-
-		// JpegToPng converts a JPEG image to PNG format
-		imageObj.Image, err = JpegToPng(imageObj.Image)
-		if err != nil {
-			log.Printf("Error happened in jpeg to png converting. Err: %s", err)
-			handlersfunc.HandleDecodeError(rw, err)
-			return
-		}
-	}
-	log.Println("converted image to png")
+	
 	if imageObj.RemoveBackground && imageObj.Extention != "svg" {
 
 		imageObj.Image, err = removeBackground(imageObj.Image, filename, config.BalaToken)
@@ -386,7 +357,11 @@ func LoadImage(rw http.ResponseWriter, r *http.Request) {
 	}
 	log.Println("uploaded image to bucket")
 	trimmedName := strings.TrimLeft(filename, "./temp_photo/")
-	
+	if len(trimmedName) < 18 {
+		log.Printf("Error happened in uploading image to bucket. Name is too short Err: ")
+		handlersfunc.HandleUploadImageError(rw)
+		return
+	}
 	rw.WriteHeader(http.StatusOK)
 	rBody.Link = trimmedName
 	resp["response"] = rBody
@@ -428,17 +403,17 @@ func CreatePDFVisualization(rw http.ResponseWriter, r *http.Request) {
 	var pdfName string
 	pdfName = "pdflink_" + strconv.Itoa(aByteToInt) + ".pdf"
 	var pagesImages []string
-	dir, _ := ioutil.TempDir("", strconv.Itoa(aByteToInt))
+	//dir, _ := ioutil.TempDir("", strconv.Itoa(aByteToInt))
 	if err != nil {
 		log.Printf("Error happened in creating temp dir for the images. Err: %s", err)
 		handlersfunc.HandleUploadImageError(rw)
 	}
-	defer os.RemoveAll(dir)
+	//defer os.RemoveAll(dir)
 	for _, page := range pages {
 
 		strCreatingImageLink := *page.CreatingImageLink
 		imageURL := config.ImageHost+strCreatingImageLink
-		localPath := dir + strCreatingImageLink
+		localPath := "./temp_pdf/" + strCreatingImageLink
 		log.Println(localPath)
 		err = DownloadFile(localPath, imageURL) 
 		if err != nil {

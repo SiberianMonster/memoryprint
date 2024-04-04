@@ -388,6 +388,7 @@ func RetrieveProjectPages(ctx context.Context, storeDB *pgxpool.Pool, projectID 
 		} else {
 			page.Data = nil
 		}
+		log.Println(page)
 		page.UsedPhotoIDs = []uint{}
 		photorows, err := storeDB.Query(ctx, "SELECT photos_id FROM page_has_photos WHERE pages_id = ($1);", page.PageID)
 		if err != nil {
@@ -398,12 +399,14 @@ func RetrieveProjectPages(ctx context.Context, storeDB *pgxpool.Pool, projectID 
 
 		for photorows.Next() {
 			var photoID uint
-			if err = rows.Scan(&photoID); err != nil {
+			if err = photorows.Scan(&photoID); err != nil {
+				log.Println(err)
 				return nil, err
 			}
 			page.UsedPhotoIDs = append(page.UsedPhotoIDs, photoID)
 
 		}
+		log.Println(page)
 		pageslice = append(pageslice, page)
 	}
 
@@ -710,13 +713,29 @@ func RetrieveTemplates(ctx context.Context, storeDB *pgxpool.Pool, offset uint, 
 	defer rows.Close()
 
 	if tcategory != "" {
-		rows, err = storeDB.Query(ctx, "SELECT * FROM (SELECT templates_id FROM templates WHERE status = ($1) AND category = ($2)) AS selectedT ORDER BY selectedT.templates_id DESC LIMIT ($3) OFFSET ($4);", "PUBLISHED", tcategory, limit, offset)
+		if tsize != "" {
+			rows, err = storeDB.Query(ctx, "SELECT * FROM (SELECT templates_id FROM templates WHERE status = ($1) AND category = ($2) AND size =($3)) AS selectedT ORDER BY selectedT.templates_id DESC LIMIT ($4) OFFSET ($5);", "PUBLISHED", tcategory, tsize, limit, offset)
+			if err != nil {
+				log.Printf("Error happened when retrieving templates from pgx table. Err: %s", err)
+				return templateset, err
+			}
+			defer rows.Close()
+		} else {
+			rows, err = storeDB.Query(ctx, "SELECT * FROM (SELECT templates_id FROM templates WHERE status = ($1) AND category = ($2)) AS selectedT ORDER BY selectedT.templates_id DESC LIMIT ($3) OFFSET ($4);", "PUBLISHED", tcategory, limit, offset)
+			if err != nil {
+				log.Printf("Error happened when retrieving templates from pgx table. Err: %s", err)
+				return templateset, err
+			}
+			defer rows.Close()
+		}
+	} else if tsize != "" {
+		rows, err = storeDB.Query(ctx, "SELECT * FROM (SELECT templates_id FROM templates WHERE status = ($1) AND size =($2)) AS selectedT ORDER BY selectedT.templates_id DESC LIMIT ($3) OFFSET ($4);", "PUBLISHED", tsize, limit, offset)
 		if err != nil {
 			log.Printf("Error happened when retrieving templates from pgx table. Err: %s", err)
 			return templateset, err
 		}
 		defer rows.Close()
-	} 
+	}
 
 	for rows.Next() {
 
@@ -769,13 +788,6 @@ func RetrieveTemplates(ctx context.Context, storeDB *pgxpool.Pool, offset uint, 
 			log.Printf("Error happened when counting templates in pgx table. Err: %s", err)
 			return templateset, err
 		}
-	if tsize != "" {
-		err = storeDB.QueryRow(ctx, "SELECT COUNT(templates_id) FROM templates WHERE status = ($1) AND size = ($2);", "PUBLISHED", tsize).Scan(&countAllString)
-		if err != nil && err != pgx.ErrNoRows{
-			log.Printf("Error happened when counting templates in pgx table. Err: %s", err)
-			return templateset, err
-		}
-	}
 
 	if tcategory != "" {
 		if tsize != "" {
@@ -792,7 +804,13 @@ func RetrieveTemplates(ctx context.Context, storeDB *pgxpool.Pool, offset uint, 
 				return templateset, err
 			}
 		}
-	} 
+	} else if tsize != "" {
+		err = storeDB.QueryRow(ctx, "SELECT COUNT(templates_id) FROM templates WHERE status = ($1) AND size = ($2);", "PUBLISHED", tsize).Scan(&countAllString)
+		if err != nil && err != pgx.ErrNoRows{
+			log.Printf("Error happened when counting templates in pgx table. Err: %s", err)
+			return templateset, err
+		}
+	}
 	
 	templateset.CountAll, _ = strconv.Atoi(countAllString)
 	return templateset, nil
@@ -819,14 +837,14 @@ func SavePagePhotos(ctx context.Context, storeDB *pgxpool.Pool, pageID uint, pho
 	}
 	defer tx.Rollback(ctx)
 
-	_, err = tx.Prepare(ctx, "my-query-photo","INSERT INTO page_has_photos (pages_id, photos_id) VALUES ($1, $2);")
+	_, err = tx.Prepare(ctx, "my-query-photo","INSERT INTO page_has_photos (pages_id, photos_id, last_edited_at) VALUES ($1, $2, $3);")
 	if err != nil {
 		log.Printf("Error happened when preparing pgx transaction context. Err: %s", err)
 		return err
 	}
-
+	t := time.Now()
 	for _, v := range photoIDS {
-		if _, err = tx.Exec(ctx, "my-query-photo", pageID, v); err != nil {
+		if _, err = tx.Exec(ctx, "my-query-photo", pageID, v, t); err != nil {
 			log.Printf("Error happened when declaring transaction. Err: %s", err)
 			return err
 		}
