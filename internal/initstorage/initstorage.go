@@ -152,7 +152,7 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 
 	// decorations table
 	_, err = db.Exec(ctx,
-		"CREATE TABLE IF NOT EXISTS decorations (decorations_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, link varchar NOT NULL, type varchar NOT NULL, category varchar)")
+		"CREATE TABLE IF NOT EXISTS decorations (decorations_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, link varchar NOT NULL, type varchar, category varchar)")
 	if err != nil {
 			log.Printf("Error happened when creating decorations table. Err: %s", err)
 			return nil, false

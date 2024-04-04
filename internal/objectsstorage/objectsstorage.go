@@ -423,11 +423,12 @@ func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 				log.Printf("Error happened when retrieving backgrounds from backgrounds table. Err: %s", err)
 				return responseBackground, err
 			}
-			if btype != "" {
-					if btype==bType {
+			log.Println(btype)
+			log.Println(bType)
+			if btype==bType {
 						counter = counter + 1
 					}
-			}
+			
 		}
 		responseBackground.CountFavourite = counter
 	}
@@ -438,34 +439,8 @@ func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 				return responseBackground, err
 	}
 	responseBackground.CountPersonal, _ = strconv.Atoi(countPersonalString)
-	if btype != "" {
-		counter := 0
-		rows, err := storeDB.Query(ctx, "SELECT backgrounds_id FROM users_has_backgrounds WHERE users_id = ($1) AND is_personal = ($2) ORDER BY backgrounds_id;", userID, true)
-				if err != nil {
-					log.Printf("Error happened when retrieving users_has_backgrounds from pgx table. Err: %s", err)
-					return responseBackground, err
-				}
-		defer rows.Close()
-		for rows.Next() {
-			var bId uint
-			var bType string
-			if err = rows.Scan(&bId); err != nil {
-				log.Printf("Error happened when scanning backgrounds. Err: %s", err)
-				return responseBackground, err
-			}
-			err := storeDB.QueryRow(ctx, "SELECT category FROM backgrounds WHERE backgrounds_id = ($1);", bId).Scan(&bType)
-			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-				log.Printf("Error happened when retrieving backgrounds from backgrounds table. Err: %s", err)
-				return responseBackground, err
-			}
-			if btype != "" {
-					if btype==bType {
-						counter = counter + 1
-					}
-			}
-		}
-		responseBackground.CountFavourite = counter
-	}
+
+	
 	var countAllString string
 	if isfavourite == true {
 		responseBackground.CountAll = responseBackground.CountFavourite

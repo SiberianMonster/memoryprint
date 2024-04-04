@@ -816,7 +816,7 @@ func LoadLayouts(rw http.ResponseWriter, r *http.Request) {
 
 	rOffset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 	rLimit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	rCountImages, _ := strconv.Atoi(r.URL.Query().Get("countimages"))
+	rCountImages, _ := strconv.Atoi(r.URL.Query().Get("count_images"))
 	requestL.Offset = uint(rOffset)
 	requestL.Limit = uint(rLimit)
 	requestL.CountImages = uint(rCountImages)
