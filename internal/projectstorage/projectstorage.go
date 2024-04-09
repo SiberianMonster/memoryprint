@@ -587,16 +587,17 @@ func DuplicatePage(ctx context.Context, storeDB *pgxpool.Pool, duplicateID uint,
 		return err
 	}
 	defer rows.Close()
-
+	t := time.Now()
 	for rows.Next() {
 		var photoID uint
 		if err = rows.Scan(&photoID); err != nil {
 			log.Printf("Error happened when scanning pages page_has_photos. Err: %s", err)
 			return err
 		}
-		_, err = storeDB.Exec(ctx, "INSERT INTO page_has_photos (pages_id, photos_id) VALUES ($1, $2);",
+		_, err = storeDB.Exec(ctx, "INSERT INTO page_has_photos (pages_id, photos_id, last_edited_at) VALUES ($1, $2, $3);",
 			pageID,
 			photoID,
+			t,
 		)
 		if err != nil {
 			log.Printf("Error happened when inserting a new entry into page_has_photos table. Err: %s", err)
