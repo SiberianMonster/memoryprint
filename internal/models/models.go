@@ -148,6 +148,7 @@ type ProjectObj struct {
 	Name string `json:"name"`
 	Size string `json:"size"`
 	Variant string `json:"variant"`
+	Surface string `json:"surface"`
 	LastEditedAt int64`json:"updated_at"`
 	CreatedAt int64 `json:"created_at"`
   }

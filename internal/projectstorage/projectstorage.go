@@ -328,7 +328,7 @@ func LoadProject(ctx context.Context, storeDB *pgxpool.Pool, pID uint) (models.P
 	var projectObj models.ProjectObj
 	var updateTimeStorage time.Time
 	var createTimeStorage time.Time
-	err := storeDB.QueryRow(ctx, "SELECT name, size, variant, created_at, last_edited_at FROM projects WHERE projects_id = ($1);", pID).Scan(&projectObj.Name, &projectObj.Size, &projectObj.Variant, &createTimeStorage, &updateTimeStorage)
+	err := storeDB.QueryRow(ctx, "SELECT name, size, variant, created_at, paper, last_edited_at FROM projects WHERE projects_id = ($1);", pID).Scan(&projectObj.Name, &projectObj.Size, &projectObj.Variant, &createTimeStorage, &projectObj.Surface, &updateTimeStorage)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		log.Printf("Error happened when retrieving project from pgx table. Err: %s", err)
 		return projectObj, err
