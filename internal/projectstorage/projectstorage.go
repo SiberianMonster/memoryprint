@@ -80,7 +80,7 @@ func CheckAllPagesPassed(ctx context.Context, storeDB *pgxpool.Pool, slicePassed
 	var countPage uint
 	
 	err := storeDB.QueryRow(ctx, "SELECT COUNT(pages_id) FROM pages WHERE projects_id = ($1) AND is_template = ($2);", projectID, isTemplate).Scan(&countPage)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	if err != nil {
 		log.Printf("Error happened when counting pages. Err: %s", err)
 		return false
 	}
@@ -88,6 +88,21 @@ func CheckAllPagesPassed(ctx context.Context, storeDB *pgxpool.Pool, slicePassed
 	slicePassed = slicePassed + 2
 	if slicePassed != countPage {
 		log.Printf("Error not all pages passed. Err: %s", err)
+		return false
+	}
+	return true
+}
+
+func CheckPagesRange(ctx context.Context, storeDB *pgxpool.Pool, sort uint, projectID uint, isTemplate bool) bool {
+	var countPage uint
+	
+	err := storeDB.QueryRow(ctx, "SELECT COUNT(pages_id) FROM pages WHERE projects_id = ($1) AND is_template = ($2);", projectID, isTemplate).Scan(&countPage)
+	if err != nil {
+		log.Printf("Error happened when counting pages. Err: %s", err)
+		return false
+	}
+	if sort >= countPage  || sort == 0 {
+		log.Printf("Attempt to change cover or non-existing page. Err: %s", err)
 		return false
 	}
 	return true
@@ -615,7 +630,7 @@ func DeletePage(ctx context.Context, storeDB *pgxpool.Pool, pageID uint, project
 
 	var oldsort uint
 	err := storeDB.QueryRow(ctx, "SELECT sort FROM pages WHERE pages_id = ($1) and projects_id = ($2);", pageID, projectID).Scan(&oldsort)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	if err != nil {
 		log.Printf("Error happened when retrieving sort number for the page to be removed from pgx table. Err: %s", err)
 		return err
 	}
@@ -658,7 +673,7 @@ func DeletePage(ctx context.Context, storeDB *pgxpool.Pool, pageID uint, project
 			newsortNum,
 			existingID,
 			)
-			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			if err != nil {
 				log.Printf("Error happened when updating page sort in pgx table. Err: %s", err)
 				return err
 			}
@@ -676,7 +691,7 @@ func DeletePage(ctx context.Context, storeDB *pgxpool.Pool, pageID uint, project
 			newCount,
 			projectID,
 			)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	if err != nil {
 				log.Printf("Error happened when updating page sort in pgx table. Err: %s", err)
 				return err
 	}

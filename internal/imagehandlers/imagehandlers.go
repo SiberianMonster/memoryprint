@@ -401,7 +401,8 @@ func CreatePDFVisualization(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var pdfName string
-	pdfName = "pdflink_" + strconv.Itoa(aByteToInt) + ".pdf"
+	code := GetToken(10)
+	pdfName = "pdflink_" + strconv.Itoa(aByteToInt) + "_" + code + ".pdf"
 	var pagesImages []string
 	//dir, _ := ioutil.TempDir("", strconv.Itoa(aByteToInt))
 	if err != nil {
