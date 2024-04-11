@@ -1152,7 +1152,7 @@ func DeletePages(rw http.ResponseWriter, r *http.Request) {
 		err = projectstorage.DeletePage(ctx, config.DB, pageID, projectID, false)
 
 		if err != nil {
-			handlersfunc.HandleDatabaseServerError(rw)
+			handlersfunc.HandleMissingPageError(rw)
 			return
 		}
 	}
