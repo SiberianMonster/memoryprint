@@ -30,6 +30,7 @@ import (
 	"github.com/SiberianMonster/memoryprint/internal/models"
 	"github.com/SiberianMonster/memoryprint/internal/handlersfunc"
 	"github.com/SiberianMonster/memoryprint/internal/projectstorage"
+	"github.com/SiberianMonster/memoryprint/internal/userstorage"
 	_ "github.com/lib/pq"
 )
 const BINARY = "/usr/bin/inkscape"
@@ -388,7 +389,7 @@ func CreatePDFVisualization(rw http.ResponseWriter, r *http.Request) {
 	userID := handlersfunc.UserIDContextReader(r)
 	log.Printf("Create project visualization %d for user %d",projectID, userID)
 
-	userCheck := projectstorage.CheckUserHasProject(ctx, config.DB, userID, projectID)
+	userCheck := userstorage.CheckUserHasProject(ctx, config.DB, userID, projectID)
 
 	if !userCheck {
 		handlersfunc.HandlePermissionError(rw)

@@ -14,7 +14,9 @@ import (
 	"github.com/SiberianMonster/memoryprint/internal/config"
 	"github.com/SiberianMonster/memoryprint/internal/models"
 	"github.com/SiberianMonster/memoryprint/internal/projectstorage"
+	"github.com/SiberianMonster/memoryprint/internal/userstorage"
 	"github.com/SiberianMonster/memoryprint/internal/objectsstorage"
+	"github.com/SiberianMonster/memoryprint/internal/emailutils"
 	"github.com/SiberianMonster/memoryprint/internal/handlersfunc"
 	"github.com/go-playground/validator/v10"
 	"golang.org/x/exp/slices"
@@ -29,20 +31,18 @@ var resp map[string]string
 func UserLoadPhotos(rw http.ResponseWriter, r *http.Request) {
 
 	resp := make(map[string]models.ResponsePhotos)
-	var photoParams models.RequestPhotos
 	var rPhotos models.ResponsePhotos
 	defer r.Body.Close()
+	sorting := r.URL.Query().Get("sorting")
 	rOffset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 	rLimit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	photoParams.Offset = uint(rOffset)
-	photoParams.Limit = uint(rLimit)
 
 	
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
 	userID := handlersfunc.UserIDContextReader(r)
 	log.Printf("Load photos of the user %d", userID)
-	rPhotos, err := objectsstorage.RetrieveUserPhotos(ctx, config.DB, userID, photoParams.Offset, photoParams.Limit)
+	rPhotos, err := objectsstorage.RetrieveUserPhotos(ctx, config.DB, userID, sorting, uint(rOffset), uint(rLimit))
 
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
@@ -141,6 +141,7 @@ func DeletePhoto(rw http.ResponseWriter, r *http.Request) {
 	rw.Write(jsonResp)
 }
 
+
 func CreateBlankProject(rw http.ResponseWriter, r *http.Request) {
 
 	resp := make(map[string]models.ResponseCreatedProject)
@@ -169,7 +170,7 @@ func CreateBlankProject(rw http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	userID := handlersfunc.UserIDContextReader(r)
 	log.Printf("Create project for user %d", userID)
-	pID, err = projectstorage.CreateProject(ctx, config.DB, userID, ProjectObj, 0)
+	pID, err = projectstorage.CreateProject(ctx, config.DB, userID, ProjectObj)
 
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
@@ -187,8 +188,70 @@ func CreateBlankProject(rw http.ResponseWriter, r *http.Request) {
 	rw.Write(jsonResp)
 }
 
+func DuplicateProject(rw http.ResponseWriter, r *http.Request) {
 
+	resp := make(map[string]uint)	
+	var pID uint
+	var rProject models.ResponseCreatedProject
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	defer cancel()
+	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
+	projectID := uint(aByteToInt)
+	defer r.Body.Close()
+	userID := handlersfunc.UserIDContextReader(r)
+	log.Printf("Duplicate project for user %d", userID)
+	pID, err = projectstorage.DuplicateProject(ctx, config.DB, projectID, userID)
 
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
+
+	rw.WriteHeader(http.StatusOK)
+	rProject.ProjectID = pID
+	resp["response"] = 1
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("Error happened in JSON marshal. Err: %s", err)
+		return
+	}
+	rw.Write(jsonResp)
+}
+
+func DeleteProject(rw http.ResponseWriter, r *http.Request) {
+
+	resp := make(map[string]uint)
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	defer cancel()
+	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
+	projectID := uint(aByteToInt)
+	defer r.Body.Close()
+	
+	userID := handlersfunc.UserIDContextReader(r)
+	log.Printf("Delete project %d for user %d",projectID, userID)
+	userCheck := userstorage.CheckUserHasProject(ctx, config.DB, userID, projectID)
+
+	if !userCheck {
+		handlersfunc.HandlePermissionError(rw)
+		return
+	}
+
+	err = projectstorage.DeleteProject(ctx, config.DB, projectID)
+
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
+
+	rw.WriteHeader(http.StatusOK)
+	resp["response"] = 1
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("Error happened in JSON marshal. Err: %s", err)
+		return
+	}
+	rw.Write(jsonResp)
+}
 
 func PublishTemplate(rw http.ResponseWriter, r *http.Request) {
 
@@ -217,6 +280,33 @@ func PublishTemplate(rw http.ResponseWriter, r *http.Request) {
 	rw.Write(jsonResp)
 }
 
+func UnpublishTemplate(rw http.ResponseWriter, r *http.Request) {
+
+	resp := make(map[string]uint)
+	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
+	templateID := uint(aByteToInt)
+	
+	defer r.Body.Close()
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	defer cancel()
+
+	
+	err = projectstorage.UnpublishTemplate(ctx, config.DB, templateID)
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
+
+	rw.WriteHeader(http.StatusOK)
+	resp["response"] = 1
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("Error happened in JSON marshal. Err: %s", err)
+		return
+	}
+	rw.Write(jsonResp)
+}
+
 func LoadProject(rw http.ResponseWriter, r *http.Request) {
 
 	resp := make(map[string]models.SavedProjectObj)
@@ -230,7 +320,7 @@ func LoadProject(rw http.ResponseWriter, r *http.Request) {
 	userID := handlersfunc.UserIDContextReader(r)
 	log.Printf("Load project %d for user %d",projectID, userID)
 
-	userCheck := projectstorage.CheckUserHasProject(ctx, config.DB, userID, projectID)
+	userCheck := userstorage.CheckUserHasProject(ctx, config.DB, userID, projectID)
 
 	if !userCheck {
 		handlersfunc.HandlePermissionError(rw)
@@ -248,6 +338,7 @@ func LoadProject(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
 	}
+
 	log.Println(retrievedProject)
 	rw.WriteHeader(http.StatusOK)
 	resp["response"] = retrievedProject
@@ -345,6 +436,33 @@ func DeleteDecor(rw http.ResponseWriter, r *http.Request) {
 	
 	
 	err = objectsstorage.DeleteDecoration(ctx, config.DB, userID, decorID)
+
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
+
+	rw.WriteHeader(http.StatusOK)
+	resp["response"] = 1
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("Error happened in JSON marshal. Err: %s", err)
+		return
+	}
+	rw.Write(jsonResp)
+}
+
+func DeleteTemplate(rw http.ResponseWriter, r *http.Request) {
+
+	resp := make(map[string]uint)
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	defer cancel()
+	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
+	templateID := uint(aByteToInt)
+	defer r.Body.Close()
+	
+	
+	err = projectstorage.DeleteTemplate(ctx, config.DB, templateID)
 
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
@@ -957,13 +1075,52 @@ func FavourLayout(rw http.ResponseWriter, r *http.Request) {
 
 func LoadProjects(rw http.ResponseWriter, r *http.Request) {
 
-	resp := make(map[string][]models.ResponseProject)
+	resp := make(map[string]models.ResponseProjects)
 	defer r.Body.Close()
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
 	userID := handlersfunc.UserIDContextReader(r)
 	log.Printf("Load projects of the user %d", userID)
-	projects, err := projectstorage.RetrieveUserProjects(ctx, config.DB, userID)
+	var requestT models.RequestTemplate
+
+	tOffset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+	tLimit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+
+	requestT.Offset = uint(tOffset)
+	requestT.Limit = uint(tLimit)
+	projects, err := projectstorage.RetrieveUserProjects(ctx, config.DB, userID, requestT.Offset, requestT.Limit)
+
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
+
+	rw.WriteHeader(http.StatusOK)
+	resp["response"] = projects
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("Error happened in JSON marshal. Err: %s", err)
+		return
+	}
+	rw.Write(jsonResp)
+}
+
+func AdminLoadProjects(rw http.ResponseWriter, r *http.Request) {
+
+	resp := make(map[string]models.ResponseProjects)
+	defer r.Body.Close()
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	defer cancel()
+	userID := handlersfunc.UserIDContextReader(r)
+	log.Printf("Load projects of the admin %d", userID)
+	var requestT models.RequestTemplate
+
+	tOffset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+	tLimit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+
+	requestT.Offset = uint(tOffset)
+	requestT.Limit = uint(tLimit)
+	projects, err := projectstorage.RetrieveAdminProjects(ctx, config.DB, userID, requestT.Offset, requestT.Limit)
 
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
@@ -1347,7 +1504,50 @@ func LoadTemplates(rw http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	log.Printf("Retrieving templates")
 
-	templates, err := projectstorage.RetrieveTemplates(ctx, config.DB, requestT.Offset, requestT.Limit, requestT.Category, requestT.Size)
+	templates, err := projectstorage.RetrieveTemplates(ctx, config.DB, requestT.Offset, requestT.Limit, requestT.Category, requestT.Size, "PUBLISHED")
+
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
+
+	rw.WriteHeader(http.StatusOK)
+	resp["response"] = templates
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("Error happened in JSON marshal. Err: %s", err)
+		return
+	}
+	rw.Write(jsonResp)
+}
+
+func AdminLoadTemplates(rw http.ResponseWriter, r *http.Request) {
+
+	resp := make(map[string]models.ResponseTemplates)
+	
+	var requestT models.RequestTemplate
+	
+	category := r.URL.Query().Get("category")
+	status := r.URL.Query().Get("status")
+	if status != "" {
+		requestT.Status = strings.ToUpper(r.URL.Query().Get("status"))
+	}
+
+    if category != "" {
+		requestT.Category = strings.ToUpper(r.URL.Query().Get("category"))
+	}
+	tOffset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+	tLimit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+
+	requestT.Offset = uint(tOffset)
+	requestT.Limit = uint(tLimit)
+
+	defer r.Body.Close()
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	defer cancel()
+	log.Printf("Retrieving templates")
+
+	templates, err := projectstorage.RetrieveAdminTemplates(ctx, config.DB, requestT.Offset, requestT.Limit, requestT.Category, requestT.Size, requestT.Status)
 
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
@@ -1401,6 +1601,386 @@ func CreateTemplate(rw http.ResponseWriter, r *http.Request) {
 	rw.WriteHeader(http.StatusOK)
 	rTemplate.TemplateID = tID
 	resp["response"] = rTemplate
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("Error happened in JSON marshal. Err: %s", err)
+		return
+	}
+	rw.Write(jsonResp)
+}
+
+func DuplicateTemplate(rw http.ResponseWriter, r *http.Request) {
+
+	resp := make(map[string]string)
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	defer cancel()
+	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
+	templateID := uint(aByteToInt)
+	defer r.Body.Close()
+	
+	_, err = projectstorage.DuplicateTemplate(ctx, config.DB, templateID)
+
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
+
+	rw.WriteHeader(http.StatusOK)
+	resp["response"] = "1"
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("Error happened in JSON marshal. Err: %s", err)
+		return
+	}
+	rw.Write(jsonResp)
+}
+
+func UpdateTemplate(rw http.ResponseWriter, r *http.Request) {
+
+	resp := make(map[string]uint)
+	var TemplateObj models.NewTemplateObj
+	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
+	templateID := uint(aByteToInt)
+	
+	err := json.NewDecoder(r.Body).Decode(&TemplateObj)
+	if err != nil {
+		handlersfunc.HandleDecodeError(rw, err)
+		return
+	}
+
+	defer r.Body.Close()
+	// Create a new validator instance
+    validate := validator.New()
+
+    // Validate the User struct
+    err = validate.Struct(TemplateObj)
+    if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	defer cancel()
+	
+	_, err = projectstorage.UpdateTemplate(ctx, config.DB, templateID, TemplateObj.Name, TemplateObj.Category)
+
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
+
+	rw.WriteHeader(http.StatusOK)
+	resp["response"] = 1
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("Error happened in JSON marshal. Err: %s", err)
+		return
+	}
+	rw.Write(jsonResp)
+}
+
+func ShareLink(rw http.ResponseWriter, r *http.Request) {
+
+	resp := make(map[string]uint)
+	var ViewerObj models.Viewer
+	var OwnerObj models.UserInfo
+
+	err := json.NewDecoder(r.Body).Decode(&ViewerObj)
+	if err != nil {
+		handlersfunc.HandleDecodeError(rw, err)
+		return
+	}
+	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
+	pID := uint(aByteToInt)
+	defer r.Body.Close()
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	defer cancel()
+	userID := handlersfunc.UserIDContextReader(r)
+	OwnerObj, err = userstorage.GetUserData(ctx, config.DB, userID)
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
+
+	// Send email with the link
+	from := "support@memoryprint.ru"
+	to := []string{ViewerObj.Email}
+	subject := "С вами поделились ссылкой на фотокнигу!"
+	mailType := emailutils.MailViewerInvitation
+	mailData := &emailutils.MailData{
+		Username: ViewerObj.Name,
+		OwnerName: OwnerObj.Name,
+		OwnerEmail: OwnerObj.Email,
+	}
+
+	ms := &emailutils.SGMailService{config.YandexApiKey}
+	mailReq := emailutils.NewMail(from, to, subject, mailType, mailData)
+	err = emailutils.SendMail(mailReq, ms)
+	if err != nil {
+		log.Printf("unable to send mail", "error", err)
+		handlersfunc.HandleMailSendError(rw)
+		return
+	}
+
+	err = projectstorage.AddViewer(ctx, config.DB, pID, ViewerObj.Email)
+
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
+
+	rw.WriteHeader(http.StatusOK)
+	resp["response"] = 1
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("Error happened in JSON marshal. Err: %s", err)
+		return
+	}
+	rw.Write(jsonResp)
+}
+
+func AdminCreatePrices(rw http.ResponseWriter, r *http.Request) {
+
+	resp := make(map[string]string)
+	var PricesObj []models.Price
+	
+
+
+	err := json.NewDecoder(r.Body).Decode(&PricesObj)
+	if err != nil {
+		handlersfunc.HandleDecodeError(rw, err)
+		return
+	}
+
+	defer r.Body.Close()
+	
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	defer cancel()
+	log.Printf("Create new prices")
+	err = objectsstorage.AddPrices(ctx, config.DB, PricesObj)
+
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
+
+
+	rw.WriteHeader(http.StatusOK)
+	resp["response"] = "1"
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("Error happened in JSON marshal. Err: %s", err)
+		return
+	}
+	rw.Write(jsonResp)
+}
+
+func AdminDeletePrices(rw http.ResponseWriter, r *http.Request) {
+
+	resp := make(map[string]string)
+
+	defer r.Body.Close()
+	
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	defer cancel()
+	log.Printf("Delete prices")
+	err = objectsstorage.DeletePrices(ctx, config.DB)
+
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
+
+
+	rw.WriteHeader(http.StatusOK)
+	resp["response"] = "1"
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("Error happened in JSON marshal. Err: %s", err)
+		return
+	}
+	rw.Write(jsonResp)
+}
+
+func LoadPrices(rw http.ResponseWriter, r *http.Request) {
+
+	resp := make(map[string]models.ResponsePrice)
+	var priceObj models.ResponsePrice
+	
+	defer r.Body.Close()
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	defer cancel()
+	log.Printf("Retrieving prices")
+
+	prices, err := objectsstorage.RetrievePrices(ctx, config.DB)
+
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
+
+	rw.WriteHeader(http.StatusOK)
+	priceObj.Prices = prices
+	resp["response"] = priceObj
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("Error happened in JSON marshal. Err: %s", err)
+		return
+	}
+	rw.Write(jsonResp)
+}
+
+func AdminCreateCover(rw http.ResponseWriter, r *http.Request) {
+
+	resp := make(map[string]string)
+	var CoverObj models.Colour
+
+
+	err := json.NewDecoder(r.Body).Decode(&CoverObj)
+	if err != nil {
+		handlersfunc.HandleDecodeError(rw, err)
+		return
+	}
+
+	defer r.Body.Close()
+	
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	defer cancel()
+	log.Printf("Create new cover")
+	err = objectsstorage.AddCover(ctx, config.DB, CoverObj)
+
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
+
+
+	rw.WriteHeader(http.StatusOK)
+	resp["response"] = "1"
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("Error happened in JSON marshal. Err: %s", err)
+		return
+	}
+	rw.Write(jsonResp)
+}
+
+func AdminDeleteCover(rw http.ResponseWriter, r *http.Request) {
+
+	resp := make(map[string]uint)
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	defer cancel()
+	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
+	coverID := uint(aByteToInt)
+	defer r.Body.Close()
+	
+	err = objectsstorage.AdminDeleteCover(ctx, config.DB, coverID)
+
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
+
+	rw.WriteHeader(http.StatusOK)
+	resp["response"] = 1
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("Error happened in JSON marshal. Err: %s", err)
+		return
+	}
+	rw.Write(jsonResp)
+}
+
+func LoadColours(rw http.ResponseWriter, r *http.Request) {
+
+	resp := make(map[string]models.ResponseColour)
+	var coverObj models.ResponseColour
+	
+	defer r.Body.Close()
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	defer cancel()
+	log.Printf("Retrieving covers")
+
+	covers, err := objectsstorage.RetrieveCovers(ctx, config.DB)
+
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
+
+	rw.WriteHeader(http.StatusOK)
+	coverObj.Colours = covers
+	resp["response"] = coverObj
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("Error happened in JSON marshal. Err: %s", err)
+		return
+	}
+	rw.Write(jsonResp)
+}
+
+func UpdateCover(rw http.ResponseWriter, r *http.Request) {
+
+	resp := make(map[string]uint)
+	var CoverObj models.UpdateCover
+
+	err := json.NewDecoder(r.Body).Decode(&CoverObj)
+	if err != nil {
+		handlersfunc.HandleDecodeError(rw, err)
+		return
+	}
+	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
+	projectID := uint(aByteToInt)
+
+	defer r.Body.Close()
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	defer cancel()
+	log.Printf("Update project cover for user")
+	err = projectstorage.UpdateCover(ctx, config.DB, projectID, CoverObj)
+
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
+
+
+	rw.WriteHeader(http.StatusOK)
+	resp["response"] = 1
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("Error happened in JSON marshal. Err: %s", err)
+		return
+	}
+	rw.Write(jsonResp)
+}
+
+func UpdateSurface(rw http.ResponseWriter, r *http.Request) {
+
+	resp := make(map[string]uint)
+	var SurfaceObj models.UpdateSurface
+
+	err := json.NewDecoder(r.Body).Decode(&SurfaceObj)
+	if err != nil {
+		handlersfunc.HandleDecodeError(rw, err)
+		return
+	}
+	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
+	projectID := uint(aByteToInt)
+
+	defer r.Body.Close()
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	defer cancel()
+	log.Printf("Update project surface for user")
+	err = projectstorage.UpdateSurface(ctx, config.DB, projectID, SurfaceObj)
+
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
+
+
+	rw.WriteHeader(http.StatusOK)
+	resp["response"] = 1
 	jsonResp, err := json.Marshal(resp)
 	if err != nil {
 		log.Printf("Error happened in JSON marshal. Err: %s", err)

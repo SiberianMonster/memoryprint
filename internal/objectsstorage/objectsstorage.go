@@ -58,9 +58,10 @@ func AddPhoto(ctx context.Context, storeDB *pgxpool.Pool, photoLink string, user
 
 	var photoID uint
 	t := time.Now()
-	err = storeDB.QueryRow(ctx, "INSERT INTO photos (link, uploaded_at, users_id) VALUES ($1, $2, $3) RETURNING photos_id;",
+	err = storeDB.QueryRow(ctx, "INSERT INTO photos (link, uploaded_at, is_favourite, users_id) VALUES ($1, $2, $3) RETURNING photos_id;",
 		photoLink,
 		t,
+		false,
 		userID,
 	).Scan(&photoID)
 	if err != nil {
@@ -71,7 +72,6 @@ func AddPhoto(ctx context.Context, storeDB *pgxpool.Pool, photoLink string, user
 	return photoID, nil
 
 }
-
 
 // AddDecoration function performs the operation of adding decoration to the db.
 func AddDecoration(ctx context.Context, storeDB *pgxpool.Pool, newDecor models.PersonalisedObject, userID uint) (uint, error) {
@@ -269,23 +269,27 @@ func DeletePhoto(ctx context.Context, storeDB *pgxpool.Pool, photoID uint) (uint
 }
 
 // RetrieveUserPhotos function performs the operation of retrieving user photos from pgx database with a query.
-func RetrieveUserPhotos(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset uint, limit uint) (models.ResponsePhotos, error) {
+func RetrieveUserPhotos(ctx context.Context, storeDB *pgxpool.Pool, userID uint, sorting string, offset uint, limit uint) (models.ResponsePhotos, error) {
 
 	var responsePhoto models.ResponsePhotos
 	responsePhoto.Photos = []models.Photo{}
-	rows, err := storeDB.Query(ctx, "SELECT photos_id, link FROM photos WHERE users_id = ($1) ORDER BY photos_id DESC LIMIT ($2) OFFSET ($3);", userID, limit, offset)
+	rows, err := storeDB.Query(ctx, "SELECT photos_id, link, uploaded_at FROM photos WHERE users_id = ($1) ORDER BY photos_id ($2) DESC LIMIT ($3) OFFSET ($4);", userID, sorting, limit, offset)
 	if err != nil {
 		log.Printf("Error happened when retrieving photos from pgx table. Err: %s", err)
 		return responsePhoto, err
 	}
 	defer rows.Close()
 
+	
+
 	for rows.Next() {
 		var photo models.Photo
-		if err = rows.Scan(&photo.PhotoID, &photo.Link); err != nil {
+		var uploadTimeStorage time.Time
+		if err = rows.Scan(&photo.PhotoID, &photo.Link, &uploadTimeStorage); err != nil {
 			log.Printf("Error happened when scanning photos. Err: %s", err)
 			return responsePhoto, err
 		}
+		photo.UploadedAt = uploadTimeStorage.Unix()
 		responsePhoto.Photos = append(responsePhoto.Photos, photo)
 	}
 
@@ -1169,3 +1173,131 @@ func FavourLayout(ctx context.Context, storeDB *pgxpool.Pool, newDecor models.Pe
 	return nil
 
 }
+
+
+// AddPrices function performs the operation of adding prices to the db.
+func AddPrices(ctx context.Context, storeDB *pgxpool.Pool, newP []models.Price) (error) {
+
+	for _, price := range newP {
+        _, err = storeDB.Exec(ctx, "INSERT INTO prices (cover, variant, surface, size, baseprice, extrapage) VALUES ($1, $2, $3, $4, $5, $6);",
+		price.Cover,
+		price.Variant,
+		price.Surface,
+		price.Size,
+		price.BasePrice,
+		price.ExtraPage,
+		)
+		if err != nil {
+			log.Printf("Error happened when inserting prices into pgx table. Err: %s", err)
+			return err
+		}
+	}
+
+	return nil
+
+}
+
+// DeletePrices function performs the operation of deleting prices from the db.
+func DeletePrices(ctx context.Context, storeDB *pgxpool.Pool) (error) {
+
+	_, err = storeDB.Exec(ctx, "DELETE * FROM prices;")
+	if err != nil {
+			log.Printf("Error happened when deleting prices from pgx table. Err: %s", err)
+			return err
+	}
+	
+
+	return nil
+
+}
+
+// RetrievePrices function performs the operation of retrieving prices from pgx database with a query.
+func RetrievePrices(ctx context.Context, storeDB *pgxpool.Pool) ([]models.Price, error) {
+
+	prices := []models.Price{}
+
+	rows, err := storeDB.Query(ctx, "SELECT cover, variant, size, baseprice, extrapage FROM prices;")
+	if err != nil {
+			log.Printf("Error happened when retrieving prices from pgx table. Err: %s", err)
+			return prices, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+
+			var priceObj models.Price
+			if err = rows.Scan(&priceObj.Cover, &priceObj.Variant, &priceObj.Size, &priceObj.BasePrice, &priceObj.ExtraPage); err != nil {
+				log.Printf("Error happened when scanning prices. Err: %s", err)
+				return prices, err
+			}
+
+			prices = append(prices, priceObj)
+			
+	}
+
+	return prices, nil
+
+}
+
+
+// AddCover function performs the operation of adding cover to the db.
+func AddCover(ctx context.Context, storeDB *pgxpool.Pool, newC models.Colour) (error) {
+
+	_, err = storeDB.Exec(ctx, "INSERT INTO leather (colourlink, hexcode) VALUES ($1, $2, $3);",
+		newC.ColourLink,
+		newC.HexCode,
+	)
+	if err != nil {
+			log.Printf("Error happened when inserting cover into pgx table. Err: %s", err)
+			return err
+	}
+	
+
+	return nil
+
+}
+
+// AdminDeleteCover function performs the operation of deleting cover from the db.
+func AdminDeleteCover(ctx context.Context, storeDB *pgxpool.Pool, cID uint) (error) {
+
+	_, err = storeDB.Exec(ctx, "DELETE FROM leather WHERE leather_id=($1);",
+		cID,
+	)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		log.Printf("Error happened when deleting cover from leather pgx table. Err: %s", err)
+		return err
+	}
+
+	return nil
+
+}
+
+// RetrieveCovers function performs the operation of retrieving covers from pgx database with a query.
+func RetrieveCovers(ctx context.Context, storeDB *pgxpool.Pool) ([]models.Colour, error) {
+
+	covers := []models.Colour{}
+
+	rows, err := storeDB.Query(ctx, "SELECT leather_id, colourlink, hexcode FROM leather;")
+	if err != nil {
+			log.Printf("Error happened when retrieving covers from pgx table. Err: %s", err)
+			return covers, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+
+			var coverObj models.Colour
+			if err = rows.Scan(&coverObj.ID, &coverObj.ColourLink, &coverObj.HexCode); err != nil {
+				log.Printf("Error happened when scanning covers. Err: %s", err)
+				return covers, err
+			}
+
+			covers = append(covers, coverObj)
+			
+	}
+
+	return covers, nil
+
+}
+
+

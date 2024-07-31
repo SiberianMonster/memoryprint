@@ -74,6 +74,48 @@ func HandlePermissionError(rw http.ResponseWriter) {
     rw.WriteHeader(http.StatusUnauthorized)
 }
 
+func HandleExpiredError(rw http.ResponseWriter) {
+    rw.WriteHeader(http.StatusGone)
+}
+
+func HandleAlreadyUsedError(rw http.ResponseWriter) {
+    
+    rw.WriteHeader(http.StatusOK)
+    
+    resp := make(map[string]ErrorBody)
+    var errorB ErrorBody
+    errorB.ErrorCode = 302
+    errorB.ErrorMessage = "Already used promocode"
+
+    resp["error"] = errorB
+    jsonResp, err := json.Marshal(resp)
+    if err != nil {
+        log.Printf("Error happened in JSON marshal. Err: %s", err)
+        return
+    }
+    rw.Write(jsonResp)
+   
+}
+
+func HandleAlreadyUsedGiftcertificateError(rw http.ResponseWriter) {
+    
+    rw.WriteHeader(http.StatusOK)
+    
+    resp := make(map[string]ErrorBody)
+    var errorB ErrorBody
+    errorB.ErrorCode = 302
+    errorB.ErrorMessage = "Already used gift certificate"
+
+    resp["error"] = errorB
+    jsonResp, err := json.Marshal(resp)
+    if err != nil {
+        log.Printf("Error happened in JSON marshal. Err: %s", err)
+        return
+    }
+    rw.Write(jsonResp)
+   
+}
+
 
 func HandleUnregisteredUserError(rw http.ResponseWriter) {
     rw.WriteHeader(http.StatusOK)
@@ -376,4 +418,85 @@ func HandleMissingImageDataError(rw http.ResponseWriter) {
         return
     }
     rw.Write(jsonResp)
+}
+
+func HandleMissingPromocode(rw http.ResponseWriter) {
+    rw.WriteHeader(http.StatusOK)
+    resp := make(map[string]ErrorBody)
+    var errorB ErrorBody
+    errorB.ErrorCode = 412
+    errorB.ErrorMessage = "Promocode does not exist"
+
+    resp["error"] = errorB
+    jsonResp, err := json.Marshal(resp)
+    if err != nil {
+        log.Printf("Error happened in JSON marshal. Err: %s", err)
+        return
+    }
+    rw.Write(jsonResp)
+}
+
+func HandleWrongPromocodeCategoryError(rw http.ResponseWriter) {
+    rw.WriteHeader(http.StatusOK)
+    resp := make(map[string]ErrorBody)
+    var errorB ErrorBody
+    errorB.ErrorCode = 417
+    errorB.ErrorMessage = "Promocode category not applicable"
+
+    resp["error"] = errorB
+    jsonResp, err := json.Marshal(resp)
+    if err != nil {
+        log.Printf("Error happened in JSON marshal. Err: %s", err)
+        return
+    }
+    rw.Write(jsonResp)
+}
+
+func HandleWrongGiftCodeError(rw http.ResponseWriter) {
+    rw.WriteHeader(http.StatusOK)
+    resp := make(map[string]ErrorBody)
+    var errorB ErrorBody
+    errorB.ErrorCode = 406
+    errorB.ErrorMessage = "Gift certificate code invalid"
+
+    resp["error"] = errorB
+    jsonResp, err := json.Marshal(resp)
+    if err != nil {
+        log.Printf("Error happened in JSON marshal. Err: %s", err)
+        return
+    }
+    rw.Write(jsonResp)
+}
+
+func HandleFailedPaymentURL(rw http.ResponseWriter) {
+    rw.WriteHeader(http.StatusOK)
+    resp := make(map[string]ErrorBody)
+    var errorB ErrorBody
+    errorB.ErrorCode = 412
+    errorB.ErrorMessage = "Failed to produce payment url"
+
+    resp["error"] = errorB
+    jsonResp, err := json.Marshal(resp)
+    if err != nil {
+        log.Printf("Error happened in JSON marshal. Err: %s", err)
+        return
+    }
+    rw.Write(jsonResp)
+}
+
+func HandleFailedCancellationError(rw http.ResponseWriter) {
+    rw.WriteHeader(http.StatusOK)
+    resp := make(map[string]ErrorBody)
+    var errorB ErrorBody
+    errorB.ErrorCode = 410
+    errorB.ErrorMessage = "Failed to cancel order"
+
+    resp["error"] = errorB
+    jsonResp, err := json.Marshal(resp)
+    if err != nil {
+        log.Printf("Error happened in JSON marshal. Err: %s", err)
+        return
+    }
+    rw.Write(jsonResp)
+   
 }

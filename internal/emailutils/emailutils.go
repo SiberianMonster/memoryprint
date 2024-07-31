@@ -36,12 +36,12 @@ type MailService interface {
 
 // List of Mail Types we are going to send.
 const (
-	MailConfirmation int = 1
-	MailDesignerOrder int = 2
-	MailPassTemp int = 3
-	MailViewerInvitationNew int = 4
-	MailViewerInvitationExist int = 5
-	MailWelcome int = 6
+	MailWelcome int = 1
+	MailPassTemp int = 2
+	MailPaidOrder int = 3
+	MailOrderInDelivery int = 4
+	MailViewerInvitation int = 5
+	MailGiftCertificate int = 6
 )
 
 // MailData represents the data to be sent to the template of the mail.
@@ -52,6 +52,7 @@ type MailData struct {
 	OwnerEmail	 string
 	UserEmail	 string
 	TempPass	 string
+	Ordernum uint
 }
 
 // Mail represents a email request
@@ -94,19 +95,11 @@ func (r *Mail) ParseTemplate(templateFileName string, data interface{}) error {
 // SGMailService is the sendgrid implementation of our MailService.
 type SGMailService struct {
 	YandexApiKey             string
-	MailVerifCodeExpiration    int		// in hours
-	PassResetCodeExpiration    int		// in minutes
-	MailVerifTemplateID        string
-	TempPassTemplateID        string
-	DesignerOrderTemplateID    string
-	ViewerInvitationNewTemplateID    string
-	ViewerInvitationExistTemplateID    string
-	MailWelcomeTemplateID string
 }
 
 // NewSGMailService returns a new instance of SGMailService
 func NewSGMailService() *SGMailService {
-	return &SGMailService{config.YandexApiKey, config.MailVerifCodeExpiration, config.PassResetCodeExpiration, config.WelcomeMailTemplateID, config.MailVerifTemplateID, config.TempPassTemplateID, config.DesignerOrderTemplateID, config.ViewerInvitationNewTemplateID, config.ViewerInvitationExistTemplateID}
+	return &SGMailService{config.YandexApiKey}
 }
 
 
@@ -114,22 +107,22 @@ func NewSGMailService() *SGMailService {
 func CreateMail(mailReq *Mail, ms *SGMailService) error {
 
 	var err error
-	if mailReq.mtype == MailConfirmation {
+	if mailReq.mtype == MailWelcome {
 		err = mailReq.ParseTemplate("confirm_mail.html", mailReq.data)
 	} else if mailReq.mtype == MailPassTemp {
 		err = mailReq.ParseTemplate("password_reset.html", mailReq.data)
-	} else if mailReq.mtype == MailDesignerOrder {
-		err = mailReq.ParseTemplate("confirm_mail.html", mailReq.data)
+	} else if mailReq.mtype == MailPaidOrder {
+		err = mailReq.ParseTemplate("paid_order_mail.html", mailReq.data)
 	
-	} else if mailReq.mtype == MailWelcome {
-		err = mailReq.ParseTemplate("confirm_mail.html", mailReq.data)
+	} else if mailReq.mtype == MailOrderInDelivery {
+		err = mailReq.ParseTemplate("delivery_order_mail.html", mailReq.data)
 		
-	} else if mailReq.mtype == MailViewerInvitationNew {
+	} else if mailReq.mtype == MailViewerInvitation {
 		err = mailReq.ParseTemplate("viewer_invitation.html", mailReq.data)
 	
 	
-	} else if mailReq.mtype == MailViewerInvitationExist {
-		err = mailReq.ParseTemplate("viewer_invitation_exist.html", mailReq.data)
+	} else if mailReq.mtype == MailGiftCertificate {
+		err = mailReq.ParseTemplate("gift_certificate.html", mailReq.data)
 	
 	}
 
