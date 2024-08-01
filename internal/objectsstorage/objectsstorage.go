@@ -54,12 +54,13 @@ func CheckBackgroundISPersonal(ctx context.Context, storeDB *pgxpool.Pool, backg
 }
 
 // AddPhoto function performs the operation of adding photos to the db.
-func AddPhoto(ctx context.Context, storeDB *pgxpool.Pool, photoLink string, userID uint) (uint, error) {
+func AddPhoto(ctx context.Context, storeDB *pgxpool.Pool, photoLink string, smallImage string, userID uint) (uint, error) {
 
 	var photoID uint
 	t := time.Now()
-	err = storeDB.QueryRow(ctx, "INSERT INTO photos (link, uploaded_at, users_id) VALUES ($1, $2, $3) RETURNING photos_id;",
+	err = storeDB.QueryRow(ctx, "INSERT INTO photos (link, small_image, uploaded_at, users_id) VALUES ($1, $2, $3, $4) RETURNING photos_id;",
 		photoLink,
+		smallImage
 		t,
 		userID,
 	).Scan(&photoID)
@@ -273,7 +274,7 @@ func RetrieveUserPhotos(ctx context.Context, storeDB *pgxpool.Pool, userID uint,
 
 	var responsePhoto models.ResponsePhotos
 	responsePhoto.Photos = []models.Photo{}
-	rows, err := storeDB.Query(ctx, "SELECT photos_id, link FROM photos WHERE users_id = ($1) ORDER BY photos_id DESC LIMIT ($2) OFFSET ($3);", userID, limit, offset)
+	rows, err := storeDB.Query(ctx, "SELECT photos_id, link, small_image FROM photos WHERE users_id = ($1) ORDER BY photos_id DESC LIMIT ($2) OFFSET ($3);", userID, limit, offset)
 	if err != nil {
 		log.Printf("Error happened when retrieving photos from pgx table. Err: %s", err)
 		return responsePhoto, err
@@ -282,7 +283,7 @@ func RetrieveUserPhotos(ctx context.Context, storeDB *pgxpool.Pool, userID uint,
 
 	for rows.Next() {
 		var photo models.Photo
-		if err = rows.Scan(&photo.PhotoID, &photo.Link); err != nil {
+		if err = rows.Scan(&photo.PhotoID, &photo.Link, &photo.SmallImage); err != nil {
 			log.Printf("Error happened when scanning photos. Err: %s", err)
 			return responsePhoto, err
 		}

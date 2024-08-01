@@ -90,7 +90,7 @@ func NewPhoto(rw http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	userID := handlersfunc.UserIDContextReader(r)
 	log.Printf("Add new photo of the user %d", userID)
-	pID, err = objectsstorage.AddPhoto(ctx, config.DB, photoParams.Link, userID)
+	pID, err = objectsstorage.AddPhoto(ctx, config.DB, photoParams.Link, photoParams.SmallImage, userID)
 
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)

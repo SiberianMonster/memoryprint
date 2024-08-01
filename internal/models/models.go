@@ -108,6 +108,7 @@ type Photo struct {
 	// Link of object -- Yandex disk link for retrieving the object
 	// in: string
 	Link    string `json:"link" validate:"required"`
+	SmallImage    string `json:"small_image"`
 }
 
 
