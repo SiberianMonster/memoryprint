@@ -60,7 +60,7 @@ func AddPhoto(ctx context.Context, storeDB *pgxpool.Pool, photoLink string, smal
 	t := time.Now()
 	err = storeDB.QueryRow(ctx, "INSERT INTO photos (link, small_image, uploaded_at, users_id) VALUES ($1, $2, $3, $4) RETURNING photos_id;",
 		photoLink,
-		smallImage
+		smallImage,
 		t,
 		userID,
 	).Scan(&photoID)
