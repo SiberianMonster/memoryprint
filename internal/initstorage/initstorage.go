@@ -254,7 +254,7 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 	if err != nil {
 			log.Printf("Error happened when creating layout table. Err: %s", err)
 			return nil, false
-
+	}
 
 	// pass default settings
 	
