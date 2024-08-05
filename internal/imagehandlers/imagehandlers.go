@@ -113,18 +113,22 @@ func saveImage(imgByte []byte, filename string) (string, error) {
 			return "", err
 		}
 	} else if strings.Contains(filename, "png") {
+		log.Printf("Started image processing")
 		img, err := png.Decode(bytes.NewReader(imgByte))
 		if err != nil {
 			log.Printf("Image decoding error%s", err)
 			return "", err
 		}
+		log.Printf("Decoded")
 		out, _ := os.Create(filename)
 		defer out.Close()
+		log.Printf("Created file")
 		err = png.Encode(out, img)
 		if err != nil {
 			log.Printf("Image saving error%s", err)
 			return "", err
 		}
+		log.Printf("Encoded")
 	} else if strings.Contains(filename, "jpeg") {
 		img, err := jpeg.Decode(bytes.NewReader(imgByte))
 		if err != nil {
@@ -147,6 +151,7 @@ func saveImage(imgByte []byte, filename string) (string, error) {
 func bucketUpload(img []byte, filename string, timewebToken string) error {
 
 	filename, err = saveImage(img, filename)
+	log.Println("error")
 	if filename == "" {
 		log.Printf("Failed to save file content %s", err)
 		return err
