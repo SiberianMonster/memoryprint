@@ -8,9 +8,9 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"image"
-	_ "image/png"
-	_ "image/jpeg"
+	//"image"
+	"image/png"
+	"image/jpeg"
     "os"
     "bytes"
 	"strings"
@@ -115,7 +115,7 @@ func saveImage(imgByte []byte, filename string) (string, error) {
 			return "", err
 		}
 	} else if strings.Contains(filename, "png") {
-		img, _, err := image.Decode(bytes.NewReader(imgByte))
+		img, err := png.Decode(bytes.NewReader(imgByte))
 		if err != nil {
 			log.Printf("Image decoding error%s", err)
 			return "", err
@@ -127,14 +127,14 @@ func saveImage(imgByte []byte, filename string) (string, error) {
 			log.Printf("Image saving error%s", err)
 		}
 	} else if strings.Contains(filename, "jpeg") {
-		img, _, err := image.Decode(bytes.NewReader(imgByte))
+		img, err := jpeg.Decode(bytes.NewReader(imgByte))
 		if err != nil {
 			log.Printf("Image decoding error%s", err)
 			return "", err
 		}
 		out, _ := os.Create(filename)
 		defer out.Close()
-		err = jpeg.Encode(out, img)
+		err = jpeg.Encode(out, img, &jpeg.Options{100})
 		if err != nil {
 			log.Printf("Image saving error%s", err)
 		}
