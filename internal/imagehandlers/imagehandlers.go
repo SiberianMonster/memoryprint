@@ -9,7 +9,8 @@ import (
 	"log"
 	"net/http"
 	"image"
-	"image/png"
+	_ "image/png"
+	_ "image/jpeg"
     "os"
     "bytes"
 	"strings"
@@ -113,7 +114,7 @@ func saveImage(imgByte []byte, filename string) (string, error) {
 			log.Printf("SVG decoding error%s", err)
 			return "", err
 		}
-	} else {
+	} else if strings.Contains(filename, "png") {
 		img, _, err := image.Decode(bytes.NewReader(imgByte))
 		if err != nil {
 			log.Printf("Image decoding error%s", err)
@@ -122,6 +123,18 @@ func saveImage(imgByte []byte, filename string) (string, error) {
 		out, _ := os.Create(filename)
 		defer out.Close()
 		err = png.Encode(out, img)
+		if err != nil {
+			log.Printf("Image saving error%s", err)
+		}
+	} else if strings.Contains(filename, "jpeg") {
+		img, _, err := image.Decode(bytes.NewReader(imgByte))
+		if err != nil {
+			log.Printf("Image decoding error%s", err)
+			return "", err
+		}
+		out, _ := os.Create(filename)
+		defer out.Close()
+		err = jpeg.Encode(out, img)
 		if err != nil {
 			log.Printf("Image saving error%s", err)
 		}
