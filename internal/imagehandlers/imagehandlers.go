@@ -44,7 +44,6 @@ var resp map[string]string
 type RBPostBody struct {
 	mediaFile string `json:"mediaFile"`
 }
-var errImage = errors.New("image: unknown format")
 type MyFile struct {
     *bytes.Reader
     mif myFileInfo
@@ -124,6 +123,7 @@ func saveImage(imgByte []byte, filename string) (string, error) {
 		err = png.Encode(out, img)
 		if err != nil {
 			log.Printf("Image saving error%s", err)
+			return "", err
 		}
 	} else if strings.Contains(filename, "jpeg") {
 		img, err := jpeg.Decode(bytes.NewReader(imgByte))
@@ -136,6 +136,7 @@ func saveImage(imgByte []byte, filename string) (string, error) {
 		err = jpeg.Encode(out, img, &jpeg.Options{100})
 		if err != nil {
 			log.Printf("Image saving error%s", err)
+			return "", err
 		}
 	}
 
@@ -146,7 +147,7 @@ func saveImage(imgByte []byte, filename string) (string, error) {
 func bucketUpload(img []byte, filename string, timewebToken string) error {
 
 	filename, err = saveImage(img, filename)
-	if err != nil && err != errImage{
+	if filename == "" {
 		log.Printf("Failed to save file content %s", err)
 		return err
 	}
