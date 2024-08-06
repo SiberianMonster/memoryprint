@@ -95,6 +95,7 @@ func DownloadFile(filepath string, url string) error {
     defer out.Close()
 
     _, err = io.Copy(out, resp.Body)
+	out.Flush()
     return err
 }
 
