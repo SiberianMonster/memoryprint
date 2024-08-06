@@ -8,6 +8,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"image"
 	"image/png"
 	"image/jpeg"
     "os"
@@ -114,7 +115,7 @@ func saveImage(imgByte []byte, filename string) (string, error) {
 		}
 	} else if strings.Contains(filename, "png") {
 		log.Printf("Started image processing")
-		img, err := png.Decode(bytes.NewReader(imgByte))
+		img, _, err := image.Decode(bytes.NewReader(imgByte))
 		if err != nil {
 			log.Printf("Image decoding error%s", err)
 			return "", err
@@ -380,6 +381,12 @@ func LoadImage(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleUploadImageError(rw)
 		return
 	}
+	err = os.Remove(filename) 
+    if err != nil { 
+        log.Printf("Error happened in removing image after bucket upload. Err: %s", err)
+		handlersfunc.HandleUploadImageError(rw)
+		return
+    } 
 	rw.WriteHeader(http.StatusOK)
 	rBody.Link = trimmedName
 	resp["response"] = rBody
