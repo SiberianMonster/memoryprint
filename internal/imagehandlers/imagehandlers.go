@@ -76,7 +76,11 @@ type ImageRespBody struct {
 
 
 func GetToken(index int) string {
-	return fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprint(time.Now()))))[0:index]
+	result :=  fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprint(time.Now()))))[0:index]
+	if len(result) < 10 {
+		result = result + "x"
+	}
+	return result
 }
 
 
