@@ -212,37 +212,37 @@ func bucketUpload(img []byte, filename string, timewebToken string) error {
 
 func bucketPdfUpload(filename string, timewebToken string) error {
 
-	form := new(bytes.Buffer)
-	writer := multipart.NewWriter(form)
-	fw, err := writer.CreateFormFile(filename, filepath.Base(filename))
-	if err != nil {
-		log.Printf("Failed to create form file %s", err)
-		return err
-	}
+	//form := new(bytes.Buffer)
+	//writer := multipart.NewWriter(form)
+	//fw, err := writer.CreateFormFile(filename, filepath.Base(filename))
+	//if err != nil {
+	//	log.Printf("Failed to create form file %s", err)
+	//	return err
+	//}
 	fd, err := os.Open(filename)
 	if err != nil {
 		log.Printf("Failed to open file %s", err)
 		return err
 	}
 	defer fd.Close()
-	_, err = io.Copy(fw, fd)
-	if err != nil {
-		log.Printf("Failed to copy file content %s", err)
-		return err
-	}
+	//_, err = io.Copy(fw, fd)
+	//if err != nil {
+	//	log.Printf("Failed to copy file content %s", err)
+	//	return err
+	//}
 
-	writer.Close()
+	//writer.Close()
 	tr := &http.Transport{
         TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
     }
 
 	client := &http.Client{Transport: tr}
-	req, err := http.NewRequest("POST", "https://api.timeweb.cloud/api/v1/storages/buckets/225285/object-manager/upload?;path=photo/", form)
+	req, err := http.NewRequest("POST", "https://api.timeweb.cloud/api/v1/storages/buckets/225285/object-manager/upload?;path=photo/", fd)
 	if err != nil {
 		log.Printf("Failed to create a request to bucket %s", err)
 	}
 	req.Header.Set("Authorization", "Bearer " + timewebToken)
-	req.Header.Set("Content-Type", writer.FormDataContentType())
+	//req.Header.Set("Content-Type", writer.FormDataContentType())
 	resp, err := client.Do(req)
 	if err != nil {
 			log.Printf("Failed to make a request to bucket %s", err)
