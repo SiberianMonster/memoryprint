@@ -379,11 +379,12 @@ func LoadImage(rw http.ResponseWriter, r *http.Request) {
 	}
 	log.Println("uploaded image to bucket")
 	trimmedName := strings.TrimLeft(filename, "./temp_photo/")
-	if len(trimmedName) < 18 {
-		log.Printf("Error happened in uploading image to bucket. Name is too short Err: ")
-		handlersfunc.HandleUploadImageError(rw)
-		return
-	}
+	log.Println(trimmedName)
+	//if len(trimmedName) < 18 {
+	//	log.Printf("Error happened in uploading image to bucket. Name is too short Err: ")
+	//	handlersfunc.HandleUploadImageError(rw)
+	//	return
+	//}
 	err = os.Remove(filename) 
     if err != nil { 
         log.Printf("Error happened in removing image after bucket upload. Err: %s", err)
