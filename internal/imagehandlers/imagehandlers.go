@@ -225,7 +225,6 @@ func bucketPdfUpload(filename string, timewebToken string) error {
 		log.Printf("Failed to copy file content %s", err)
 		return err
 	}
-	fw.Write(fd)
 
 	writer.Close()
 
