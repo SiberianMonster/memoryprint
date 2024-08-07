@@ -77,12 +77,9 @@ type ImageRespBody struct {
 
 func GetToken(index int) string {
 	result :=  fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprint(time.Now()))))[0:index]
-	log.Println("result")
-	log.Println(result)
 	if len(result) < 10 {
 		result = result + "x"
 	}
-	log.Println(result)
 	return result
 }
 
@@ -384,7 +381,7 @@ func LoadImage(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Println("uploaded image to bucket")
-	trimmedName := strings.TrimLeft(filename, "./temp_photo/")
+	trimmedName := strings.Replace(filename, "./temp_photo/", "", 1)
 	log.Println(trimmedName)
 	//if len(trimmedName) < 18 {
 	//	log.Printf("Error happened in uploading image to bucket. Name is too short Err: ")
