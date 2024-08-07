@@ -220,11 +220,11 @@ func bucketPdfUpload(filename string, timewebToken string) error {
 		return err
 	}
 	defer fd.Close()
-	//_, err = io.Copy(fw, fd)
-	//if err != nil {
-	//	log.Printf("Failed to copy file content %s", err)
-	//	return err
-	//}
+	_, err = io.Copy(fw, fd)
+	if err != nil {
+		log.Printf("Failed to copy file content %s", err)
+		return err
+	}
 	fw.Write(fd)
 
 	writer.Close()
