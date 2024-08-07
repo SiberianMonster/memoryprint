@@ -21,6 +21,7 @@ import (
 	"github.com/gorilla/mux"
 
 	"crypto/md5"
+	"crypto/tls"
 	"time"
 	"fmt"
 	"io"
@@ -231,8 +232,11 @@ func bucketPdfUpload(filename string, timewebToken string) error {
 	}
 
 	writer.Close()
+	tr := &http.Transport{
+        TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+    }
 
-	client := &http.Client{}
+	client := &http.Client{Transport: tr}
 	req, err := http.NewRequest("POST", "https://api.timeweb.cloud/api/v1/storages/buckets/225285/object-manager/upload?;path=photo/", form)
 	if err != nil {
 		log.Printf("Failed to create a request to bucket %s", err)
