@@ -464,12 +464,12 @@ func CreatePDFVisualization(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleUploadImageError(rw)
 		return
 	}
-	err = os.Remove(pdfName) 
-    if err != nil { 
-        log.Printf("Error happened in removing pdf after bucket upload. Err: %s", err)
-		handlersfunc.HandleUploadImageError(rw)
-		return
-    } 
+	//err = os.Remove(pdfName) 
+    //if err != nil { 
+    //    log.Printf("Error happened in removing pdf after bucket upload. Err: %s", err)
+	//	handlersfunc.HandleUploadImageError(rw)
+	//	return
+    //} 
 
 	rw.WriteHeader(http.StatusOK)
 	rBody.Link = pdfName
