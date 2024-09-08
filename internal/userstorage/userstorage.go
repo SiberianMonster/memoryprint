@@ -12,6 +12,10 @@ import (
 	"github.com/SiberianMonster/memoryprint/internal/models"
 	"github.com/SiberianMonster/memoryprint/internal/projectstorage"
 	"log"
+	"bytes"
+	"crypto/aes"
+	"crypto/cipher"
+	"encoding/base64"
 	"fmt"
 	"time"
 	"strings"
@@ -40,6 +44,72 @@ func Hash(value, key string) (string, error) {
 	mac := hmac.New(sha256.New, []byte(key))
 	_, err := mac.Write([]byte(value))
 	return fmt.Sprintf("%x", mac.Sum(nil)), err
+}
+
+// GetAESDecrypted decrypts given text in AES 256 CBC
+func GetAESDecrypted(encrypted string) (string, error) {
+	iv := "2410196226071937"
+
+	ciphertext, err := base64.StdEncoding.DecodeString(encrypted)
+
+	if err != nil {
+		return "", err
+	}
+
+	block, err := aes.NewCipher([]byte(config.SubscriptionKey))
+
+	if err != nil {
+		return "", err
+	}
+
+	if len(ciphertext)%aes.BlockSize != 0 {
+		return "", fmt.Errorf("block size cant be zero")
+	}
+
+	mode := cipher.NewCBCDecrypter(block, []byte(iv))
+	mode.CryptBlocks(ciphertext, ciphertext)
+	ciphertext = PKCS5UnPadding(ciphertext)
+
+	return string(ciphertext), nil
+}
+
+// PKCS5UnPadding  pads a certain blob of data with necessary data to be used in AES block cipher
+func PKCS5UnPadding(src []byte) []byte {
+	length := len(src)
+	unpadding := int(src[length-1])
+
+	return src[:(length - unpadding)]
+}
+
+// GetAESEncrypted encrypts given text in AES 256 CBC
+func GetAESEncrypted(plaintext string) (string, error) {
+	iv := "2410196226071937"
+
+	var plainTextBlock []byte
+	length := len(plaintext)
+
+	if length%16 != 0 {
+		extendBlock := 16 - (length % 16)
+		plainTextBlock = make([]byte, length+extendBlock)
+		copy(plainTextBlock[length:], bytes.Repeat([]byte{uint8(extendBlock)}, extendBlock))
+	} else {
+		plainTextBlock = make([]byte, length)
+	}
+
+	copy(plainTextBlock, plaintext)
+	block, err := aes.NewCipher([]byte(config.SubscriptionKey))
+
+	if err != nil {
+		return "", err
+	}
+
+	ciphertext := make([]byte, len(plainTextBlock))
+	mode := cipher.NewCBCEncrypter(block, []byte(iv))
+	mode.CryptBlocks(ciphertext, plainTextBlock)
+
+	str := base64.StdEncoding.EncodeToString(ciphertext)
+
+	return str, nil
 }
 
 func CalculateBasePriceByID(ctx context.Context, storeDB *pgxpool.Pool, pID uint) (float64, error) {
@@ -145,14 +215,15 @@ func CreateUser(ctx context.Context, storeDB *pgxpool.Pool, u models.SignUpUser)
 
 	var userID uint
 	t := time.Now()
-	pwdHash, err := Hash(fmt.Sprintf("%s:password", u.Password), config.Key)
+	tokenHash := emailutils.GenerateRandomString(15)
+	pwdHash, err := Hash(fmt.Sprintf("%s:password", u.Password), tokenHash)
 	if err != nil {
 		log.Printf("Error happened when hashing received value. Err: %s", err)
 		return userID, err
 	}
-	tokenHash := emailutils.GenerateRandomString(15)
+	
 
-	_, err = storeDB.Exec(ctx, "INSERT INTO users (username, password, email, tokenhash, category, status, isverified, last_edited_at, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);",
+	_, err = storeDB.Exec(ctx, "INSERT INTO users (username, password, email, tokenhash, category, status, isverified, subscription, last_edited_at, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);",
 		u.Name,
 		pwdHash,
 		u.Email,
@@ -160,6 +231,7 @@ func CreateUser(ctx context.Context, storeDB *pgxpool.Pool, u models.SignUpUser)
 		"CUSTOMER",
 		"UNVERIFIED",
 		models.UnverifiedStatus,
+		true,
 		t,
 		t,
 	)
@@ -175,16 +247,16 @@ func CreateUser(ctx context.Context, storeDB *pgxpool.Pool, u models.SignUpUser)
 	return userID, nil
 }
 
-func UpdateUser(ctx context.Context, storeDB *pgxpool.Pool, u models.UpdatedUser, userID uint) (error) {
+func UpdateUser(ctx context.Context, storeDB *pgxpool.Pool, password string, userID uint) (error) {
 
 	t := time.Now()
-
-	pwdHash, err := Hash(fmt.Sprintf("%s:password", u.NewPassword), config.Key)
+	tokenHash := emailutils.GenerateRandomString(15)
+	pwdHash, err := Hash(fmt.Sprintf("%s:password", password), config.Key)
 	if err != nil {
 			log.Printf("Error happened when hashing received value. Err: %s", err)
 			return err
 	}
-	tokenHash := emailutils.GenerateRandomString(15)
+	
 	_, err = storeDB.Exec(ctx, "UPDATE users SET password = ($1), tokenhash = ($2), last_edited_at = ($3) WHERE users_id = ($4);",
 			pwdHash,
 			tokenHash,
@@ -240,31 +312,6 @@ func CheckUserCategory(ctx context.Context, storeDB *pgxpool.Pool, userID uint) 
 	return userCategory, nil
 }
 
-
-// UpdatePassword updates the user password
-func UpdatePassword(ctx context.Context, storeDB *pgxpool.Pool, user models.UserInfo) (uint, error) {
-
-	if !CheckUser(ctx, storeDB, user.Email) {
-		return user.ID, nil
-	}
-	t := time.Now()
-
-	_, err = storeDB.Exec(ctx, "UPDATE users SET password = ($1), last_edited_at = ($2) WHERE users_id = ($3);",
-		user.Password,
-		t,
-		user.ID,
-	)
-	if err != nil {
-		log.Printf("Error happened when updating user credentials into pgx table. Err: %s", err)
-		return user.ID, err
-	}
-	err = storeDB.QueryRow(ctx, "SELECT users_id FROM users WHERE email=($1);", user.Email).Scan(&user.ID)
-	if err != nil {
-		log.Printf("Error happened when retrieving usersid from the db. Err: %s", err)
-		return user.ID, err
-	}
-	return user.ID, nil
-}
 
 func UpdateUserCategory(ctx context.Context, storeDB *pgxpool.Pool, u models.User) (uint, error) {
 
@@ -447,7 +494,7 @@ func CreateCertificate(ctx context.Context, storeDB *pgxpool.Pool, c *models.Gif
 	t := time.Now()
 	code := GenerateRandomString(12)
 
-	err = storeDB.QueryRow(ctx, "INSERT INTO giftcertificates (code, initialdeposit, currentdeposit, status, created_at, receipientemail, reciepientname, buyerfirstname, buyerlastname, buyeremail, buyerphone, mail_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING giftcertificates_id;",
+	err = storeDB.QueryRow(ctx, "INSERT INTO giftcertificates (code, initialdeposit, currentdeposit, status, created_at, receipientemail, reciepientname, buyerfirstname, buyerlastname, buyeremail, buyerphone, mail_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING giftcertificates_id;",
 		code,
 		c.Deposit,
 		c.Deposit,
@@ -491,13 +538,14 @@ func PurchaseCertificate(ctx context.Context, storeDB *pgxpool.Pool, cID uint, t
 
 func CreatePromooffer(ctx context.Context, storeDB *pgxpool.Pool, p *models.NewPromooffer) (error) {
 
-	_, err = storeDB.Exec(ctx, "INSERT INTO promooffers (code, discount, category, is_onetime, expires_at, users_id) VALUES ($1, $2, $3, $4, $5, $6);",
+	_, err = storeDB.Exec(ctx, "INSERT INTO promooffers (code, discount, category, is_onetime, expires_at, users_id, is_used) VALUES ($1, $2, $3, $4, $5, $6, $7);",
 		p.Code,
 		p.Discount,
 		p.Category,
 		p.IsOnetime,
 		p.ExpiresAt,
 		p.UsersID,
+		false,
 	)
 	if err != nil {
 		log.Printf("Error happened when inserting a new promocode entry into pgx table. Err: %s", err)
@@ -510,19 +558,19 @@ func CreatePromooffer(ctx context.Context, storeDB *pgxpool.Pool, p *models.NewP
 func CheckPromocode(ctx context.Context, storeDB *pgxpool.Pool, code string, usersID uint) (models.CheckPromocode, error) {
 
 	var promooffer models.CheckPromocode
-	var expirationTime time.Time
 	var responseP models.ResponsePromocode
 	var userID uint
 	var isUsed bool
 	var isOnetime bool
 	now:=time.Now()
 		
-	err = storeDB.QueryRow(ctx, "SELECT discount, category, is_onetime, is_used, expires_at, users_id FROM promooffers WHERE code=($1);", code).Scan(&responseP.Discount, &responseP.Category, &isOnetime, &isUsed, &expirationTime, &userID)
+	err = storeDB.QueryRow(ctx, "SELECT discount, category, is_onetime, is_used, expires_at, users_id FROM promooffers WHERE code=($1);", code).Scan(&responseP.Discount, &responseP.Category, &isOnetime, &isUsed, &responseP.ExpiresAt, &userID)
+	tm := time.Unix(responseP.ExpiresAt, 0)
+
 	if err != nil && err != pgx.ErrNoRows { 
 		log.Printf("Error happened when retrieving promooffer data from the db. Err: %s", err)
 		return promooffer, err
 	}
-	responseP.ExpiresAt = expirationTime.Unix()
 	if err == pgx.ErrNoRows {
 		promooffer.Status = "INVALID"
 		return promooffer, nil
@@ -536,7 +584,8 @@ func CheckPromocode(ctx context.Context, storeDB *pgxpool.Pool, code string, use
 	} else if isOnetime == true && isUsed == true {
 		promooffer.Status = "ALREADY USED"
 		return promooffer, nil
-	} else if now.After(expirationTime) || now.Equal(expirationTime) {
+
+	} else if now.After(tm) || now.Equal(tm) {
 		promooffer.Status = "EXPIRED"
 		return promooffer, nil
 	}
@@ -554,7 +603,7 @@ func UsePromocode(ctx context.Context, storeDB *pgxpool.Pool, requestP models.Re
 	var discount float64
 	var totalPrice float64
 	var totalBasePrice float64
-	err = storeDB.QueryRow(ctx, "SELECT promooffers_id, category FROM promooffers WHERE code=($1);", requestP.Code).Scan(&categoryPC, &responseP.PromocodeID)
+	err = storeDB.QueryRow(ctx, "SELECT promooffers_id, category, discount FROM promooffers WHERE code=($1);", requestP.Code).Scan(&responseP.PromocodeID, &categoryPC, &discount)
 	if err != nil && err != pgx.ErrNoRows { 
 		log.Printf("Error happened when retrieving promooffer category from the db. Err: %s", err)
 		return responseP, err
@@ -584,6 +633,8 @@ func UsePromocode(ctx context.Context, storeDB *pgxpool.Pool, requestP models.Re
 	}
 	responseP.BasePrice = totalBasePrice
 	responseP.DiscountedPrice = totalPrice
+	log.Println(totalBasePrice)
+	log.Println(totalPrice)
 	
 	return responseP, nil
 
@@ -651,9 +702,9 @@ func LoadPromocodes(ctx context.Context, storeDB *pgxpool.Pool) ([]models.Promoo
 	promocodes := []models.Promooffer{}
 	now:=time.Now()
 
-	rows, err := storeDB.Query(ctx, "SELECT code, discount, category, expires_at FROM promooffers WHERE is_personal IS FALSE;")
+	rows, err := storeDB.Query(ctx, "SELECT code, discount, category, expires_at FROM promooffers WHERE users_id = ($1);", 0)
 	if err != nil {
-			log.Printf("Error happened when retrieving prices from pgx table. Err: %s", err)
+			log.Printf("Error happened when retrieving promocodes from pgx table. Err: %s", err)
 			return promocodes, err
 	}
 	defer rows.Close()
@@ -661,12 +712,10 @@ func LoadPromocodes(ctx context.Context, storeDB *pgxpool.Pool) ([]models.Promoo
 	for rows.Next() {
 
 			var pObj models.Promooffer
-			var expirationTime time.Time
-			if err = rows.Scan(&pObj.Code, &pObj.Discount, &pObj.Category, &expirationTime); err != nil {
+			if err = rows.Scan(&pObj.Code, &pObj.Discount, &pObj.Category, &pObj.ExpiresAt); err != nil {
 				log.Printf("Error happened when scanning promooffers. Err: %s", err)
 				return promocodes, err
 			}
-			pObj.ExpiresAt = expirationTime.Unix()
 			var templateSet models.ResponseTemplates
 			templateSet, err  = projectstorage.LoadPromocodeTemplates(ctx, storeDB, pObj.Category)
 			if err != nil {
@@ -674,7 +723,8 @@ func LoadPromocodes(ctx context.Context, storeDB *pgxpool.Pool) ([]models.Promoo
 				return promocodes, err
 			}
 			pObj.Templates = templateSet.Templates
-			if now.Before(expirationTime) {
+			tm := time.Unix(pObj.ExpiresAt, 0)
+			if now.Before(tm) {
 				promocodes = append(promocodes, pObj)
 			}
 		
@@ -747,30 +797,41 @@ func MailCertificate(ctx context.Context, storeDB *pgxpool.Pool, certificate mod
 
 }
 
-func CancelSubscription(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (error) {
+func CancelSubscription(ctx context.Context, storeDB *pgxpool.Pool, code string) (error) {
 
-	_, err := storeDB.Exec(ctx, "UPDATE users SET subscription = ($1) WHERE users_id = ($2);",
+
+	email, err := GetAESDecrypted(code)
+	if err != nil {
+		log.Printf("Error happened when decrypting user subscription data. Err: %s", err)
+		return err
+	}
+	_, err = storeDB.Exec(ctx, "UPDATE users SET subscription = ($1) WHERE email = ($2);",
 			false,
-			userID,
-		)
-		if err != nil {
+			email,
+	)
+	if err != nil {
 			log.Printf("Error happened when updating user subscription into pgx table. Err: %s", err)
 			return err
-		}
+	}
 	
 	return nil
 }
 
-func RenewSubscription(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (error) {
+func RenewSubscription(ctx context.Context, storeDB *pgxpool.Pool, code string) (error) {
 
-	_, err := storeDB.Exec(ctx, "UPDATE users SET subscription = ($1) WHERE users_id = ($2);",
+	email, err := GetAESDecrypted(code) 
+	if err != nil {
+		log.Printf("Error happened when decrypting user subscription data. Err: %s", err)
+		return err
+	}
+	_, err = storeDB.Exec(ctx, "UPDATE users SET subscription = ($1) WHERE email = ($2);",
 			true,
-			userID,
-		)
-		if err != nil {
+			email,
+	)
+	if err != nil {
 			log.Printf("Error happened when updating user subscription into pgx table. Err: %s", err)
 			return err
-		}
+	}
 	
 	return nil
 }

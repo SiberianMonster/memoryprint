@@ -90,7 +90,7 @@ func NewPhoto(rw http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	userID := handlersfunc.UserIDContextReader(r)
 	log.Printf("Add new photo of the user %d", userID)
-	pID, err = objectsstorage.AddPhoto(ctx, config.DB, photoParams.Link, userID)
+	pID, err = objectsstorage.AddPhoto(ctx, config.DB, photoParams.Link, photoParams.SmallImage, userID)
 
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
@@ -1173,6 +1173,66 @@ func SavePage(rw http.ResponseWriter, r *http.Request) {
 	}
 	
 
+	rw.WriteHeader(http.StatusOK)
+	resp["response"] = 1
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("Error happened in JSON marshal. Err: %s", err)
+		return
+	}
+	rw.Write(jsonResp)
+}
+
+func UpdateProjectSpine(rw http.ResponseWriter, r *http.Request) {
+
+	resp := make(map[string]uint)
+	var savedSpine models.SavedSpine
+	err := json.NewDecoder(r.Body).Decode(&savedSpine)
+	if err != nil {
+		handlersfunc.HandleDecodeError(rw, err)
+		return
+	}
+	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
+	projectID := uint(aByteToInt)
+	defer r.Body.Close()
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	defer cancel()
+	err = projectstorage.SaveSpine(ctx, config.DB, savedSpine, projectID)
+	if err != nil {
+				handlersfunc.HandleDatabaseServerError(rw)
+				return
+	}
+	
+	rw.WriteHeader(http.StatusOK)
+	resp["response"] = 1
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("Error happened in JSON marshal. Err: %s", err)
+		return
+	}
+	rw.Write(jsonResp)
+}
+
+func UpdateTemplateSpine(rw http.ResponseWriter, r *http.Request) {
+
+	resp := make(map[string]uint)
+	var savedSpine models.SavedSpine
+	err := json.NewDecoder(r.Body).Decode(&savedSpine)
+	if err != nil {
+		handlersfunc.HandleDecodeError(rw, err)
+		return
+	}
+	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
+	projectID := uint(aByteToInt)
+	defer r.Body.Close()
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	defer cancel()
+	err = projectstorage.SaveTemplateSpine(ctx, config.DB, savedSpine, projectID)
+	if err != nil {
+				handlersfunc.HandleDatabaseServerError(rw)
+				return
+	}
+	
 	rw.WriteHeader(http.StatusOK)
 	resp["response"] = 1
 	jsonResp, err := json.Marshal(resp)

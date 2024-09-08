@@ -14,6 +14,7 @@ import (
 	"github.com/SiberianMonster/memoryprint/internal/projectstorage"
 	"github.com/SiberianMonster/memoryprint/internal/handlersfunc"
 	"github.com/SiberianMonster/memoryprint/internal/authservice"
+	"github.com/SiberianMonster/memoryprint/internal/transactions"
 	"github.com/go-playground/validator/v10"
 	"log"
 	"net/http"
@@ -79,6 +80,14 @@ func Register(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	var userID uint
+	var subLink string 
+	subLink, err = userstorage.GetAESEncrypted(user.Email)
+	log.Println(user.Email)
+	if err != nil {
+		log.Println(err)
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
 
 	// Send welcome email
 	from := "support@memoryprint.ru"
@@ -87,6 +96,7 @@ func Register(rw http.ResponseWriter, r *http.Request) {
 	mailType := emailutils.MailWelcome
 	mailData := &emailutils.MailData{
 		Username: user.Name,
+		SubscriptionLink: subLink,
 	}
 
 	ms := &emailutils.SGMailService{config.YandexApiKey}
@@ -304,6 +314,10 @@ func UpdateUserInfo(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleValidationError(rw, err)
         return
     }
+	if updatedUser.Password == updatedUser.NewPassword {
+		handlersfunc.HandleSamePassError(rw)
+		return
+	}
 
 	log.Println(updatedUser)
 
@@ -328,7 +342,7 @@ func UpdateUserInfo(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = userstorage.UpdateUser(ctx, config.DB, updatedUser, userID)
+	err = userstorage.UpdateUser(ctx, config.DB, updatedUser.NewPassword, userID)
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
@@ -380,12 +394,11 @@ func CheckUserCategory(rw http.ResponseWriter, r *http.Request) {
 func CancelSubscription(rw http.ResponseWriter, r *http.Request) {
 
 		resp := make(map[string]string)
-		aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
-		userID := uint(aByteToInt)
+		code := mux.Vars(r)["code"]
 	
 		ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 		defer cancel()
-		err := userstorage.CancelSubscription(ctx, config.DB, userID)
+		err := userstorage.CancelSubscription(ctx, config.DB, code)
 			
 		if err != nil {
 			handlersfunc.HandleDatabaseServerError(rw)
@@ -405,15 +418,14 @@ func CancelSubscription(rw http.ResponseWriter, r *http.Request) {
 func RenewSubscription(rw http.ResponseWriter, r *http.Request) {
 
 	resp := make(map[string]string)
-	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
-	userID := uint(aByteToInt)
+	code := mux.Vars(r)["code"]
 
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
-	err := userstorage.CancelSubscription(ctx, config.DB, userID)
+	err := userstorage.RenewSubscription(ctx, config.DB, code)
 		
 	if err != nil {
-		handlersfunc.HandleDatabaseServerError(rw)
+		handlersfunc.HandleFailedRenewSubscription(rw)
 		return
 	}
 
@@ -458,6 +470,7 @@ func CreateCertificate(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
 	resp := make(map[string]models.TransactionLink)
 	var transaction models.TransactionLink
+	var cID uint
 
 	var certificate *models.GiftCertificate
 
@@ -483,12 +496,18 @@ func CreateCertificate(rw http.ResponseWriter, r *http.Request) {
 	// не забываем освободить ресурс
 	defer cancel()
 
-	_, err = userstorage.CreateCertificate(ctx, config.DB, certificate)
+	cID, err = userstorage.CreateCertificate(ctx, config.DB, certificate)
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
 	}
+	transaction.PaymentLink, err = transactions.CreateTransaction(cID, certificate.Deposit, "CERTIFICATE")
 	// Impossible to create payment link
+	if err != nil {
+		handlersfunc.HandleFailedPaymentURL(rw)
+		return
+	}
+
 
 	rw.WriteHeader(http.StatusOK)
 	resp["response"] = transaction
@@ -594,7 +613,7 @@ func CheckPromocode(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	if checkP.Status == "FORBIDDEN" {
-		handlersfunc.HandlePermissionError(rw)
+		handlersfunc.HandleMissingPromocode(rw)
 		return
 	}
 

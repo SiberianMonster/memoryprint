@@ -110,7 +110,7 @@ func GenerateTempPass(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Println(dbUser)
-	_, err = userstorage.UpdatePassword(ctx, config.DB, dbUser)
+	err = userstorage.UpdateUser(ctx, config.DB, dbUser.Password, dbUser.ID)
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return

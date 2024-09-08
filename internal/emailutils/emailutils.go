@@ -53,6 +53,8 @@ type MailData struct {
 	UserEmail	 string
 	TempPass	 string
 	Ordernum uint
+	Trackingnum string
+	SubscriptionLink string
 }
 
 // Mail represents a email request

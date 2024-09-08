@@ -64,9 +64,9 @@ func init() {
 	bankDomain = config.GetEnv("BANK_DOMAIN", flag.String("bank", section.Key("bankdomain").String(), "BANK_DOMAIN"))
 	bankuserName = config.GetEnv("BANK_USERNAME", flag.String("bankusername", section.Key("bankusername").String(), "BANK_USERNAME"))
 	bankPassword = config.GetEnv("BANK_PASSWORD", flag.String("bankpassword", section.Key("bankpassword").String(), "BANK_PASSWORD"))
-	deliveryDomain = config.GetEnv("DELIVERY_DOMAIN", flag.String("deliveryDomain", section.Key("deliveryDomain").String(), "DELIVERY_DOMAIN"))
-	deliveryClientID = config.GetEnv("DELIVERY_CLIENTID", flag.String("deliveryClientID", section.Key("deliveryClientID").String(), "DELIVERY_CLIENTID"))
-	deliverySecret = config.GetEnv("DELIVERY_SECRET", flag.String("deliverySecret", section.Key("deliverySecret").String(), "DELIVERY_SECRET"))
+	deliveryDomain = config.GetEnv("DELIVERY_DOMAIN", flag.String("deliveryDomain", section.Key("deliverydomain").String(), "DELIVERY_DOMAIN"))
+	deliveryClientID = config.GetEnv("DELIVERY_CLIENTID", flag.String("deliveryClientID", section.Key("deliveryclientid").String(), "DELIVERY_CLIENTID"))
+	deliverySecret = config.GetEnv("DELIVERY_SECRET", flag.String("deliverySecret", section.Key("deliverysecret").String(), "DELIVERY_SECRET"))
 
 }
 
@@ -135,7 +135,7 @@ func main() {
 	noAuthRouter.HandleFunc("/api/v1/auth/signup", userhandlers.Register).Methods("POST","OPTIONS")
 	noAuthRouter.HandleFunc("/api/v1/auth/login", userhandlers.Login).Methods("POST","OPTIONS")
 	noAuthRouter.HandleFunc("/api/v1/load-templates", projecthandlers.LoadTemplates).Methods("GET","OPTIONS")
-	noAuthRouter.HandleFunc("/api/v1/load-template/{id}", projecthandlers.LoadTemplate).Methods("GET","OPTIONS")
+	//noAuthRouter.HandleFunc("/api/v1/load-template/{id}", projecthandlers.LoadTemplate).Methods("GET","OPTIONS")
 	noAuthRouter.HandleFunc("/api/v1/load-prices", projecthandlers.LoadPrices).Methods("GET","OPTIONS")
 	noAuthRouter.HandleFunc("/api/v1/load-colours", projecthandlers.LoadColours).Methods("GET","OPTIONS")
 	noAuthRouter.HandleFunc("/api/v1/load-promocodes", userhandlers.LoadPromocodes).Methods("GET","OPTIONS")
@@ -145,8 +145,8 @@ func main() {
 	noAuthRouter.HandleFunc("/api/v1/change-user-status/{id}", userhandlers.MakeUserAdmin).Methods("GET","OPTIONS")
 	//noAuthRouter.HandleFunc("/api/v1/verify/password-reset", userhandlers.VerifyPasswordReset)
 	noAuthRouter.HandleFunc("/api/v1/create-certificate", userhandlers.CreateCertificate).Methods("POST","OPTIONS")
-	noAuthRouter.HandleFunc("/api/v1/cancel-subscription/{id}", userhandlers.CancelSubscription).Methods("POST","OPTIONS")
-	noAuthRouter.HandleFunc("/api/v1/renew-subscription/{id}", userhandlers.RenewSubscription).Methods("POST","OPTIONS")
+	noAuthRouter.HandleFunc("/api/v1/cancel-subscription/{code}", userhandlers.CancelSubscription).Methods("POST","OPTIONS")
+	noAuthRouter.HandleFunc("/api/v1/renew-subscription/{code}", userhandlers.RenewSubscription).Methods("POST","OPTIONS")
 
 
 	authRouter.Use(middleware.MiddlewareValidateAccessToken)
@@ -166,11 +166,13 @@ func main() {
 	adminRouter.HandleFunc("/api/v1/admin/unpublish-template/{id}", projecthandlers.UnpublishTemplate).Methods("POST","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/duplicate-template/{id}", projecthandlers.DuplicateTemplate).Methods("POST","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/update-template/{id}", projecthandlers.UpdateTemplate).Methods("POST","OPTIONS")
+	adminRouter.HandleFunc("/api/v1/admin/update-template-spine/{id}", projecthandlers.UpdateTemplateSpine).Methods("POST","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/delete-template/{id}", projecthandlers.DeleteTemplate).Methods("POST","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/create-promocode", userhandlers.CreatePromocode).Methods("POST","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/load-projects", projecthandlers.AdminLoadProjects).Methods("GET","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/load-templates", projecthandlers.AdminLoadTemplates).Methods("GET","OPTIONS")
-	adminRouter.HandleFunc("/api/v1/admin/load-orders", orderhandlers.AdminLoadOrders).Methods("GET","OPTIONS")
+	adminRouter.HandleFunc("/api/v1/admin/load-template/{id}", projecthandlers.LoadTemplate).Methods("GET","OPTIONS")
+	adminRouter.HandleFunc("/api/v1/admin/load-orders", orderhandlers.LoadAdminOrders).Methods("GET","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/delivery-status/{id}", orderhandlers.LoadDelivery).Methods("GET","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/change-order-status/{id}", orderhandlers.UpdateOrderStatus).Methods("POST","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/upload-order-commentary/{id}", orderhandlers.UpdateOrderCommentary).Methods("POST","OPTIONS")
@@ -220,21 +222,21 @@ func main() {
 	authRouter.HandleFunc("/api/v1/change-favourite-decoration/{id}", projecthandlers.FavourDecoration).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/change-favourite-layout/{id}", projecthandlers.FavourLayout).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/check-promocode", userhandlers.CheckPromocode).Methods("GET","OPTIONS")
-	authRouter.HandleFunc("/api/v1/duplicate-project/{id}", projecthandlers.DuplicateProject).Methods("GET","OPTIONS")
+	authRouter.HandleFunc("/api/v1/duplicate-project/{id}", projecthandlers.DuplicateProject).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/share-pdf-link/{id}", projecthandlers.ShareLink).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/delete-project/{id}", projecthandlers.DeleteProject).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/publish-project", orderhandlers.CreateOrder).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/load-cart", orderhandlers.LoadCart).Methods("GET","OPTIONS")
 	authRouter.HandleFunc("/api/v1/change-project-cover/{id}", projecthandlers.UpdateCover).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/change-project-surface/{id}", projecthandlers.UpdateSurface).Methods("POST","OPTIONS")
+	authRouter.HandleFunc("/api/v1/update-project-spine/{id}", projecthandlers.UpdateProjectSpine).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/use-promocode", userhandlers.UsePromocode).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/check-certificate/{code}", userhandlers.UseCertificate).Methods("GET","OPTIONS")
 	authRouter.HandleFunc("/api/v1/order-payment", orderhandlers.OrderPayment).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/load-order/{id}", orderhandlers.LoadOrder).Methods("GET","OPTIONS")
-	authRouter.HandleFunc("/api/v1/check-payment-status/{id}", orderhandlers.FindPaymentStatus).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/calculate-delivery", orderhandlers.CalculateDelivery).Methods("POST","OPTIONS")
 
-	authRouter.HandleFunc("/api/v1/cancel-payment/{id}", orderhandlers.CancelPayment).Methods("POST","OPTIONS")
+	authRouter.HandleFunc("/api/v1/cancel-order/{id}", orderhandlers.CancelPayment).Methods("POST","OPTIONS")
 
 	srv := &http.Server{
 		Handler: router,

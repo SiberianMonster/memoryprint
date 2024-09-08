@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"image"
 	"image/png"
+	"image/jpeg"
     "os"
     "bytes"
 	"strings"
@@ -20,6 +21,7 @@ import (
 	"github.com/gorilla/mux"
 
 	"crypto/md5"
+	"crypto/tls"
 	"time"
 	"fmt"
 	"io"
@@ -29,8 +31,8 @@ import (
 	"github.com/SiberianMonster/memoryprint/internal/config"
 	"github.com/SiberianMonster/memoryprint/internal/models"
 	"github.com/SiberianMonster/memoryprint/internal/handlersfunc"
-	"github.com/SiberianMonster/memoryprint/internal/projectstorage"
 	"github.com/SiberianMonster/memoryprint/internal/userstorage"
+	"github.com/SiberianMonster/memoryprint/internal/projectstorage"
 	_ "github.com/lib/pq"
 )
 const BINARY = "/usr/bin/inkscape"
@@ -45,7 +47,6 @@ var resp map[string]string
 type RBPostBody struct {
 	mediaFile string `json:"mediaFile"`
 }
-
 type MyFile struct {
     *bytes.Reader
     mif myFileInfo
@@ -77,7 +78,11 @@ type ImageRespBody struct {
 
 
 func GetToken(index int) string {
-	return fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprint(time.Now()))))[0:index]
+	result :=  fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprint(time.Now()))))[0:index]
+	if len(result) < 10 {
+		result = result + "x"
+	}
+	return result
 }
 
 
@@ -95,7 +100,9 @@ func DownloadFile(filepath string, url string) error {
     }
     defer out.Close()
 
-    _, err = io.Copy(out, resp.Body)
+    //_, err = io.Copy(out, resp.Body)
+	//out.Flush()
+	out.ReadFrom(resp.Body)
     return err
 }
 
@@ -114,17 +121,35 @@ func saveImage(imgByte []byte, filename string) (string, error) {
 			log.Printf("SVG decoding error%s", err)
 			return "", err
 		}
-	} else {
+	} else if strings.Contains(filename, "png") {
+		log.Printf("Started image processing")
 		img, _, err := image.Decode(bytes.NewReader(imgByte))
+		if err != nil {
+			log.Printf("Image decoding error%s", err)
+			return "", err
+		}
+		log.Printf("Decoded")
+		out, _ := os.Create(filename)
+		defer out.Close()
+		log.Printf("Created file")
+		err = png.Encode(out, img)
+		if err != nil {
+			log.Printf("Image saving error%s", err)
+			return "", err
+		}
+		log.Printf("Encoded")
+	} else if strings.Contains(filename, "jpeg") {
+		img, err := jpeg.Decode(bytes.NewReader(imgByte))
 		if err != nil {
 			log.Printf("Image decoding error%s", err)
 			return "", err
 		}
 		out, _ := os.Create(filename)
 		defer out.Close()
-		err = png.Encode(out, img)
+		err = jpeg.Encode(out, img, &jpeg.Options{100})
 		if err != nil {
 			log.Printf("Image saving error%s", err)
+			return "", err
 		}
 	}
 
@@ -135,7 +160,8 @@ func saveImage(imgByte []byte, filename string) (string, error) {
 func bucketUpload(img []byte, filename string, timewebToken string) error {
 
 	filename, err = saveImage(img, filename)
-	if err != nil {
+	log.Println("error")
+	if filename == "" {
 		log.Printf("Failed to save file content %s", err)
 		return err
 	}
@@ -187,34 +213,37 @@ func bucketUpload(img []byte, filename string, timewebToken string) error {
 
 func bucketPdfUpload(filename string, timewebToken string) error {
 
-	form := new(bytes.Buffer)
-	writer := multipart.NewWriter(form)
-	fw, err := writer.CreateFormFile(filename, filepath.Base(filename))
-	if err != nil {
-		log.Printf("Failed to create form file %s", err)
-		return err
-	}
+	//form := new(bytes.Buffer)
+	//writer := multipart.NewWriter(form)
+	//fw, err := writer.CreateFormFile(filename, filepath.Base(filename))
+	//if err != nil {
+	//	log.Printf("Failed to create form file %s", err)
+	//	return err
+	//}
 	fd, err := os.Open(filename)
 	if err != nil {
 		log.Printf("Failed to open file %s", err)
 		return err
 	}
 	defer fd.Close()
-	_, err = io.Copy(fw, fd)
-	if err != nil {
-		log.Printf("Failed to copy file content %s", err)
-		return err
-	}
+	//_, err = io.Copy(fw, fd)
+	//if err != nil {
+	//	log.Printf("Failed to copy file content %s", err)
+	//	return err
+	//}
 
-	writer.Close()
+	//writer.Close()
+	tr := &http.Transport{
+        TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+    }
 
-	client := &http.Client{}
-	req, err := http.NewRequest("POST", "https://api.timeweb.cloud/api/v1/storages/buckets/225285/object-manager/upload?;path=photo/", form)
+	client := &http.Client{Transport: tr}
+	req, err := http.NewRequest("POST", "https://api.timeweb.cloud/api/v1/storages/buckets/225285/object-manager/upload?;path=photo/", fd)
 	if err != nil {
 		log.Printf("Failed to create a request to bucket %s", err)
 	}
 	req.Header.Set("Authorization", "Bearer " + timewebToken)
-	req.Header.Set("Content-Type", writer.FormDataContentType())
+	//req.Header.Set("Content-Type", writer.FormDataContentType())
 	resp, err := client.Do(req)
 	if err != nil {
 			log.Printf("Failed to make a request to bucket %s", err)
@@ -357,12 +386,19 @@ func LoadImage(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Println("uploaded image to bucket")
-	trimmedName := strings.TrimLeft(filename, "./temp_photo/")
-	if len(trimmedName) < 18 {
-		log.Printf("Error happened in uploading image to bucket. Name is too short Err: ")
+	trimmedName := strings.Replace(filename, "./temp_photo/", "", 1)
+	log.Println(trimmedName)
+	//if len(trimmedName) < 18 {
+	//	log.Printf("Error happened in uploading image to bucket. Name is too short Err: ")
+	//	handlersfunc.HandleUploadImageError(rw)
+	//	return
+	//}
+	err = os.Remove(filename) 
+    if err != nil { 
+        log.Printf("Error happened in removing image after bucket upload. Err: %s", err)
 		handlersfunc.HandleUploadImageError(rw)
 		return
-	}
+    } 
 	rw.WriteHeader(http.StatusOK)
 	rBody.Link = trimmedName
 	resp["response"] = rBody
@@ -438,12 +474,12 @@ func CreatePDFVisualization(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleUploadImageError(rw)
 		return
 	}
-	err = os.Remove(pdfName) 
-    if err != nil { 
-        log.Printf("Error happened in removing pdf after bucket upload. Err: %s", err)
-		handlersfunc.HandleUploadImageError(rw)
-		return
-    } 
+	//err = os.Remove(pdfName) 
+    //if err != nil { 
+    //    log.Printf("Error happened in removing pdf after bucket upload. Err: %s", err)
+	//	handlersfunc.HandleUploadImageError(rw)
+	//	return
+    //} 
 
 	rw.WriteHeader(http.StatusOK)
 	rBody.Link = pdfName

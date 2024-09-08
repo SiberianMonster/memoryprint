@@ -70,7 +70,7 @@ type ResponsePrice struct {
 
 type Colour struct {
 	ID uint `json:"id"`
-	ColourLink string `json:"colour_link"`
+	LeatherImage string `json:"leather_image"`
 	HexCode string `json:"hex_code"`
 }
 
@@ -98,7 +98,6 @@ type NewPromooffer struct {
 	Category string `json:"category"`
 	ExpiresAt int64 `json:"expires_at"`
 	IsOnetime bool `json:"is_onetime"`
-	Templates []Template `json:"templates"`
 	UsersID int64 `json:"users_id"`
 }
 
@@ -164,7 +163,7 @@ type ResponseCertificate struct {
 }
 
 type TransactionLink struct {
-	PaymentLink uint `json:"payment_link" validate:"required"`
+	PaymentLink string `json:"payment_link" validate:"required"`
 	
 }
 
@@ -180,7 +179,7 @@ type UpdatedUsername struct {
 
 type UpdatedUser struct {
 	Password string `json:"password" validate:"required,min=6,max=20"`
-	NewPassword string `json:"new_password" validate:"min=6,max=20,necsfield=Password"`
+	NewPassword string `json:"new_password" validate:"required,min=6,max=20"`
 }
 
 type LoginUser struct {
@@ -231,6 +230,7 @@ type PersonalisedObject struct {
 	// Link of object -- Yandex disk link for retrieving the object
 	// in: string
 	Link    string     `json:"link" validate:"required"`
+	SmallImage    *string `json:"small_image"`
 	Type    string     `json:"type"`
 	Category    string     `json:"category"`
 	IsFavourite bool `json:"is_favourite"`
@@ -248,6 +248,7 @@ type Photo struct {
 	// Link of object -- Yandex disk link for retrieving the object
 	// in: string
 	Link    string `json:"link" validate:"required"`
+	SmallImage    *string `json:"small_image"`
 	UploadedAt  int64 `json:"uploaded_at"`
 }
 
@@ -269,6 +270,7 @@ type Background struct {
 
 	BackgroundID uint `json:"background_id"`
 	Link    string `json:"link"`
+	SmallImage    *string `json:"small_image"`
 	Type string `json:"type" validate:"required,oneof=VACATION WEDDING HOLIDAYS CHILDREN ANIMALS UNIVERSAL"`
 	IsFavourite bool `json:"is_favourite"`
 	IsPersonal bool `json:"is_personal"`
@@ -278,6 +280,7 @@ type Decoration struct {
 
 	DecorationID uint `json:"decoration_id"`
 	Link    string `json:"link" validate:"required"`
+	SmallImage    *string `json:"small_image"`
 	Category string `json:"category" validate:"required,oneof=VACATION WEDDING HOLIDAYS CHILDREN ANIMALS UNIVERSAL"`
 	Type string `json:"type" validate:"required,oneof=RIBBON FRAME STICKER"` 
 	IsFavourite bool `json:"is_favourite"`
@@ -293,6 +296,8 @@ type ProjectObj struct {
 	Surface string `json:"surface"`
 	PreviewLink string `json:"preview_link"`
 	PrintLink string `json:"print_link"`
+	CreatingSpineLink *string `json:"creating_spine_link"`
+	PreviewSpineLink *string `json:"preview_spine_link"`
 	CountPages int`json:"count_pages"`
 	LastEditedAt int64`json:"updated_at"`
 	CreatedAt int64 `json:"created_at"`
@@ -322,6 +327,7 @@ type TemplatePage struct {
 	Sort uint `json:"sort"`
 	CreatingImageLink *string `json:"creating_image_link"`
 	Data        json.RawMessage      `json:"data"`
+	UsedPhotoIDs []uint `json:"used_photo_ids"`
 	
   }
 
@@ -332,7 +338,14 @@ type SavedTemplateObj struct {
 	Size string `json:"size"`
 	LastEditedAt int64 `json:"updated_at"`
 	CreatedAt int64 `json:"created_at"`
+	CreatingSpineLink *string `json:"creating_spine_link"`
+	PreviewSpineLink *string `json:"preview_spine_link"`
 	Pages []TemplatePage `json:"pages"`
+  }
+
+type SavedSpine struct {
+	CreatingSpineLink *string `json:"creating_spine_link" validate:"required`
+	PreviewSpineLink *string `json:"preview_spine_link" validate:"required`
   }
 
 type ResponseProjects struct {
@@ -347,6 +360,7 @@ type ResponseProject struct {
 	Status string `json:"status"`
 	Size string `json:"size"`
 	FrontPage FrontPage `json:"front_page"`
+	Pages []Page `json:"pages"`
   }
 
 type NewBlankProjectObj struct {
@@ -402,7 +416,7 @@ type RequestOrderPayment struct {
 
 	Projects    []uint     `json:"projects" validate:"required"`
 	ContactData Contacts `json:"contact_data" validate:"required"`
-	DeliveryData Delivery `json:"delivery_data" validate:"required"`
+	DeliveryData Delivery `json:"delivery_data"`
 	PackageBox bool `json:"package_box"`
 	Giftcertificate string `json:"giftcertificate"`
 	Promocode string `json:"promocode"`
@@ -411,6 +425,7 @@ type RequestOrderPayment struct {
 type ResponseOrderInfo struct {
 
 	UserID    uint     `json:"user_id" validate:"required"`
+	Status string `json:"status" validate:"required"`
 	ContactData Contacts `json:"contact_data" validate:"required"`
 	DeliveryData Delivery `json:"delivery_data" validate:"required"`
 	GiftcertificateDeposit float64 `json:"giftcertificate_deposit"`
@@ -426,11 +441,11 @@ type ResponseDeliveryInfo struct {
 
 	OrderID    uint     `json:"order_id" validate:"required"`
 	UserID    uint     `json:"user_id" validate:"required"`
-	TrackingNumber string `json:"tracking_number" validate:"required"`
-	DeliveryStatus string `json:"delivery_status" validate:"required"`
-	DeliveryID string `json:"delivery_id" validate:"required"`
-	Address string `json:"address" validate:"required"`
-	Code uint `json:"address" validate:"required"`
+	TrackingNumber *string `json:"tracking_number" validate:"required"`
+	DeliveryStatus *string `json:"delivery_status" validate:"required"`
+	DeliveryID *string `json:"delivery_id" validate:"required"`
+	Address *string `json:"address" validate:"required"`
+	Code *string `json:"address" validate:"required"`
 	ContactData Contacts `json:"contact_data" validate:"required"`
 	Method string `json:"method" validate:"required"`
 	ExpectedDeliveryFrom int64 `json:"expected_delivery_from" validate:"required"`
@@ -466,11 +481,11 @@ type Contacts struct {
 }
 
 type Delivery struct {
-	Method string `json:"method" validate:"required"`
+	Method string `json:"method"`
 	Code string `json:"code"`
-	PostalCode string `json:"method"`
+	PostalCode string `json:"postal_code"`
 	Address string `json:"address"`
-	Amount float64 `json:"amount" validate:"required"`
+	Amount float64 `json:"amount"`
 }
 
 type ResponsePayment struct {
@@ -718,13 +733,13 @@ type ResponseOrder struct {
 	Projects    []PaidCartObj     `json:"projects" validate:"required"`
 	Status string `json:"status" validate:"required"`
 	CreatedAt int64 `json:"created_at"`
-	BasePrice float64 `json:"base_price"`
-	FinalPrice float64 `json:"final_price"`
+	BasePrice *float64 `json:"base_price"`
+	FinalPrice *float64 `json:"final_price"`
 	TrackingNumber string `json:"tracking_number"`
-	PromocodeDiscountPercent float64 `json:"promocode_discount_percent"`
-	PromocodeCategory string `json:"promocode_category"`
+	PromocodeDiscountPercent *float64 `json:"promocode_discount_percent"`
+	PromocodeCategory *string `json:"promocode_category"`
 	PromocodeDiscount float64 `json:"promocode_discount"`
-	CertificateDeposit float64 `json:"certificate_deposit"`
+	CertificateDeposit *float64 `json:"certificate_deposit"`
   }
 
 
@@ -742,16 +757,16 @@ type ResponseAdminOrder struct {
 	Projects    []PaidCartObj     `json:"projects" validate:"required"`
 	Status string `json:"status" validate:"required"`
 	Email string `json:"email" validate:"required"`
-	Commentary string `json:"commentary" validate:"required"`
+	Commentary *string `json:"commentary" validate:"required"`
 	CreatedAt int64 `json:"created_at"`
-	BasePrice float64 `json:"base_price"`
-	FinalPrice float64 `json:"final_price"`
-	TrackingNumber string `json:"tracking_number"`
-	VideoLink string `json:"video_link"`
+	BasePrice *float64 `json:"base_price"`
+	FinalPrice *float64 `json:"final_price"`
+	TrackingNumber *string `json:"tracking_number"`
+	VideoLink *string `json:"video_link"`
 	PromocodeDiscountPercent float64 `json:"promocode_discount_percent"`
 	PromocodeCategory string `json:"promocode_category"`
 	PromocodeDiscount float64 `json:"promocode_discount"`
-	CertificateDeposit float64 `json:"certificate_deposit"`
+	CertificateDeposit *float64 `json:"certificate_deposit"`
   }
 
 type ResponseAdminOrders struct {
@@ -778,19 +793,22 @@ type OrderVideo struct {
 
 type ResponseTransaction struct {
 	OrderID string `json:"orderId" validate:"required"`
-	ErrorCode uint `json:"errorCode" validate:"required"`
-	ErrorMessage string `json:"errorMessage" validate:"required"`
 	FormURL string `json:"formUrl" validate:"required"`
 }
 
+type ResponseTransactionCancel struct {
+	ErrorCode string `json:"errorCode" validate:"required"`
+	ErrorMessage string `json:"errorMessage" validate:"required"`
+}
+
 type ResponseTransactionStatus struct {
-	OrderNumber uint `json:"orderNumber" validate:"required"`
-	ActionCode uint `json:"actionCode" validate:"required"`
+	OrderNumber int64 `json:"orderNumber" validate:"required"`
+	ActionCode int64 `json:"actionCode" validate:"required"`
 	ActionCodeDescription string `json:"actionCodeDescription" validate:"required"`
 	Amount float64 `json:"amount"`
 	Date int64 `json:"date"`
 	IP string `json:"ip"`
-	PaymentWay uint `json:"paymentWay" validate:"required"`
+	PaymentWay int64 `json:"paymentWay" validate:"required"`
 }
 
 type ResponsePaymentStatus struct {
@@ -801,32 +819,41 @@ type ResponsePaymentStatus struct {
 type UserRequestDeliveryCost struct {
 	Method string `json:"method" validate:"required"`
 	PostalCode string `json:"postal_code" validate:"required"`
-	Address string `json:"address" validate:"required"`
-	Code string `json:"address" validate:"required"`
+	Address string `json:"address"`
+	Code string `json:"code"`
+	City string `json:"city"`
 	CountProjects int `json:"count_projects" validate:"required"`
 } 
 
 type RequestDeliveryCost struct {
-	TariffCode string `json:"tariff_code" validate:"required"`
+	TariffCode int `json:"tariff_code" validate:"required"`
 	FromLocation Location `json:"from_location" validate:"required"`
 	ToLocation Location `json:"to_location" validate:"required"`
-	Packages Package `json:"packages" validate:"required"`
+	Packages []Package `json:"packages" validate:"required"`
+	Services []Service `json:"services" validate:"required"`
 }
 
 type Location struct {
 	
 	PostalCode string `json:"postal_code"`
+	City string `json:"city"`
 	Address string `json:"address"`
 	Code string `json:"code"`
 
 }
 
+type Service struct {
+	
+	Code string `json:"code" validate:"required"`
+	Parameter string `json:"parameter" validate:"required"`
+}
+
 type Package struct {
 	
-	Weight float64 `json:"weight" validate:"required"`
-	Length float64 `json:"length" validate:"required"`
-	Width float64 `json:"width" validate:"required"`
-	Height float64 `json:"height" validate:"required"`
+	Weight int `json:"weight" validate:"required"`
+	Length int `json:"length" validate:"required"`
+	Width int `json:"width" validate:"required"`
+	Height int `json:"height" validate:"required"`
 }
 
 type ApiResponseDeliveryCost struct {
@@ -846,12 +873,6 @@ type ResponseDeliveryCost struct {
 	ExpectedDeliveryTo string `json:"expected_delivery_to" validate:"required"`
 }
 
-
-type Service struct {
-	
-	Code string `json:"code" validate:"required"`
-	Sum float64 `json:"sum" validate:"required"`
-}
 
 // swagger:model PaidOrderObj
 type PaidOrderObj struct {
