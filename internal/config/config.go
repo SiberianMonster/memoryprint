@@ -17,7 +17,8 @@ const (
 	PassResetCodeExpiration   = 15
 	Key               = "encoding124"
 	SendGridApiKey    = "encoding124"
-	UpdateInterval    = time.Second * 5
+	SubscriptionKey               = "10111992060419912905199187345690"
+	UpdateInterval    = time.Minute * 15
 	SleepTime         = time.Second *60
 	WorkersCount                    = 60
 	UserIDKey         contextKey    = "userid"
@@ -44,6 +45,12 @@ var YandexApiKey string
 var TimewebToken string
 var BalaToken string
 var ImageHost string
+var BankDomain string
+var BankUsername string
+var BankPassword string
+var DeliveryDomain string
+var DeliveryClientID string
+var DeliverySecret string
 
 func GetEnv(key string, fallback *string) *string {
 	if value, ok := os.LookupEnv(key); ok {

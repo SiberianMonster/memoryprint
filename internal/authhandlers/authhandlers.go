@@ -39,7 +39,7 @@ func GenerateTempPass(rw http.ResponseWriter, r *http.Request) {
 	resp := make(map[string]int)
 
 	var user *models.RestoreUser
-	var dbUser models.User
+	var dbUser models.UserInfo
 
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
@@ -93,7 +93,7 @@ func GenerateTempPass(rw http.ResponseWriter, r *http.Request) {
 		Code: 	tempPass,
 	}
 
-	ms := &emailutils.SGMailService{config.YandexApiKey, config.MailVerifCodeExpiration, config.PassResetCodeExpiration, config.WelcomeMailTemplateID, config.MailVerifTemplateID, config.TempPassTemplateID, config.DesignerOrderTemplateID, config.ViewerInvitationNewTemplateID, config.ViewerInvitationExistTemplateID}
+	ms := &emailutils.SGMailService{config.YandexApiKey}
 	print("created ms")
 	mailReq := emailutils.NewMail(from, to, subject, mailType, mailData)
 	print("created mail")
@@ -110,7 +110,7 @@ func GenerateTempPass(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Println(dbUser)
-	_, err = userstorage.UpdatePassword(ctx, config.DB, dbUser)
+	err = userstorage.UpdateUser(ctx, config.DB, dbUser.Password, dbUser.ID)
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return

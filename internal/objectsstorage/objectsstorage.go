@@ -62,6 +62,7 @@ func AddPhoto(ctx context.Context, storeDB *pgxpool.Pool, photoLink string, smal
 		photoLink,
 		smallImage,
 		t,
+		false,
 		userID,
 	).Scan(&photoID)
 	if err != nil {
@@ -73,13 +74,13 @@ func AddPhoto(ctx context.Context, storeDB *pgxpool.Pool, photoLink string, smal
 
 }
 
-
 // AddDecoration function performs the operation of adding decoration to the db.
 func AddDecoration(ctx context.Context, storeDB *pgxpool.Pool, newDecor models.PersonalisedObject, userID uint) (uint, error) {
 
 	var decorID uint
-	_, err = storeDB.Exec(ctx, "INSERT INTO decorations (link, category, type) VALUES ($1, $2, $3);",
+	_, err = storeDB.Exec(ctx, "INSERT INTO decorations (link, small_image, category, type) VALUES ($1, $2, $3, $4);",
 		newDecor.Link,
+		newDecor.SmallImage,
 		newDecor.Category,
 		newDecor.Type,
 	)
@@ -168,8 +169,9 @@ func DeleteDecoration(ctx context.Context, storeDB *pgxpool.Pool, userID uint, d
 func AddBackground(ctx context.Context, storeDB *pgxpool.Pool, newDecor models.PersonalisedObject, userID uint) (uint, error) {
 
 	var bID uint
-	_, err = storeDB.Exec(ctx, "INSERT INTO backgrounds (link, category) VALUES ($1, $2);",
+	_, err = storeDB.Exec(ctx, "INSERT INTO backgrounds (link, small_image, category) VALUES ($1, $2, $3);",
 		newDecor.Link,
+		newDecor.SmallImage,
 		newDecor.Type,
 	)
 	if err != nil {
@@ -270,23 +272,33 @@ func DeletePhoto(ctx context.Context, storeDB *pgxpool.Pool, photoID uint) (uint
 }
 
 // RetrieveUserPhotos function performs the operation of retrieving user photos from pgx database with a query.
-func RetrieveUserPhotos(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset uint, limit uint) (models.ResponsePhotos, error) {
+func RetrieveUserPhotos(ctx context.Context, storeDB *pgxpool.Pool, userID uint, sorting string, offset uint, limit uint) (models.ResponsePhotos, error) {
 
 	var responsePhoto models.ResponsePhotos
 	responsePhoto.Photos = []models.Photo{}
-	rows, err := storeDB.Query(ctx, "SELECT photos_id, link, small_image FROM photos WHERE users_id = ($1) ORDER BY photos_id DESC LIMIT ($2) OFFSET ($3);", userID, limit, offset)
-	if err != nil {
+	rows, err := storeDB.Query(ctx, "SELECT photos_id, link, small_image, uploaded_at FROM photos WHERE users_id = ($1) ORDER BY photos_id DESC LIMIT ($2) OFFSET ($3);", userID, limit, offset)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows){
 		log.Printf("Error happened when retrieving photos from pgx table. Err: %s", err)
 		return responsePhoto, err
 	}
 	defer rows.Close()
+	if sorting == "ASC" {
+		rows, err := storeDB.Query(ctx, "SELECT photos_id, link, small_image, uploaded_at FROM photos WHERE users_id = ($1) ORDER BY photos_id ASC LIMIT ($2) OFFSET ($3);", userID, limit, offset)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows){
+			log.Printf("Error happened when retrieving photos from pgx table. Err: %s", err)
+			return responsePhoto, err
+		}
+		defer rows.Close()
+	}
 
 	for rows.Next() {
 		var photo models.Photo
-		if err = rows.Scan(&photo.PhotoID, &photo.Link, &photo.SmallImage); err != nil {
+		var uploadTimeStorage time.Time
+		if err = rows.Scan(&photo.PhotoID, &photo.Link, &photo.SmallImage, &uploadTimeStorage); err != nil {
 			log.Printf("Error happened when scanning photos. Err: %s", err)
 			return responsePhoto, err
 		}
+		photo.UploadedAt = uploadTimeStorage.Unix()
 		responsePhoto.Photos = append(responsePhoto.Photos, photo)
 	}
 
@@ -313,14 +325,14 @@ func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 	var responseBackground models.ResponseBackground
 	responseBackground.Backgrounds = []models.Background{}
 	if isfavourite != true && ispersonal != true {
-		rows, err := storeDB.Query(ctx, "SELECT backgrounds_id, link, category FROM backgrounds WHERE category <> '' ORDER BY backgrounds_id DESC LIMIT ($1) OFFSET ($2);", limit, offset)
+		rows, err := storeDB.Query(ctx, "SELECT backgrounds_id, link, small_image, category FROM backgrounds WHERE category <> '' ORDER BY backgrounds_id DESC LIMIT ($1) OFFSET ($2);", limit, offset)
 		if err != nil {
 			log.Printf("Error happened when retrieving backgrounds from pgx table. Err: %s", err)
 			return responseBackground, err
 		}
 		defer rows.Close()
 		if btype != "" {
-			rows, err = storeDB.Query(ctx, "SELECT backgrounds_id, link, category FROM backgrounds WHERE category = ($1) ORDER BY backgrounds_id DESC LIMIT ($2) OFFSET ($3);", btype, limit, offset)
+			rows, err = storeDB.Query(ctx, "SELECT backgrounds_id, link, small_image, category FROM backgrounds WHERE category = ($1) ORDER BY backgrounds_id DESC LIMIT ($2) OFFSET ($3);", btype, limit, offset)
 			if err != nil {
 				log.Printf("Error happened when retrieving backgrounds from pgx table. Err: %s", err)
 				return responseBackground, err
@@ -329,7 +341,7 @@ func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 			}
 		for rows.Next() {
 			var background models.Background
-			if err = rows.Scan(&background.BackgroundID, &background.Link, &background.Type); err != nil {
+			if err = rows.Scan(&background.BackgroundID, &background.Link, &background.SmallImage, &background.Type); err != nil {
 				log.Printf("Error happened when scanning backgrounds. Err: %s", err)
 				return responseBackground, err
 			}
@@ -354,7 +366,7 @@ func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 				log.Printf("Error happened when scanning backgrounds. Err: %s", err)
 				return responseBackground, err
 			}
-			err := storeDB.QueryRow(ctx, "SELECT link, category FROM backgrounds WHERE backgrounds_id = ($1);", background.BackgroundID).Scan(&background.Link, &background.Type)
+			err := storeDB.QueryRow(ctx, "SELECT link, small_image, category FROM backgrounds WHERE backgrounds_id = ($1);", background.BackgroundID).Scan(&background.Link, &background.SmallImage, &background.Type)
 			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 				log.Printf("Error happened when retrieving backgrounds from backgrounds table. Err: %s", err)
 				return responseBackground, err
@@ -381,7 +393,7 @@ func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 				log.Printf("Error happened when scanning backgrounds. Err: %s", err)
 				return responseBackground, err
 			}
-			err := storeDB.QueryRow(ctx, "SELECT link, category FROM backgrounds WHERE backgrounds_id = ($1);", background.BackgroundID).Scan(&background.Link, &background.Type)
+			err := storeDB.QueryRow(ctx, "SELECT link, small_image, category FROM backgrounds WHERE backgrounds_id = ($1);", background.BackgroundID).Scan(&background.Link, &background.SmallImage, &background.Type)
 			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 				log.Printf("Error happened when retrieving backgrounds from backgrounds table. Err: %s", err)
 				return responseBackground, err
@@ -472,8 +484,9 @@ func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 func AddAdminBackground(ctx context.Context, storeDB *pgxpool.Pool, newB models.Background) (uint, error) {
 
 	var bID uint
-	_, err = storeDB.Exec(ctx, "INSERT INTO backgrounds (link, category) VALUES ($1, $2);",
+	_, err = storeDB.Exec(ctx, "INSERT INTO backgrounds (link, small_image, category) VALUES ($1, $2, $3);",
 		newB.Link,
+		newB.SmallImage,
 		newB.Type,
 	)
 	if err != nil {
@@ -493,8 +506,9 @@ func AddAdminBackground(ctx context.Context, storeDB *pgxpool.Pool, newB models.
 // UpdateBackground function performs the operation of updating background to the db.
 func UpdateBackground(ctx context.Context, storeDB *pgxpool.Pool, bID uint, newB models.Background) ( error) {
 
-	_, err = storeDB.Exec(ctx, "UPDATE backgrounds SET link = ($1), category = ($2) WHERE backgrounds_id = ($3);",
+	_, err = storeDB.Exec(ctx, "UPDATE backgrounds SET link = ($1), small_image = ($2), category = ($3) WHERE backgrounds_id = ($4);",
 		newB.Link,
+		newB.SmallImage,
 		newB.Type,
 		bID,
 	)
@@ -510,8 +524,9 @@ func UpdateBackground(ctx context.Context, storeDB *pgxpool.Pool, bID uint, newB
 // UpdateDecoration function performs the operation of updating decoration to the db.
 func UpdateDecoration(ctx context.Context, storeDB *pgxpool.Pool, dID uint, newD models.Decoration) ( error) {
 
-	_, err = storeDB.Exec(ctx, "UPDATE decorations SET link = ($1), category = ($2), type = ($3) WHERE decorations_id = ($4);",
+	_, err = storeDB.Exec(ctx, "UPDATE decorations SET link = ($1), small_image = ($2), category = ($3), type = ($4) WHERE decorations_id = ($5);",
 		newD.Link,
+		newD.SmallImage,
 		newD.Type,
 		newD.Category,
 		dID,
@@ -568,7 +583,7 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 	var responseDecoration models.ResponseDecoration
 	responseDecoration.Decorations = []models.Decoration{}
 	if isfavourite != true && ispersonal != true {
-		rows, err := storeDB.Query(ctx, "SELECT * FROM (SELECT decorations_id, link, category, type FROM decorations WHERE category <> '') AS selectedD ORDER BY selectedD.decorations_id DESC LIMIT ($1) OFFSET ($2);", limit, offset)
+		rows, err := storeDB.Query(ctx, "SELECT * FROM (SELECT decorations_id, link, small_image, category, type FROM decorations WHERE category <> '') AS selectedD ORDER BY selectedD.decorations_id DESC LIMIT ($1) OFFSET ($2);", limit, offset)
 				if err != nil {
 					log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
 					return responseDecoration, err
@@ -577,14 +592,14 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 		
 		if dtype != "" {
 			if dcategory != "" {
-				rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, category, type FROM decorations WHERE category = ($1) AND type = ($2) ORDER BY decorations_id DESC LIMIT ($3) OFFSET ($4);", dtype, dcategory, limit, offset)
+				rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, small_image, category, type FROM decorations WHERE category = ($1) AND type = ($2) ORDER BY decorations_id DESC LIMIT ($3) OFFSET ($4);", dtype, dcategory, limit, offset)
 				if err != nil {
 					log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
 					return responseDecoration, err
 				}
 				defer rows.Close()
 			} else {
-				rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, category, type FROM decorations WHERE category = ($1) ORDER BY decorations_id DESC LIMIT ($2) OFFSET ($3);",  dtype, limit, offset)
+				rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, small_image, category, type FROM decorations WHERE category = ($1) ORDER BY decorations_id DESC LIMIT ($2) OFFSET ($3);",  dtype, limit, offset)
 				if err != nil {
 					log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
 					return responseDecoration, err
@@ -593,7 +608,7 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 			}
 		} else {
 			if dcategory != "" {
-				rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, category, type FROM decorations WHERE type = ($1) ORDER BY decorations_id DESC LIMIT ($2) OFFSET ($3);", dcategory, limit, offset)
+				rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, small_image, category, type FROM decorations WHERE type = ($1) ORDER BY decorations_id DESC LIMIT ($2) OFFSET ($3);", dcategory, limit, offset)
 				if err != nil {
 					log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
 					return responseDecoration, err
@@ -604,7 +619,7 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 
 		for rows.Next() {
 			var decoration models.Decoration
-			if err = rows.Scan(&decoration.DecorationID, &decoration.Link, &decoration.Type, &decoration.Category); err != nil {
+			if err = rows.Scan(&decoration.DecorationID, &decoration.Link, &decoration.SmallImage, &decoration.Type, &decoration.Category); err != nil {
 				log.Printf("Error happened when scanning decorations. Err: %s", err)
 				return responseDecoration, err
 			}
@@ -628,7 +643,7 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 				log.Printf("Error happened when scanning decorations. Err: %s", err)
 				return responseDecoration, err
 			}
-			err := storeDB.QueryRow(ctx, "SELECT link, category, type FROM decorations WHERE decorations_id = ($1);", decoration.DecorationID).Scan(&decoration.Link, &decoration.Type, &decoration.Category)
+			err := storeDB.QueryRow(ctx, "SELECT link, small_image, category, type FROM decorations WHERE decorations_id = ($1);", decoration.DecorationID).Scan(&decoration.Link, &decoration.SmallImage, &decoration.Type, &decoration.Category)
 			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 				log.Printf("Error happened when retrieving decorations from decorations table. Err: %s", err)
 				return responseDecoration, err
@@ -667,7 +682,7 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 				log.Printf("Error happened when scanning decorations. Err: %s", err)
 				return responseDecoration, err
 			}
-			err := storeDB.QueryRow(ctx, "SELECT link, category, type FROM decorations WHERE decorations_id = ($1);", decoration.DecorationID).Scan(&decoration.Link, &decoration.Type, &decoration.Category)
+			err := storeDB.QueryRow(ctx, "SELECT link, small_image, category, type FROM decorations WHERE decorations_id = ($1);", decoration.DecorationID).Scan(&decoration.Link, &decoration.SmallImage, &decoration.Type, &decoration.Category)
 			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 				log.Printf("Error happened when retrieving decorations from decorations table. Err: %s", err)
 				return responseDecoration, err
@@ -833,8 +848,9 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 func AddAdminDecoration(ctx context.Context, storeDB *pgxpool.Pool, newD models.Decoration) (uint, error) {
 
 	var dID uint
-	_, err = storeDB.Exec(ctx, "INSERT INTO decorations (link, category, type) VALUES ($1, $2, $3);",
+	_, err = storeDB.Exec(ctx, "INSERT INTO decorations (link, small_image, category, type) VALUES ($1, $2, $3, $4);",
 		newD.Link,
+		newD.SmallImage,
 		newD.Type,
 		newD.Category,
 	)
@@ -1170,3 +1186,131 @@ func FavourLayout(ctx context.Context, storeDB *pgxpool.Pool, newDecor models.Pe
 	return nil
 
 }
+
+
+// AddPrices function performs the operation of adding prices to the db.
+func AddPrices(ctx context.Context, storeDB *pgxpool.Pool, newP []models.Price) (error) {
+
+	for _, price := range newP {
+        _, err = storeDB.Exec(ctx, "INSERT INTO prices (cover, variant, surface, size, baseprice, extrapage) VALUES ($1, $2, $3, $4, $5, $6);",
+		price.Cover,
+		price.Variant,
+		price.Surface,
+		price.Size,
+		price.BasePrice,
+		price.ExtraPage,
+		)
+		if err != nil {
+			log.Printf("Error happened when inserting prices into pgx table. Err: %s", err)
+			return err
+		}
+	}
+
+	return nil
+
+}
+
+// DeletePrices function performs the operation of deleting prices from the db.
+func DeletePrices(ctx context.Context, storeDB *pgxpool.Pool) (error) {
+
+	_, err = storeDB.Exec(ctx, "DELETE * FROM prices;")
+	if err != nil {
+			log.Printf("Error happened when deleting prices from pgx table. Err: %s", err)
+			return err
+	}
+	
+
+	return nil
+
+}
+
+// RetrievePrices function performs the operation of retrieving prices from pgx database with a query.
+func RetrievePrices(ctx context.Context, storeDB *pgxpool.Pool) ([]models.Price, error) {
+
+	prices := []models.Price{}
+
+	rows, err := storeDB.Query(ctx, "SELECT cover, variant, size, baseprice, extrapage FROM prices;")
+	if err != nil {
+			log.Printf("Error happened when retrieving prices from pgx table. Err: %s", err)
+			return prices, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+
+			var priceObj models.Price
+			if err = rows.Scan(&priceObj.Cover, &priceObj.Variant, &priceObj.Size, &priceObj.BasePrice, &priceObj.ExtraPage); err != nil {
+				log.Printf("Error happened when scanning prices. Err: %s", err)
+				return prices, err
+			}
+
+			prices = append(prices, priceObj)
+			
+	}
+
+	return prices, nil
+
+}
+
+
+// AddCover function performs the operation of adding cover to the db.
+func AddCover(ctx context.Context, storeDB *pgxpool.Pool, newC models.Colour) (error) {
+
+	_, err = storeDB.Exec(ctx, "INSERT INTO leather (colourlink, hexcode) VALUES ($1, $2);",
+		newC.LeatherImage,
+		newC.HexCode,
+	)
+	if err != nil {
+			log.Printf("Error happened when inserting cover into pgx table. Err: %s", err)
+			return err
+	}
+	
+
+	return nil
+
+}
+
+// AdminDeleteCover function performs the operation of deleting cover from the db.
+func AdminDeleteCover(ctx context.Context, storeDB *pgxpool.Pool, cID uint) (error) {
+
+	_, err = storeDB.Exec(ctx, "DELETE FROM leather WHERE leather_id=($1);",
+		cID,
+	)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		log.Printf("Error happened when deleting cover from leather pgx table. Err: %s", err)
+		return err
+	}
+
+	return nil
+
+}
+
+// RetrieveCovers function performs the operation of retrieving covers from pgx database with a query.
+func RetrieveCovers(ctx context.Context, storeDB *pgxpool.Pool) ([]models.Colour, error) {
+
+	covers := []models.Colour{}
+
+	rows, err := storeDB.Query(ctx, "SELECT leather_id, colourlink, hexcode FROM leather;")
+	if err != nil {
+			log.Printf("Error happened when retrieving covers from pgx table. Err: %s", err)
+			return covers, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+
+			var coverObj models.Colour
+			if err = rows.Scan(&coverObj.ID, &coverObj.LeatherImage, &coverObj.HexCode); err != nil {
+				log.Printf("Error happened when scanning covers. Err: %s", err)
+				return covers, err
+			}
+
+			covers = append(covers, coverObj)
+			
+	}
+
+	return covers, nil
+
+}
+
+

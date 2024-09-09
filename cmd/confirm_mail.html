@@ -132,7 +132,7 @@
                 <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px;">
                     <tr>
                         <td bgcolor="#ffffff" align="left" style="padding: 20px 30px 40px 30px; color: #666666; font-family: 'Lato', Helvetica, Arial, sans-serif; font-size: 18px; font-weight: 400; line-height: 25px;">
-                            <p style="margin: 0;">Hey, thanks for signing up and we are super delighted about having you here. Please verify your email to start exploring great reads.</p>
+                            <p style="margin: 0;">Hey, {{ .Username }} thanks for signing up and we are super delighted about having you here. Please verify your email to start exploring great reads.</p>
                         </td>
                     </tr>
                     <tr>
@@ -143,6 +143,11 @@
                     <tr>
                         <td bgcolor="#ffffff" align="left" style="padding: 0px 30px 40px 30px; border-radius: 0px 0px 4px 4px; color: #666666; font-family: 'Lato', Helvetica, Arial, sans-serif; font-size: 18px; font-weight: 400; line-height: 25px;">
                             <p style="margin: 0;">Cheers,<br>MemoryPrint Team</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td bgcolor="#ffffff" align="left" style="padding: 0px 30px 40px 30px; border-radius: 0px 0px 4px 4px; color: #666666; font-family: 'Lato', Helvetica, Arial, sans-serif; font-size: 18px; font-weight: 400; line-height: 25px;">
+                            <p style="margin: 0;">If you want to unsubscribe, {{ .SubscriptionLink }}</p>
                         </td>
                     </tr>
                 </table>

@@ -44,7 +44,7 @@ type AccessTokenCustomClaims struct {
 
 func Authenticate(u models.User, dbUser *models.User) (bool, error) {
 
-	pwdHash, err := Hash(fmt.Sprintf("%s:password", u.Password), config.Key)
+	pwdHash, err := Hash(fmt.Sprintf("%s:password", u.Password), dbUser.TokenHash)
 	if err != nil {
 		log.Printf("Error happened when hashing received value. Err: %s", err)
 		return false, err

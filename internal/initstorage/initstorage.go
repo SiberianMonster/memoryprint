@@ -79,7 +79,7 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 
 	// users table
 	_, err = db.Exec(ctx,
-		"CREATE TABLE IF NOT EXISTS users (users_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, username varchar NOT NULL, password varchar NOT NULL, email varchar NOT NULL, tokenhash varchar, category varchar NOT NULL, isverified varchar NOT NULL, status varchar NOT NULL, last_edited_at timestamp NOT NULL, created_at timestamp NOT NULL)")
+		"CREATE TABLE IF NOT EXISTS users (users_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, username varchar NOT NULL, password varchar NOT NULL, email varchar NOT NULL, tokenhash varchar, category varchar NOT NULL, isverified varchar NOT NULL, subscription boolean NOT NULL, status varchar NOT NULL, last_edited_at timestamp NOT NULL, created_at timestamp NOT NULL)")
 	if err != nil {
 		log.Printf("Error happened when creating users table. Err: %s", err)
 		return nil, false
@@ -95,36 +95,9 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 
 	}
 
-	// prices table
-	_, err = db.Exec(ctx,
-			"CREATE TABLE IF NOT EXISTS prices (prices_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, price double precision NOT NULL, pagesnum int NOT NULL, priceperpage double precision NOT NULL, covertype varchar, bindingtype varchar, papertype varchar)")
-	if err != nil {
-			log.Printf("Error happened when creating orders table. Err: %s", err)
-			return nil, false
-	
-	}
-
-	// promooffers table
-	_, err = db.Exec(ctx,
-			"CREATE TABLE IF NOT EXISTS promooffers (promooffers_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, code varchar NOT NULL UNIQUE, discount double precision NOT NULL, is_onetime boolean, is_used boolean, expires_at timestamp NOT NULL, used_at timestamp NOT NULL)")
-	if err != nil {
-			log.Printf("Error happened when creating promooffers table. Err: %s", err)
-			return nil, false
-	
-	}
-
-	// orders table
-	_, err = db.Exec(ctx,
-		"CREATE TABLE IF NOT EXISTS orders (orders_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, link varchar NOT NULL, status varchar NOT NULL, pagesnum int, covertype varchar, bindingtype varchar, papertype varchar, created_at timestamp NOT NULL, last_updated_at timestamp NOT NULL, promooffers_id int, users_id int REFERENCES users(users_id))")
-	if err != nil {
-		log.Printf("Error happened when creating orders table. Err: %s", err)
-		return nil, false
-
-	}
-
 	// photos table
 	_, err = db.Exec(ctx,
-		"CREATE TABLE IF NOT EXISTS photos (photos_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, link varchar NOT NULL, uploaded_at timestamp NOT NULL, users_id int REFERENCES users(users_id))")
+		"CREATE TABLE IF NOT EXISTS photos (photos_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, link varchar NOT NULL, small_image varchar, uploaded_at timestamp NOT NULL, users_id int REFERENCES users(users_id))")
 	if err != nil {
 		log.Printf("Error happened when creating photos table. Err: %s", err)
 		return nil, false
@@ -133,7 +106,7 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 
 	// background table
 	_, err = db.Exec(ctx,
-			"CREATE TABLE IF NOT EXISTS backgrounds (backgrounds_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, link varchar NOT NULL, category varchar)")
+			"CREATE TABLE IF NOT EXISTS backgrounds (backgrounds_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, link varchar NOT NULL, small_image varchar, category varchar)")
 	if err != nil {
 			log.Printf("Error happened when creating background table. Err: %s", err)
 			return nil, false
@@ -142,7 +115,7 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 
 	// layout table
 	_, err = db.Exec(ctx,
-		"CREATE TABLE IF NOT EXISTS layouts (layouts_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, count_images int NOT NULL, link varchar NOT NULL, size varchar NOT NULL, data text NOT NULL)")
+		"CREATE TABLE IF NOT EXISTS layouts (layouts_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, count_images int NOT NULL, link varchar NOT NULL, small_image varchar, size varchar NOT NULL, data text NOT NULL)")
 	if err != nil {
 			log.Printf("Error happened when creating layout table. Err: %s", err)
 			return nil, false
@@ -161,7 +134,7 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 
 	// projects table
 	_, err = db.Exec(ctx,
-		"CREATE TABLE IF NOT EXISTS projects (projects_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, name varchar, size varchar NOT NULL, variant varchar NOT NULL, cover varchar NOT NULL, paper varchar NOT NULL, preview_image_link varchar, count_pages int, status varchar NOT NULL, last_edited_at timestamp NOT NULL, last_editor int, created_at timestamp NOT NULL, promooffers_id int, users_id int REFERENCES users(users_id))")
+		"CREATE TABLE IF NOT EXISTS projects (projects_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, name varchar, category varchar, size varchar NOT NULL, variant varchar NOT NULL, cover varchar NOT NULL, paper varchar NOT NULL, preview_image_link varchar, count_pages int, status varchar NOT NULL, last_edited_at timestamp NOT NULL, last_editor int, created_at timestamp NOT NULL, preview_link varchar, print_link varchar, creating_spine_link varchar, preview_spine_link varchar, leather_id int, users_id int REFERENCES users(users_id))")
 	if err != nil {
 		log.Printf("Error happened when creating photobooks table. Err: %s", err)
 		return nil, false
@@ -170,7 +143,7 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 
 	// templates table
 	_, err = db.Exec(ctx,
-			"CREATE TABLE IF NOT EXISTS templates (templates_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, name varchar, status varchar NOT NULL, category varchar, size varchar, last_edited_at timestamp NOT NULL, last_editor int, created_at timestamp NOT NULL)")
+			"CREATE TABLE IF NOT EXISTS templates (templates_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, name varchar, status varchar NOT NULL, category varchar, size varchar, creating_spine_link varchar, preview_spine_link varchar, last_edited_at timestamp NOT NULL, last_editor int, created_at timestamp NOT NULL)")
 	if err != nil {
 			log.Printf("Error happened when creating photobooks table. Err: %s", err)
 			return nil, false
@@ -188,7 +161,7 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 
 	// pages table
 	_, err = db.Exec(ctx,
-		"CREATE TABLE IF NOT EXISTS pages (pages_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, is_template boolean NOT NULL, last_edited_at timestamp NOT NULL, data text, sort int NOT NULL, preview_link varchar, creating_image_link varchar, type varchar, projects_id int NOT NULL)")
+		"CREATE TABLE IF NOT EXISTS pages (pages_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, is_template boolean NOT NULL, last_edited_at timestamp NOT NULL, data text, sort int, preview_link varchar, creating_image_link varchar, type varchar, projects_id int NOT NULL)")
 	if err != nil {
 		log.Printf("Error happened when creating pages table. Err: %s", err)
 		return nil, false
@@ -250,14 +223,181 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 	
 	}
 
+
 	//_, err = db.Exec(ctx, "ALTER TABLE photos ADD COLUMN small_image varchar;")
 	//if err != nil {
 	//		log.Printf("Error happened when creating layout table. Err: %s", err)
 	//		return nil, false
 	//}
 
-	// pass default settings
+	// prices table
+	_, err = db.Exec(ctx,
+			"CREATE TABLE IF NOT EXISTS prices (prices_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, cover varchar NOT NULL, variant varchar NOT NULL, surface varchar NOT NULL, size varchar NOT NULL, baseprice double precision NOT NULL, extrapage double precision NOT NULL)")
+	if err != nil {
+			log.Printf("Error happened when creating prices table. Err: %s", err)
+			return nil, false
 	
+	}
+
+	// table with leather colours
+	_, err = db.Exec(ctx,
+			"CREATE TABLE IF NOT EXISTS leather (leather_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, colourlink varchar NOT NULL, hexcode varchar NOT NULL, description varchar)")
+	if err != nil {
+			log.Printf("Error happened when creating leather table. Err: %s", err)
+			return nil, false
+
+	}
+
+	// promooffers table
+	_, err = db.Exec(ctx,
+			"CREATE TABLE IF NOT EXISTS promooffers (promooffers_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, code varchar NOT NULL UNIQUE, discount double precision NOT NULL, category varchar NOT NULL, is_onetime boolean, is_used boolean, expires_at int NOT NULL, used_at timestamp, is_personal boolean, users_id int)")
+	if err != nil {
+			log.Printf("Error happened when creating promooffers table. Err: %s", err)
+			return nil, false
+	
+	}
+
+	// gift certificates table
+	_, err = db.Exec(ctx,
+		"CREATE TABLE IF NOT EXISTS giftcertificates (giftcertificates_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, code varchar NOT NULL UNIQUE, initialdeposit float NOT NULL, status varchar NOT NULL, currentdeposit float NOT NULL, created_at timestamp NOT NULL, used_at timestamp, receipientemail varchar NOT NULL, reciepientname varchar NOT NULL, buyerfirstname varchar NOT NULL, buyerlastname varchar NOT NULL, buyeremail varchar NOT NULL, buyerphone varchar NOT NULL, mail_at int NOT NULL, mail_sent boolean)")
+	if err != nil {
+			log.Printf("Error happened when creating giftcertificates table. Err: %s", err)
+			return nil, false
+
+	}
+
+	// orders table
+	_, err = db.Exec(ctx,
+		"CREATE TABLE IF NOT EXISTS orders (orders_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, status varchar NOT NULL, created_at timestamp NOT NULL, last_updated_at timestamp NOT NULL, firstname varchar, lastname varchar, email varchar, phone varchar, commentary varchar, baseprice double precision, finalprice double precision, videolink varchar, package_box bool, promooffers_id int, giftcertificates_id int, giftcertificates_deposit float, delivery_id int, users_id int)")
+	if err != nil {
+		log.Printf("Error happened when creating orders table. Err: %s", err)
+		return nil, false
+
+	}
+
+	// mapping orders with projects
+	_, err = db.Exec(ctx,
+		"CREATE TABLE IF NOT EXISTS orders_has_projects (orders_id int NOT NULL, projects_id int NOT NULL)")
+	if err != nil {
+			log.Printf("Error happened when creating orders_has_projects table. Err: %s", err)
+			return nil, false
+
+	}
+
+	// transactions table
+	_, err = db.Exec(ctx,
+		"CREATE TABLE IF NOT EXISTS transactions (transactions_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, status varchar NOT NULL, created_at timestamp NOT NULL, paymentmethod varchar NOT NULL, amount double precision NOT NULL, bankorderid varchar NOT NULL, bankstatus varchar)")
+	if err != nil {
+		log.Printf("Error happened when creating transactions table. Err: %s", err)
+		return nil, false
+
+	}
+
+
+	// mapping giftcertificates with transactions
+	_, err = db.Exec(ctx,
+			"CREATE TABLE IF NOT EXISTS giftcertificates_has_transactions (giftcertificates_id int NOT NULL, transactions_id int NOT NULL)")
+	if err != nil {
+				log.Printf("Error happened when creating giftcertificates_has_transactions table. Err: %s", err)
+				return nil, false
+	
+	}
+
+	// mapping orders with transactions
+	_, err = db.Exec(ctx,
+			"CREATE TABLE IF NOT EXISTS orders_has_transactions (orders_id int NOT NULL, transactions_id int NOT NULL)")
+	if err != nil {
+				log.Printf("Error happened when creating orders_has_transactions table. Err: %s", err)
+				return nil, false
+	
+	}
+
+
+
+	// delivery table
+	_, err = db.Exec(ctx,"CREATE TABLE IF NOT EXISTS delivery (delivery_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, status varchar NOT NULL, created_at timestamp NOT NULL, expected_delivery_from timestamp, expected_delivery_to timestamp, method varchar NOT NULL, address varchar, postal_code varchar, code varchar, amount double precision NOT NULL, deliveryid varchar, trackingnumber varchar, deliverystatus varchar)")
+	if err != nil {	
+
+			log.Printf("Error happened when creating transactions table. Err: %s", err)
+			return nil, false
+	
+	}
+	
+
+
+	//pass default settings
+	//_, err = db.Exec(ctx, "ALTER TABLE photos ADD COLUMN small_image varchar;")
+	//if err != nil {
+	//		log.Printf("Error happened when creating layout table. Err: %s", err)
+	//		return nil, false
+	//}
+	//_, err = db.Exec(ctx, "ALTER TABLE backgrounds ADD COLUMN small_image varchar;")
+	//if err != nil {
+	//		log.Printf("Error happened when creating layout table. Err: %s", err)
+	//		return nil, false
+	//}
+	//_, err = db.Exec(ctx, "ALTER TABLE decorations ADD COLUMN small_image varchar;")
+	//if err != nil {
+	//		log.Printf("Error happened when creating layout table. Err: %s", err)
+	//		return nil, false
+	//}
+
+	//_, err = db.Exec(ctx, "ALTER TABLE projects ADD COLUMN creating_spine_link varchar;")
+	//if err != nil {
+	//		log.Printf("Error happened when creating layout table. Err: %s", err)
+	//		return nil, false
+	//}
+	//_, err = db.Exec(ctx, "ALTER TABLE projects ADD COLUMN preview_spine_link varchar;")
+	//if err != nil {
+	//		log.Printf("Error happened when creating layout table. Err: %s", err)
+	//		return nil, false
+	//}
+
+	//_, err = db.Exec(ctx, "ALTER TABLE templates ADD COLUMN creating_spine_link varchar;")
+	//if err != nil {
+	//		log.Printf("Error happened when creating layout table. Err: %s", err)
+	//		return nil, false
+	//}
+	//_, err = db.Exec(ctx, "ALTER TABLE templates ADD COLUMN preview_spine_link varchar;")
+	//if err != nil {
+	//		log.Printf("Error happened when creating layout table. Err: %s", err)
+	//		return nil, false
+	//}
+	
+	//_, err = db.Exec(ctx, "ALTER TABLE users ADD COLUMN subscription boolean;")
+	//if err != nil {
+	//		log.Printf("Error happened when creating subscription column. Err: %s", err)
+	//		return nil, false
+	//}
+
+	//_, err = db.Exec(ctx, "ALTER TABLE promooffers ADD COLUMN category varchar;")
+	//if err != nil {
+	//		log.Printf("Error happened when creating subscription column. Err: %s", err)
+	//		return nil, false
+	//}
+	//_, err = db.Exec(ctx, "ALTER TABLE promooffers ADD COLUMN users_id int;")
+	//if err != nil {
+	//		log.Printf("Error happened when creating subscription column. Err: %s", err)
+	//		return nil, false
+	//}
+
+	//_, err = db.Exec(ctx, "ALTER TABLE promooffers ADD COLUMN expires_at int;")
+	//if err != nil {
+	//		log.Printf("Error happened when creating subscription column. Err: %s", err)
+	//		return nil, false
+	//}
+
+	//_, err = db.Exec(ctx, "ALTER TABLE projects ADD COLUMN category varchar;")
+	//if err != nil {
+	//		log.Printf("Error happened when creating subscription column. Err: %s", err)
+	//		return nil, false
+	//}
+
+	//_, err = db.Exec(ctx, "ALTER TABLE projects ADD COLUMN leather_id int;")
+	//if err != nil {
+	//		log.Printf("Error happened when creating subscription column. Err: %s", err)
+	//		return nil, false
+	//}
 
 	log.Println("Initialised data table.")
 	
