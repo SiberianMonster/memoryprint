@@ -125,7 +125,7 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 
 	// decorations table
 	_, err = db.Exec(ctx,
-		"CREATE TABLE IF NOT EXISTS decorations (decorations_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, link varchar NOT NULL, type varchar, category varchar)")
+		"CREATE TABLE IF NOT EXISTS decorations (decorations_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, small_image varchar, link varchar NOT NULL, type varchar, category varchar)")
 	if err != nil {
 			log.Printf("Error happened when creating decorations table. Err: %s", err)
 			return nil, false
@@ -333,6 +333,10 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 	//		log.Printf("Error happened when creating layout table. Err: %s", err)
 	//		return nil, false
 	//}
+	_, err = db.Exec(ctx, "ALTER TABLE decorations ADD COLUMN small_image varchar;")
+	if err != nil {
+			log.Printf("Error happened when creating layout table. Err: %s", err)
+			return nil, false
 
 	//_, err = db.Exec(ctx, "ALTER TABLE projects ADD COLUMN creating_spine_link varchar;")
 	//if err != nil {
