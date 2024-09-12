@@ -9,6 +9,7 @@ import (
 	
 	"github.com/SiberianMonster/memoryprint/internal/config"
 	"github.com/SiberianMonster/memoryprint/internal/emailutils"
+	"github.com/SiberianMonster/memoryprint/internal/fixturestorage"
 	"github.com/SiberianMonster/memoryprint/internal/models"
 	"github.com/SiberianMonster/memoryprint/internal/userstorage"
 	"github.com/SiberianMonster/memoryprint/internal/projectstorage"
@@ -258,7 +259,7 @@ func UpdateUsername(rw http.ResponseWriter, r *http.Request) {
 	var updatedUser models.UpdatedUsername
 	rw.Header().Set("Content-Type", "application/json")
 
-	resp := make(map[string]string)
+	resp := make(map[string]uint)
 	log.Printf("Update user data")
 	
 	err := json.NewDecoder(r.Body).Decode(&updatedUser)
@@ -269,6 +270,15 @@ func UpdateUsername(rw http.ResponseWriter, r *http.Request) {
 	userID := handlersfunc.UserIDContextReader(r)
 
 	log.Println(updatedUser)
+	// Validate the User struct
+	validate := validator.New()
+    err = validate.Struct(updatedUser)
+    if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
+
 
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	// не забываем освободить ресурс
@@ -280,7 +290,7 @@ func UpdateUsername(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	rw.WriteHeader(http.StatusOK)
-	resp["response"] = "1"
+	resp["response"] = 1
 	jsonResp, err := json.Marshal(resp)
 	if err != nil {
 		log.Printf("Error happened in JSON marshal. Err: %s", err)
@@ -296,7 +306,7 @@ func UpdateUserInfo(rw http.ResponseWriter, r *http.Request) {
 	var dbUser models.User
 	rw.Header().Set("Content-Type", "application/json")
 
-	resp := make(map[string]string)
+	resp := make(map[string]uint)
 	log.Printf("Update user data")
 	
 	err := json.NewDecoder(r.Body).Decode(&updatedUser)
@@ -349,7 +359,7 @@ func UpdateUserInfo(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	rw.WriteHeader(http.StatusOK)
-	resp["response"] = "1"
+	resp["response"] = 1
 	jsonResp, err := json.Marshal(resp)
 	if err != nil {
 		log.Printf("Error happened in JSON marshal. Err: %s", err)
@@ -393,7 +403,7 @@ func CheckUserCategory(rw http.ResponseWriter, r *http.Request) {
 
 func CancelSubscription(rw http.ResponseWriter, r *http.Request) {
 
-		resp := make(map[string]string)
+		resp := make(map[string]uint)
 		code := mux.Vars(r)["code"]
 	
 		ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
@@ -406,7 +416,7 @@ func CancelSubscription(rw http.ResponseWriter, r *http.Request) {
 		}
 	
 		rw.WriteHeader(http.StatusOK)
-		resp["response"] = "1"
+		resp["response"] = 1
 		jsonResp, err := json.Marshal(resp)
 		if err != nil {
 			return
@@ -417,7 +427,7 @@ func CancelSubscription(rw http.ResponseWriter, r *http.Request) {
 
 func RenewSubscription(rw http.ResponseWriter, r *http.Request) {
 
-	resp := make(map[string]string)
+	resp := make(map[string]uint)
 	code := mux.Vars(r)["code"]
 
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
@@ -430,7 +440,7 @@ func RenewSubscription(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	rw.WriteHeader(http.StatusOK)
-	resp["response"] = "1"
+	resp["response"] = 1
 	jsonResp, err := json.Marshal(resp)
 	if err != nil {
 		return
@@ -441,7 +451,7 @@ func RenewSubscription(rw http.ResponseWriter, r *http.Request) {
 
 func MakeUserAdmin(rw http.ResponseWriter, r *http.Request) {
 
-	resp := make(map[string]string)
+	resp := make(map[string]uint)
 
 	rw.Header().Set("Content-Type", "application/json")
 	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
@@ -454,7 +464,7 @@ func MakeUserAdmin(rw http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	userstorage.MakeUserAdmin(ctx, config.DB, userID) 
-	resp["response"] = "1"
+	resp["response"] = 1
 	jsonResp, err := json.Marshal(resp)
 	if err != nil {
 		log.Printf("Error happened in JSON marshal. Err: %s", err)
@@ -526,7 +536,7 @@ func CreateCertificate(rw http.ResponseWriter, r *http.Request) {
 func CreatePromocode(rw http.ResponseWriter, r *http.Request) {
 
 	rw.Header().Set("Content-Type", "application/json")
-	resp := make(map[string]string)
+	resp := make(map[string]uint)
 
 	var promooffer *models.NewPromooffer
 
@@ -560,7 +570,7 @@ func CreatePromocode(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	rw.WriteHeader(http.StatusOK)
-	resp["response"] = "1"
+	resp["response"] = 1
 	jsonResp, err := json.Marshal(resp)
 	if err != nil {
 			log.Printf("Error happened in JSON marshal. Err: %s", err)
@@ -817,4 +827,28 @@ func SentGiftCertificateMail(ctx context.Context, storeDB *pgxpool.Pool) {
 		}
 
 	}
+}
+
+func RenewFixtures(rw http.ResponseWriter, r *http.Request) {
+
+	resp := make(map[string]uint)
+	
+
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	defer cancel()
+	err := fixturestorage.RenewFixtures(ctx, config.DB)
+		
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
+
+    
+	rw.WriteHeader(http.StatusOK)
+	resp["response"] = 1
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		return
+	}
+	rw.Write(jsonResp)
 }
