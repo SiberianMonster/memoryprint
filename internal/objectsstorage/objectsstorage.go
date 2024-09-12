@@ -54,11 +54,11 @@ func CheckBackgroundISPersonal(ctx context.Context, storeDB *pgxpool.Pool, backg
 }
 
 // AddPhoto function performs the operation of adding photos to the db.
-func AddPhoto(ctx context.Context, storeDB *pgxpool.Pool, photoLink string, smallImage *string, userID uint) (uint, error) {
+func AddPhoto(ctx context.Context, storeDB *pgxpool.Pool, photoLink string, smallImage string, userID uint) (uint, error) {
 
 	var photoID uint
 	t := time.Now()
-	err = storeDB.QueryRow(ctx, "INSERT INTO photos (link, small_image, uploaded_at, is_favourite, users_id) VALUES ($1, $2, $3) RETURNING photos_id;",
+	err = storeDB.QueryRow(ctx, "INSERT INTO photos (link, small_image, uploaded_at, users_id) VALUES ($1, $2, $3, $4) RETURNING photos_id;",
 		photoLink,
 		smallImage,
 		t,

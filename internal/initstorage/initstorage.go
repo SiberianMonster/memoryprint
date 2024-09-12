@@ -223,6 +223,13 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 	
 	}
 
+
+	//_, err = db.Exec(ctx, "ALTER TABLE photos ADD COLUMN small_image varchar;")
+	//if err != nil {
+	//		log.Printf("Error happened when creating layout table. Err: %s", err)
+	//		return nil, false
+	//}
+
 	// prices table
 	_, err = db.Exec(ctx,
 			"CREATE TABLE IF NOT EXISTS prices (prices_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, cover varchar NOT NULL, variant varchar NOT NULL, surface varchar NOT NULL, size varchar NOT NULL, baseprice double precision NOT NULL, extrapage double precision NOT NULL)")
@@ -316,6 +323,7 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 	
 	}
 	
+
 
 	//pass default settings
 	//_, err = db.Exec(ctx, "ALTER TABLE photos ADD COLUMN small_image varchar;")
