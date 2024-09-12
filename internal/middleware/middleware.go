@@ -159,7 +159,7 @@ func AdminHandler(h http.Handler) http.Handler {
             h.ServeHTTP(w, r)
         } else {
             // Otherwise, 403.
-            w.WriteHeader(http.StatusUnauthorized)
+            w.WriteHeader(http.StatusForbidden)
 			resp["status"] = "user unauthorized"
 			jsonResp, err := json.Marshal(resp)
 			if err != nil {
