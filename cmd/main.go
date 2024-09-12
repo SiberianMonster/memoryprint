@@ -147,6 +147,7 @@ func main() {
 	noAuthRouter.HandleFunc("/api/v1/create-certificate", userhandlers.CreateCertificate).Methods("POST","OPTIONS")
 	noAuthRouter.HandleFunc("/api/v1/cancel-subscription/{code}", userhandlers.CancelSubscription).Methods("POST","OPTIONS")
 	noAuthRouter.HandleFunc("/api/v1/renew-subscription/{code}", userhandlers.RenewSubscription).Methods("POST","OPTIONS")
+	noAuthRouter.HandleFunc("/api/v1/renew-fixtures", userhandlers.RenewFixtures).Methods("POST","OPTIONS")
 
 
 	authRouter.Use(middleware.MiddlewareValidateAccessToken)
