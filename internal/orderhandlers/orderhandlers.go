@@ -99,6 +99,7 @@ func CreateOrder(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleValidationError(rw, err)
         return
     }
+
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
 	userID := handlersfunc.UserIDContextReader(r)
@@ -250,7 +251,23 @@ func LoadOrders(rw http.ResponseWriter, r *http.Request) {
 	rLimit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	offset := uint(rOffset)
 	limit := uint(rLimit)
-	
+	var lo models.LimitOffset
+	if offset != 0 {
+		lo.Offset = &offset
+	}
+	if limit != 0 {
+		lo.Limit = &limit
+	}
+	validate := validator.New()
+
+    // Validate the User struct
+    err = validate.Struct(lo)
+    if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
+
 		
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
@@ -304,6 +321,23 @@ func LoadAdminOrders(rw http.ResponseWriter, r *http.Request) {
 	rLimit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	offset := uint(rOffset)
 	limit := uint(rLimit)
+
+	var lo models.LimitOffset
+	if offset != 0 {
+		lo.Offset = &offset
+	}
+	if limit != 0 {
+		lo.Limit = &limit
+	}
+	validate := validator.New()
+
+    // Validate the User struct
+    err = validate.Struct(lo)
+    if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
 	
 		
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
