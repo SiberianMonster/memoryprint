@@ -87,6 +87,18 @@ func CheckCoverPage(ctx context.Context, storeDB *pgxpool.Pool, pageID uint) boo
 	return false
 }
 
+func CheckProjectActive(ctx context.Context, storeDB *pgxpool.Pool, projectID uint) bool {
+	var statusActive bool
+	
+	err = storeDB.QueryRow(ctx, "SELECT CASE WHEN EXISTS (SELECT * FROM projects WHERE status = ($1) AND projects_id = ($2)) THEN TRUE ELSE FALSE END;", "EDITED", projectID).Scan(&statusActive)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		log.Printf("Error happened when counting pages. Err: %s", err)
+		return false
+	}
+
+	return statusActive
+}
+
 func CheckAllPagesPassed(ctx context.Context, storeDB *pgxpool.Pool, slicePassed uint, projectID uint, isTemplate bool) bool {
 	var countPage uint
 	
@@ -737,7 +749,7 @@ func LoadTemplate(ctx context.Context, storeDB *pgxpool.Pool, pID uint) (models.
 	var updateTimeStorage time.Time
 	var createTimeStorage time.Time
 	err := storeDB.QueryRow(ctx, "SELECT name, size, created_at, last_edited_at, creating_spine_link, preview_spine_link FROM templates WHERE templates_id = ($1) AND status = ($2);", pID, "PUBLISHED").Scan(&projectObj.Name, &projectObj.Size, &createTimeStorage, &updateTimeStorage, &projectObj.CreatingSpineLink, &projectObj.PreviewSpineLink)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	if err != nil {
 		log.Printf("Error happened when retrieving project from pgx table. Err: %s", err)
 		return projectObj, err
 	}
