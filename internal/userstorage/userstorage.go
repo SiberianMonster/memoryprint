@@ -168,10 +168,11 @@ func CheckUserHasProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 			return false
 	}
 	err = storeDB.QueryRow(ctx, "SELECT CASE WHEN EXISTS (SELECT * FROM users_edit_projects WHERE projects_id = ($1) AND email = ($2)) THEN TRUE ELSE FALSE END;", projectID, email).Scan(&checkProject)
-	if err != nil && err != pgx.ErrNoRows {
+	if err != nil {
 		log.Printf("Error happened when checking if user can edit project in db. Err: %s", err)
 		return false
 	}
+	log.Println(checkProject)
 
 	return checkProject
 }
@@ -251,7 +252,7 @@ func UpdateUser(ctx context.Context, storeDB *pgxpool.Pool, password string, use
 
 	t := time.Now()
 	tokenHash := emailutils.GenerateRandomString(15)
-	pwdHash, err := Hash(fmt.Sprintf("%s:password", password), config.Key)
+	pwdHash, err := Hash(fmt.Sprintf("%s:password", password), tokenHash)
 	if err != nil {
 			log.Printf("Error happened when hashing received value. Err: %s", err)
 			return err
@@ -686,7 +687,7 @@ func UseCertificate(ctx context.Context, storeDB *pgxpool.Pool, code string, use
 	} else if status == "DEPLETED" {
 		return 0, "DEPLETED", nil
 		
-	} else if status == "ACTIVE" {
+	} else if status == "PAID" {
 
 		return deposit, "ACTIVE", nil
 	
