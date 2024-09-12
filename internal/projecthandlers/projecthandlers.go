@@ -36,6 +36,24 @@ func UserLoadPhotos(rw http.ResponseWriter, r *http.Request) {
 	sorting := r.URL.Query().Get("sorting")
 	rOffset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 	rLimit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	offset := uint(rOffset)
+	limit := uint(rLimit)
+	var lo models.LimitOffset
+	if offset != 0 {
+		lo.Offset = &offset
+	}
+	if limit != 0 {
+		lo.Limit = &limit
+	}
+	validate := validator.New()
+
+    // Validate the User struct
+    err = validate.Struct(lo)
+    if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
 
 	
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
@@ -199,6 +217,12 @@ func DuplicateProject(rw http.ResponseWriter, r *http.Request) {
 	projectID := uint(aByteToInt)
 	defer r.Body.Close()
 	userID := handlersfunc.UserIDContextReader(r)
+	userCheck := userstorage.CheckUserHasProject(ctx, config.DB, userID, projectID)
+
+	if userCheck == false {
+		handlersfunc.HandlePermissionError(rw)
+		return
+	}
 	log.Printf("Duplicate project for user %d", userID)
 	pID, err = projectstorage.DuplicateProject(ctx, config.DB, projectID, userID)
 
@@ -563,6 +587,23 @@ func LoadBackground(rw http.ResponseWriter, r *http.Request) {
 	rLimit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	requestB.Offset = uint(rOffset)
 	requestB.Limit = uint(rLimit)
+	var lo models.LimitOffset
+	if requestB.Offset != 0 {
+		lo.Offset = &requestB.Offset
+	}
+	if requestB.Limit != 0 {
+		lo.Limit = &requestB.Limit
+	}
+	validate := validator.New()
+
+    // Validate the User struct
+    err = validate.Struct(lo)
+    if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
+
 	qtype := r.URL.Query().Get("type")
 
     if qtype != "" {
@@ -746,6 +787,23 @@ func LoadDecoration(rw http.ResponseWriter, r *http.Request) {
 
 	requestD.Offset = uint(rOffset)
 	requestD.Limit = uint(rLimit)
+	var lo models.LimitOffset
+	if requestD.Offset != 0 {
+		lo.Offset = &requestD.Offset
+	}
+	if requestD.Limit != 0 {
+		lo.Limit = &requestD.Limit
+	}
+	validate := validator.New()
+
+    // Validate the User struct
+    err = validate.Struct(lo)
+    if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
+	
 	category := r.URL.Query().Get("category")
 
     if category != "" {
@@ -937,6 +995,23 @@ func LoadLayouts(rw http.ResponseWriter, r *http.Request) {
 	rCountImages, _ := strconv.Atoi(r.URL.Query().Get("count_images"))
 	requestL.Offset = uint(rOffset)
 	requestL.Limit = uint(rLimit)
+	
+	var lo models.LimitOffset
+	if requestL.Offset != 0 {
+		lo.Offset = &requestL.Offset
+	}
+	if requestL.Limit != 0 {
+		lo.Limit = &requestL.Limit
+	}
+	validate := validator.New()
+
+    // Validate the User struct
+    err = validate.Struct(lo)
+    if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
 	requestL.CountImages = uint(rCountImages)
 	requestL.Size = strings.ToUpper(r.URL.Query().Get("size"))
 	requestL.IsFavourite, _ = strconv.ParseBool(r.URL.Query().Get("isfavourite"))
@@ -1088,6 +1163,23 @@ func LoadProjects(rw http.ResponseWriter, r *http.Request) {
 
 	requestT.Offset = uint(tOffset)
 	requestT.Limit = uint(tLimit)
+	var lo models.LimitOffset
+	if requestT.Offset != 0 {
+		lo.Offset = &requestT.Offset
+	}
+	if requestT.Limit != 0 {
+		lo.Limit = &requestT.Limit
+	}
+	validate := validator.New()
+
+    // Validate the User struct
+    err = validate.Struct(lo)
+    if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
+
 	projects, err := projectstorage.RetrieveUserProjects(ctx, config.DB, userID, requestT.Offset, requestT.Limit)
 
 	if err != nil {
@@ -1120,6 +1212,23 @@ func AdminLoadProjects(rw http.ResponseWriter, r *http.Request) {
 
 	requestT.Offset = uint(tOffset)
 	requestT.Limit = uint(tLimit)
+	
+	var lo models.LimitOffset
+	if requestT.Offset != 0 {
+		lo.Offset = &requestT.Offset
+	}
+	if requestT.Limit != 0 {
+		lo.Limit = &requestT.Limit
+	}
+	validate := validator.New()
+
+    // Validate the User struct
+    err = validate.Struct(lo)
+    if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
 	projects, err := projectstorage.RetrieveAdminProjects(ctx, config.DB, userID, requestT.Offset, requestT.Limit)
 
 	if err != nil {
@@ -1548,6 +1657,22 @@ func LoadTemplates(rw http.ResponseWriter, r *http.Request) {
 
 	requestT.Offset = uint(tOffset)
 	requestT.Limit = uint(tLimit)
+	var lo models.LimitOffset
+	if requestT.Offset != 0 {
+		lo.Offset = &requestT.Offset
+	}
+	if requestT.Limit != 0 {
+		lo.Limit = &requestT.Limit
+	}
+	validate := validator.New()
+
+    // Validate the User struct
+    err = validate.Struct(lo)
+    if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
 	
 	category := r.URL.Query().Get("category")
 
@@ -1601,6 +1726,22 @@ func AdminLoadTemplates(rw http.ResponseWriter, r *http.Request) {
 
 	requestT.Offset = uint(tOffset)
 	requestT.Limit = uint(tLimit)
+	var lo models.LimitOffset
+	if requestT.Offset != 0 {
+		lo.Offset = &requestT.Offset
+	}
+	if requestT.Limit != 0 {
+		lo.Limit = &requestT.Limit
+	}
+	validate := validator.New()
+
+    // Validate the User struct
+    err = validate.Struct(lo)
+    if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
 
 	defer r.Body.Close()
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
@@ -1671,7 +1812,7 @@ func CreateTemplate(rw http.ResponseWriter, r *http.Request) {
 
 func DuplicateTemplate(rw http.ResponseWriter, r *http.Request) {
 
-	resp := make(map[string]string)
+	resp := make(map[string]uint)
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
 	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
@@ -1686,7 +1827,7 @@ func DuplicateTemplate(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	rw.WriteHeader(http.StatusOK)
-	resp["response"] = "1"
+	resp["response"] = 1
 	jsonResp, err := json.Marshal(resp)
 	if err != nil {
 		log.Printf("Error happened in JSON marshal. Err: %s", err)
@@ -1750,12 +1891,28 @@ func ShareLink(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleDecodeError(rw, err)
 		return
 	}
+	// Create a new validator instance
+    validate := validator.New()
+
+    // Validate the User struct
+    err = validate.Struct(ViewerObj)
+    if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
 	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
 	pID := uint(aByteToInt)
 	defer r.Body.Close()
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
 	userID := handlersfunc.UserIDContextReader(r)
+	userCheck := userstorage.CheckUserHasProject(ctx, config.DB, userID, pID)
+
+	if userCheck == false {
+		handlersfunc.HandlePermissionError(rw)
+		return
+	}
 	OwnerObj, err = userstorage.GetUserData(ctx, config.DB, userID)
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
@@ -1801,7 +1958,7 @@ func ShareLink(rw http.ResponseWriter, r *http.Request) {
 
 func AdminCreatePrices(rw http.ResponseWriter, r *http.Request) {
 
-	resp := make(map[string]string)
+	resp := make(map[string]uint)
 	var PricesObj []models.Price
 	
 
@@ -1826,7 +1983,7 @@ func AdminCreatePrices(rw http.ResponseWriter, r *http.Request) {
 
 
 	rw.WriteHeader(http.StatusOK)
-	resp["response"] = "1"
+	resp["response"] = 1
 	jsonResp, err := json.Marshal(resp)
 	if err != nil {
 		log.Printf("Error happened in JSON marshal. Err: %s", err)
@@ -1837,7 +1994,7 @@ func AdminCreatePrices(rw http.ResponseWriter, r *http.Request) {
 
 func AdminDeletePrices(rw http.ResponseWriter, r *http.Request) {
 
-	resp := make(map[string]string)
+	resp := make(map[string]uint)
 
 	defer r.Body.Close()
 	
@@ -1853,7 +2010,7 @@ func AdminDeletePrices(rw http.ResponseWriter, r *http.Request) {
 
 
 	rw.WriteHeader(http.StatusOK)
-	resp["response"] = "1"
+	resp["response"] = 1
 	jsonResp, err := json.Marshal(resp)
 	if err != nil {
 		log.Printf("Error happened in JSON marshal. Err: %s", err)
@@ -1892,7 +2049,7 @@ func LoadPrices(rw http.ResponseWriter, r *http.Request) {
 
 func AdminCreateCover(rw http.ResponseWriter, r *http.Request) {
 
-	resp := make(map[string]string)
+	resp := make(map[string]uint)
 	var CoverObj models.Colour
 
 
@@ -1916,7 +2073,7 @@ func AdminCreateCover(rw http.ResponseWriter, r *http.Request) {
 
 
 	rw.WriteHeader(http.StatusOK)
-	resp["response"] = "1"
+	resp["response"] = 1
 	jsonResp, err := json.Marshal(resp)
 	if err != nil {
 		log.Printf("Error happened in JSON marshal. Err: %s", err)
@@ -1989,12 +2146,34 @@ func UpdateCover(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleDecodeError(rw, err)
 		return
 	}
+	defer r.Body.Close()
+	// Create a new validator instance
+    validate := validator.New()
+
+    // Validate the User struct
+    err = validate.Struct(CoverObj)
+    if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
 	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
 	projectID := uint(aByteToInt)
-
-	defer r.Body.Close()
+	userID := handlersfunc.UserIDContextReader(r)
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	userCheck := userstorage.CheckUserHasProject(ctx, config.DB, userID, projectID)
+
+	if userCheck == false {
+		handlersfunc.HandlePermissionError(rw)
+		return
+	}
+	
 	defer cancel()
+	projectBool := projectstorage.CheckProjectActive(ctx, config.DB, projectID)
+	if projectBool == false {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
 	log.Printf("Update project cover for user")
 	err = projectstorage.UpdateCover(ctx, config.DB, projectID, CoverObj)
 
