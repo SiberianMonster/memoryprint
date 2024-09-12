@@ -50,8 +50,8 @@ type UserInfo struct {
 }
 
 type Viewer struct {
-	Name string `json:"name"`
-	Email string `json:"email"`
+	Name string `json:"name" validate:"required"`
+	Email string `json:"email" validate:"required,email"`
 	
 }
 
@@ -82,11 +82,11 @@ type GiftCertificate struct {
 	ID uint `json:"id"`
 	Code string `json:"code"`
 	Deposit      float64    `json:"deposit"`
-	Recipientemail string `json:"recipientemail" validate:"required,email"`
+	Recipientemail string `json:"recipientemail" validate:"required"`
 	Recipientname string `json:"recipientname" validate:"required"`
 	Buyerfirstname string `json:"buyerfirstname" validate:"required"`
 	Buyerlastname string `json:"buyerlastname" validate:"required"`
-	Buyeremail string `json:"buyeremail" validate:"required,email"`
+	Buyeremail string `json:"buyeremail" validate:"required"`
 	Buyerphone string `json:"buyerphone" validate:"required,e164"`
 	MailAt int64 `json:"mail_at"`
 	TransactionID string `json:"transaction_id"`
@@ -170,11 +170,11 @@ type TransactionLink struct {
 type SignUpUser struct {
 	Name string `json:"name" validate:"required,min=1,max=20"`
 	Password string `json:"password" validate:"required,min=6,max=20"`
-	Email string `json:"email" validate:"required,email"`
+	Email string `json:"email" validate:"required"`
 }
 
 type UpdatedUsername struct {
-	Name string `json:"name"`
+	Name string `json:"name" validate:"required,min=1,max=20"`
 }
 
 type UpdatedUser struct {
@@ -184,11 +184,11 @@ type UpdatedUser struct {
 
 type LoginUser struct {
 	Password string `json:"password" validate:"required,min=6,max=20"`
-	Email string `json:"email" validate:"required,email"`
+	Email string `json:"email" validate:"required"`
 }
 
 type RestoreUser struct {
-	Email string `json:"email" validate:"required,email"`
+	Email string `json:"email" validate:"required"`
 }
 
 type VerificationDataType int
@@ -882,3 +882,8 @@ type PaidOrderObj struct {
 	Email string`json:"email"`
 }
 
+type LimitOffset struct {
+
+	Limit *uint `json:"limit" validate:"required"`
+	Offset *uint `json:"offset" validate:"required"`
+}
