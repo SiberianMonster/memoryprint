@@ -102,12 +102,12 @@ type RequestAuthorization struct {
 
 type RequestDelivery struct {
 
-	TariffCode string `json:"tariff_code" validate:"required"`
-	DeliveryPoint string `json:"delivery_point" validate:"required"`
+	TariffCode int64 `json:"tariff_code" validate:"required"`
 	DeliveryRecipientCost DeliveryRecipientCost `json:"delivery_recipient_cost" validate:"required"`
 	Recipient DeliveryRecipient `json:"recipient" validate:"required"`
 	FromLocation models.Location `json:"from_location" validate:"required"`
-	ToLocation models.Location `json:"to_location" validate:"required"`
+	ToLocation models.Location `json:"to_location",omitempty`
+	DeliveryPoint string `json:"delivery_point",omitempty`
 	Packages []FullPackage `json:"packages" validate:"required"`
 
 }
@@ -268,6 +268,7 @@ func CalculateDelivery(OrderObj models.RequestDeliveryCost) (models.ApiResponseD
 	if response.StatusCode == http.StatusOK {
 		err := json.NewDecoder(response.Body).Decode(&delivery)
 		defer response.Body.Close()
+		log.Println(delivery)
 		if err != nil  {
 			log.Printf("Unable to decode delivery response")
 			return delivery, errors.New("failed reading response from delivery")
@@ -305,9 +306,13 @@ func OrderDelivery(orderID uint) (error) {
 	}
 
 	if deliveryObj.Method == "door_to_door" {
-		delivery.TariffCode = "184"
+		delivery.TariffCode = 139
+		toLoc.PostalCode = deliveryObj.PostalCode
+		toLoc.Address = deliveryObj.Address
+		delivery.ToLocation = toLoc
 	} else if deliveryObj.Method == "door_to_office" {
-		delivery.TariffCode = "497"
+		delivery.TariffCode = 138
+		delivery.DeliveryPoint = deliveryObj.Code
 	}
 
 	for num := 1; num <= int(deliveryObj.Projects); num++ {
@@ -333,13 +338,6 @@ func OrderDelivery(orderID uint) (error) {
 	fromLoc.PostalCode = "123456"
 	fromLoc.Address = "123456"
 	delivery.FromLocation = fromLoc
-
-	toLoc.PostalCode = deliveryObj.PostalCode
-	toLoc.Code = deliveryObj.Code
-	toLoc.Address = deliveryObj.PostalCode
-	delivery.ToLocation = toLoc
-
-	delivery.DeliveryPoint = deliveryObj.Address
 
 	dCost.Value = int(deliveryObj.Amount)
 	delivery.DeliveryRecipientCost = dCost

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 	"github.com/SiberianMonster/memoryprint/internal/config"
@@ -15,6 +16,7 @@ import (
 	"github.com/SiberianMonster/memoryprint/internal/emailutils"
 	"github.com/SiberianMonster/memoryprint/internal/models"
 	"github.com/SiberianMonster/memoryprint/internal/orderstorage"
+	"github.com/SiberianMonster/memoryprint/internal/userstorage"
 	"github.com/SiberianMonster/memoryprint/internal/handlersfunc"
 	"github.com/SiberianMonster/memoryprint/internal/transactions"
 	"github.com/go-playground/validator/v10"
@@ -25,6 +27,7 @@ import (
 
 var err error
 var resp map[string]string
+
 
 func AddWorkdays(date time.Time, days int) time.Time {
 	for {
@@ -80,7 +83,6 @@ func CreateOrder(rw http.ResponseWriter, r *http.Request) {
 
 	resp := make(map[string]uint)
 	var OrderObj models.NewOrder
-	var oID uint
 	
 	err := json.NewDecoder(r.Body).Decode(&OrderObj)
 	if err != nil {
@@ -104,7 +106,23 @@ func CreateOrder(rw http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	userID := handlersfunc.UserIDContextReader(r)
 	log.Printf("Create order for user %d", userID)
-	oID, err = orderstorage.CreateOrder(ctx, config.DB, userID, OrderObj)
+	userCheck := userstorage.CheckUserHasProject(ctx, config.DB, userID, OrderObj.ProjectID)
+
+	if userCheck == false {
+		handlersfunc.HandlePermissionError(rw)
+		return
+	}
+	checkExists := orderstorage.CheckProject(ctx, config.DB, OrderObj.ProjectID)
+	if !checkExists {
+			handlersfunc.HandleMissingProjectError(rw)
+			return
+	}
+	checkActive := orderstorage.CheckProjectPublished(ctx, config.DB, OrderObj.ProjectID)
+	if checkActive {
+			handlersfunc.HandleProjectPublished(rw)
+			return
+	}
+	_, err = orderstorage.CreateOrder(ctx, config.DB, userID, OrderObj)
 	// set project status to published, add links
 	// create order awaiting payment
 	//calculate base price
@@ -115,7 +133,7 @@ func CreateOrder(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	rw.WriteHeader(http.StatusOK)
-	resp["response"] = oID
+	resp["response"] = 1
 	jsonResp, err := json.Marshal(resp)
 	if err != nil {
 		log.Printf("Error happened in JSON marshal. Err: %s", err)
@@ -166,6 +184,46 @@ func OrderPayment(rw http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	userID := handlersfunc.UserIDContextReader(r)
 	log.Printf("Payment for order for user %d", userID)
+	if OrderObj.Giftcertificate != "" {
+		_, status, _ := userstorage.UseCertificate(ctx, config.DB, OrderObj.Giftcertificate, userID)
+		if status == "INVALID" {
+			handlersfunc.HandleWrongGiftCodeError(rw)
+			return
+		}
+
+		if status == "DEPLETED" {
+			handlersfunc.HandleAlreadyUsedGiftcertificateError(rw)
+			return
+		}
+	}
+	if OrderObj.Promocode != "" {
+		var status string
+		_, status, err = userstorage.CheckPromocode(ctx, config.DB, OrderObj.Promocode, userID)
+		if err != nil {
+			handlersfunc.HandleDatabaseServerError(rw)
+			return
+		}
+		if status == "INVALID" {
+			handlersfunc.HandleMissingPromocode(rw)
+			return
+		}
+	
+		if status == "FORBIDDEN" {
+			handlersfunc.HandleMissingPromocode(rw)
+			return
+		}
+	
+		if status == "EXPIRED" {
+			handlersfunc.HandleExpiredError(rw)
+			return
+		}
+	
+		if status == "ALREADY USED" {
+			handlersfunc.HandleAlreadyUsedError(rw)
+			return
+		}
+	}
+
 	log.Println(OrderObj)
 	priceforlink, oID, err = orderstorage.OrderPayment(ctx, config.DB, OrderObj, userID)
 
@@ -245,14 +303,16 @@ func LoadOrders(rw http.ResponseWriter, r *http.Request) {
 	resp := make(map[string]models.ResponseOrders)
 	var respOrders models.ResponseOrders
 	defer r.Body.Close()
-		
+	myUrl, _ := url.Parse(r.URL.String())
+	params, _ := url.ParseQuery(myUrl.RawQuery)
+	
 	isactive, _ := strconv.ParseBool(r.URL.Query().Get("isactive"))
 	rOffset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 	rLimit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	offset := uint(rOffset)
 	limit := uint(rLimit)
 	var lo models.LimitOffset
-	if offset != 0 {
+	if _, ok := params["offset"]; ok {
 		lo.Offset = &offset
 	}
 	if limit != 0 {
@@ -305,6 +365,8 @@ func LoadAdminOrders(rw http.ResponseWriter, r *http.Request) {
 	resp := make(map[string]models.ResponseAdminOrders)
 	var respOrders models.ResponseAdminOrders
 	defer r.Body.Close()
+	myUrl, _ := url.Parse(r.URL.String())	
+	params, _ := url.ParseQuery(myUrl.RawQuery)
 		
 	isactive, _ := strconv.ParseBool(r.URL.Query().Get("isactive"))
 	orderID, _ := strconv.Atoi(r.URL.Query().Get("orderid"))
@@ -323,7 +385,7 @@ func LoadAdminOrders(rw http.ResponseWriter, r *http.Request) {
 	limit := uint(rLimit)
 
 	var lo models.LimitOffset
-	if offset != 0 {
+	if _, ok := params["offset"]; ok {
 		lo.Offset = &offset
 	}
 	if limit != 0 {
@@ -639,6 +701,24 @@ func CalculateDelivery(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleDecodeError(rw, err)
 		return
 	}
+	validate := validator.New()
+
+    // Validate the User struct
+    err = validate.Struct(rCost)
+    if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
+	userID := handlersfunc.UserIDContextReader(r)
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	defer cancel()
+	countCheck := orderstorage.CheckCountProjects(ctx, config.DB, userID, uint(rCost.CountProjects))
+	if countCheck == false {
+		handlersfunc.HandleCountProjectError(rw)
+		return
+	}
+
 
 	defer r.Body.Close()
 	if rCost.Method == "door_to_door" {
@@ -649,7 +729,6 @@ func CalculateDelivery(rw http.ResponseWriter, r *http.Request) {
 	toLoc.Address = rCost.Address
 	toLoc.PostalCode = rCost.PostalCode
 	toLoc.City = rCost.City
-	toLoc.Code = rCost.Code
 	rApiCost.ToLocation = toLoc
 
 	p.Weight = (300 * rCost.CountProjects)
@@ -675,10 +754,10 @@ func CalculateDelivery(rw http.ResponseWriter, r *http.Request) {
 	log.Println(ApiPaymentObj.PeriodMin)
 	log.Println(ApiPaymentObj.PeriodMax)
 	daysFrom := 4 + ApiPaymentObj.PeriodMin
-	dateFrom := AddWorkdays(time.Now(), daysFrom)
+	dateFrom := AddWorkdays(time.Now(), int(daysFrom))
 	PaymentObj.ExpectedDeliveryFrom = dateFrom.Format("02-01-2006")
 	daysTo := 4 + ApiPaymentObj.PeriodMax
-	dateTo := AddWorkdays(time.Now(), daysTo)
+	dateTo := AddWorkdays(time.Now(), int(daysTo))
 	PaymentObj.ExpectedDeliveryTo = dateTo.Format("02-01-2006")
 	rw.WriteHeader(http.StatusOK)
 	resp["response"] = PaymentObj

@@ -34,6 +34,7 @@ type UserRespBody struct {
 
 type AdminBool struct {
 	IsAdmin bool `json:"is_admin"`
+	Name string `json:"name"`
 }
 
 func Register(rw http.ResponseWriter, r *http.Request) {
@@ -374,11 +375,12 @@ func CheckUserCategory(rw http.ResponseWriter, r *http.Request) {
 	resp := make(map[string]UserRespBody)
 	var uBody UserRespBody
 	var isAdmin AdminBool
+	var name string
 	userID := handlersfunc.UserIDContextReader(r)
 
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
-	userCategory, err := userstorage.CheckUserCategory(ctx, config.DB, userID)
+	userCategory, name, err := userstorage.CheckUserCategory(ctx, config.DB, userID)
 		
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
@@ -390,6 +392,7 @@ func CheckUserCategory(rw http.ResponseWriter, r *http.Request) {
 	} else {
 		isAdmin.IsAdmin = false
 	}
+	isAdmin.Name = name
 
 	uBody.User = isAdmin
 	rw.WriteHeader(http.StatusOK)
@@ -583,10 +586,11 @@ func CreatePromocode(rw http.ResponseWriter, r *http.Request) {
 func CheckPromocode(rw http.ResponseWriter, r *http.Request) {
 
 	rw.Header().Set("Content-Type", "application/json")
-	resp := make(map[string]models.ResponsePromocode)
+	resp := make(map[string]models.CheckPromocode)
 
 	var promooffer *models.CheckPromooffer
 	var checkP models.CheckPromocode
+	var status string
 
 	err := json.NewDecoder(r.Body).Decode(&promooffer)
 	if err != nil {
@@ -612,33 +616,33 @@ func CheckPromocode(rw http.ResponseWriter, r *http.Request) {
 
 	userID := handlersfunc.UserIDContextReader(r)
 	
-	checkP, err = userstorage.CheckPromocode(ctx, config.DB, promooffer.Code, userID)
+	checkP, status, err = userstorage.CheckPromocode(ctx, config.DB, promooffer.Code, userID)
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
 	}
-	if checkP.Status == "INVALID" {
+	if status == "INVALID" {
 		handlersfunc.HandleMissingPromocode(rw)
 		return
 	}
 
-	if checkP.Status == "FORBIDDEN" {
+	if status == "FORBIDDEN" {
 		handlersfunc.HandleMissingPromocode(rw)
 		return
 	}
 
-	if checkP.Status == "EXPIRED" {
+	if status == "EXPIRED" {
 		handlersfunc.HandleExpiredError(rw)
 		return
 	}
 
-	if checkP.Status == "ALREADY USED" {
+	if status == "ALREADY USED" {
 		handlersfunc.HandleAlreadyUsedError(rw)
 		return
 	}
 
 	rw.WriteHeader(http.StatusOK)
-	resp["response"] = checkP.Promocode
+	resp["response"] = checkP
 	jsonResp, err := json.Marshal(resp)
 	if err != nil {
 			log.Printf("Error happened in JSON marshal. Err: %s", err)
@@ -683,7 +687,7 @@ func UsePromocode(rw http.ResponseWriter, r *http.Request) {
 	resp := make(map[string]models.ResponsePromocodeUse)
 	var responseP models.ResponsePromocodeUse
 	var requestP models.RequestPromooffer
-	var checkP models.CheckPromocode
+	var status string
 
 	err := json.NewDecoder(r.Body).Decode(&requestP)
 	if err != nil {
@@ -709,7 +713,7 @@ func UsePromocode(rw http.ResponseWriter, r *http.Request) {
 
 	userID := handlersfunc.UserIDContextReader(r)
 	
-	checkP, err = userstorage.CheckPromocode(ctx, config.DB, requestP.Code, userID)
+	_, status, err = userstorage.CheckPromocode(ctx, config.DB, requestP.Code, userID)
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
@@ -720,26 +724,26 @@ func UsePromocode(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
 	}
-	if checkP.Status == "INVALID" {
+	if status == "INVALID" {
 		handlersfunc.HandleMissingPromocode(rw)
 		return
 	}
 
-	if checkP.Status == "FORBIDDEN" {
+	if status == "FORBIDDEN" {
 		handlersfunc.HandlePermissionError(rw)
 		return
 	}
 
-	if checkP.Status == "EXPIRED" {
+	if status == "EXPIRED" {
 		handlersfunc.HandleExpiredError(rw)
 		return
 	}
 
-	if checkP.Status == "ALREADY USED" {
+	if status == "ALREADY USED" {
 		handlersfunc.HandleAlreadyUsedError(rw)
 		return
 	}
-	if checkP.Status == "VALID" && responseP.BasePrice == responseP.DiscountedPrice {
+	if status == "VALID" && responseP.BasePrice == responseP.DiscountedPrice {
 		handlersfunc.HandleWrongPromocodeCategoryError(rw)
 		return
 	}

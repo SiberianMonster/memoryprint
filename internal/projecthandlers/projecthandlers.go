@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -34,12 +35,14 @@ func UserLoadPhotos(rw http.ResponseWriter, r *http.Request) {
 	var rPhotos models.ResponsePhotos
 	defer r.Body.Close()
 	sorting := r.URL.Query().Get("sorting")
+	myUrl, _ := url.Parse(r.URL.String())	
+	params, _ := url.ParseQuery(myUrl.RawQuery)
 	rOffset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 	rLimit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	offset := uint(rOffset)
 	limit := uint(rLimit)
 	var lo models.LimitOffset
-	if offset != 0 {
+	if _, ok := params["offset"]; ok {
 		lo.Offset = &offset
 	}
 	if limit != 0 {
@@ -108,7 +111,7 @@ func NewPhoto(rw http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	userID := handlersfunc.UserIDContextReader(r)
 	log.Printf("Add new photo of the user %d", userID)
-	pID, err = objectsstorage.AddPhoto(ctx, config.DB, photoParams.Link, photoParams.SmallImage, userID)
+	pID, err = objectsstorage.AddPhoto(ctx, config.DB, photoParams.Link, *photoParams.SmallImage, userID)
 
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
@@ -313,6 +316,11 @@ func UnpublishTemplate(rw http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
+	checkExists := projectstorage.CheckTemplate(ctx, config.DB, templateID)
+	if !checkExists {
+		handlersfunc.HandleMissingTemplateError(rw)
+		return
+	}
 
 	
 	err = projectstorage.UnpublishTemplate(ctx, config.DB, templateID)
@@ -383,6 +391,17 @@ func LoadTemplate(rw http.ResponseWriter, r *http.Request) {
 	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
 	projectID := uint(aByteToInt)
 	defer r.Body.Close()
+	checkExists := projectstorage.CheckTemplatePublished(ctx, config.DB, projectID)
+	if !checkExists {
+			rw.WriteHeader(http.StatusForbidden)
+			jsonResp, err := json.Marshal(resp)
+			if err != nil {
+				log.Printf("Error happened in JSON marshal. Err: %s", err)
+				return
+			}
+			rw.Write(jsonResp)
+			return
+	}
 
 	retrievedProject, err = projectstorage.LoadTemplate(ctx, config.DB, projectID)
 	if err != nil {
@@ -398,6 +417,37 @@ func LoadTemplate(rw http.ResponseWriter, r *http.Request) {
 	}
 	rw.Write(jsonResp)
 }
+
+func AdminLoadTemplate(rw http.ResponseWriter, r *http.Request) {
+
+	resp := make(map[string]models.SavedTemplateObj)
+	var retrievedProject models.SavedTemplateObj
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	defer cancel()
+	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
+	projectID := uint(aByteToInt)
+	defer r.Body.Close()
+	checkExists := projectstorage.CheckTemplate(ctx, config.DB, projectID)
+	if !checkExists {
+		handlersfunc.HandleMissingTemplateError(rw)
+		return
+	}
+
+	retrievedProject, err = projectstorage.AdminLoadTemplate(ctx, config.DB, projectID)
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
+	rw.WriteHeader(http.StatusOK)
+	resp["response"] = retrievedProject
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("Error happened in JSON marshal. Err: %s", err)
+		return
+	}
+	rw.Write(jsonResp)
+}
+
 
 
 
@@ -583,12 +633,14 @@ func LoadBackground(rw http.ResponseWriter, r *http.Request) {
 	var requestB models.RequestBackground
 
 	defer r.Body.Close()
+	myUrl, _ := url.Parse(r.URL.String())	
+	params, _ := url.ParseQuery(myUrl.RawQuery)
 	rOffset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 	rLimit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	requestB.Offset = uint(rOffset)
 	requestB.Limit = uint(rLimit)
 	var lo models.LimitOffset
-	if requestB.Offset != 0 {
+	if _, ok := params["offset"]; ok {
 		lo.Offset = &requestB.Offset
 	}
 	if requestB.Limit != 0 {
@@ -781,6 +833,8 @@ func LoadDecoration(rw http.ResponseWriter, r *http.Request) {
 
 	resp := make(map[string]models.ResponseDecoration)
 	var requestD models.RequestDecoration
+	myUrl, _ := url.Parse(r.URL.String())	
+	params, _ := url.ParseQuery(myUrl.RawQuery)
 
 	rOffset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 	rLimit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
@@ -788,7 +842,7 @@ func LoadDecoration(rw http.ResponseWriter, r *http.Request) {
 	requestD.Offset = uint(rOffset)
 	requestD.Limit = uint(rLimit)
 	var lo models.LimitOffset
-	if requestD.Offset != 0 {
+	if _, ok := params["offset"]; ok {
 		lo.Offset = &requestD.Offset
 	}
 	if requestD.Limit != 0 {
@@ -989,6 +1043,8 @@ func LoadLayouts(rw http.ResponseWriter, r *http.Request) {
 
 	resp := make(map[string]models.ResponseLayout)
 	var requestL models.RequestLayout
+	myUrl, _ := url.Parse(r.URL.String())	
+	params, _ := url.ParseQuery(myUrl.RawQuery)
 
 	rOffset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 	rLimit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
@@ -997,7 +1053,7 @@ func LoadLayouts(rw http.ResponseWriter, r *http.Request) {
 	requestL.Limit = uint(rLimit)
 	
 	var lo models.LimitOffset
-	if requestL.Offset != 0 {
+	if _, ok := params["offset"]; ok {
 		lo.Offset = &requestL.Offset
 	}
 	if requestL.Limit != 0 {
@@ -1157,6 +1213,8 @@ func LoadProjects(rw http.ResponseWriter, r *http.Request) {
 	userID := handlersfunc.UserIDContextReader(r)
 	log.Printf("Load projects of the user %d", userID)
 	var requestT models.RequestTemplate
+	myUrl, _ := url.Parse(r.URL.String())	
+	params, _ := url.ParseQuery(myUrl.RawQuery)
 
 	tOffset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 	tLimit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
@@ -1164,7 +1222,7 @@ func LoadProjects(rw http.ResponseWriter, r *http.Request) {
 	requestT.Offset = uint(tOffset)
 	requestT.Limit = uint(tLimit)
 	var lo models.LimitOffset
-	if requestT.Offset != 0 {
+	if _, ok := params["offset"]; ok {
 		lo.Offset = &requestT.Offset
 	}
 	if requestT.Limit != 0 {
@@ -1206,6 +1264,8 @@ func AdminLoadProjects(rw http.ResponseWriter, r *http.Request) {
 	userID := handlersfunc.UserIDContextReader(r)
 	log.Printf("Load projects of the admin %d", userID)
 	var requestT models.RequestTemplate
+	myUrl, _ := url.Parse(r.URL.String())	
+	params, _ := url.ParseQuery(myUrl.RawQuery)
 
 	tOffset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 	tLimit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
@@ -1214,7 +1274,7 @@ func AdminLoadProjects(rw http.ResponseWriter, r *http.Request) {
 	requestT.Limit = uint(tLimit)
 	
 	var lo models.LimitOffset
-	if requestT.Offset != 0 {
+	if _, ok := params["offset"]; ok {
 		lo.Offset = &requestT.Offset
 	}
 	if requestT.Limit != 0 {
@@ -1306,6 +1366,15 @@ func UpdateProjectSpine(rw http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
+	userID := handlersfunc.UserIDContextReader(r)
+	log.Printf("Load project %d for user %d",projectID, userID)
+
+	userCheck := userstorage.CheckUserHasProject(ctx, config.DB, userID, projectID)
+
+	if !userCheck {
+		handlersfunc.HandlePermissionError(rw)
+		return
+	}
 	err = projectstorage.SaveSpine(ctx, config.DB, savedSpine, projectID)
 	if err != nil {
 				handlersfunc.HandleDatabaseServerError(rw)
@@ -1336,6 +1405,11 @@ func UpdateTemplateSpine(rw http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
+	checkExists := projectstorage.CheckTemplate(ctx, config.DB, projectID)
+	if !checkExists {
+		handlersfunc.HandleMissingTemplateError(rw)
+		return
+	}
 	err = projectstorage.SaveTemplateSpine(ctx, config.DB, savedSpine, projectID)
 	if err != nil {
 				handlersfunc.HandleDatabaseServerError(rw)
@@ -1651,14 +1725,23 @@ func LoadTemplates(rw http.ResponseWriter, r *http.Request) {
 	resp := make(map[string]models.ResponseTemplates)
 	
 	var requestT models.RequestTemplate
+	myUrl, _ := url.Parse(r.URL.String())	
+	params, _ := url.ParseQuery(myUrl.RawQuery)
 
 	tOffset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 	tLimit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	size := r.URL.Query().Get("size")
+	var lo models.LimitOffsetSize
+
+    if size != "" {
+		requestT.Size = strings.ToUpper(r.URL.Query().Get("size"))
+		lo.Size = &size
+	}
 
 	requestT.Offset = uint(tOffset)
 	requestT.Limit = uint(tLimit)
-	var lo models.LimitOffset
-	if requestT.Offset != 0 {
+	
+	if _, ok := params["offset"]; ok {
 		lo.Offset = &requestT.Offset
 	}
 	if requestT.Limit != 0 {
@@ -1679,11 +1762,7 @@ func LoadTemplates(rw http.ResponseWriter, r *http.Request) {
     if category != "" {
 		requestT.Category = strings.ToUpper(r.URL.Query().Get("category"))
 	}
-	size := r.URL.Query().Get("size")
-
-    if size != "" {
-		requestT.Size = strings.ToUpper(r.URL.Query().Get("size"))
-	}
+	
 	defer r.Body.Close()
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
@@ -1713,6 +1792,7 @@ func AdminLoadTemplates(rw http.ResponseWriter, r *http.Request) {
 	var requestT models.RequestTemplate
 	
 	category := r.URL.Query().Get("category")
+	size := r.URL.Query().Get("size")
 	status := r.URL.Query().Get("status")
 	if status != "" {
 		requestT.Status = strings.ToUpper(r.URL.Query().Get("status"))
@@ -1721,13 +1801,19 @@ func AdminLoadTemplates(rw http.ResponseWriter, r *http.Request) {
     if category != "" {
 		requestT.Category = strings.ToUpper(r.URL.Query().Get("category"))
 	}
+	if size != "" {
+		requestT.Size = strings.ToUpper(r.URL.Query().Get("size"))
+	}
+	myUrl, _ := url.Parse(r.URL.String())	
+	params, _ := url.ParseQuery(myUrl.RawQuery)
+
 	tOffset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 	tLimit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 
 	requestT.Offset = uint(tOffset)
 	requestT.Limit = uint(tLimit)
 	var lo models.LimitOffset
-	if requestT.Offset != 0 {
+	if _, ok := params["offset"]; ok {
 		lo.Offset = &requestT.Offset
 	}
 	if requestT.Limit != 0 {
@@ -1818,6 +1904,11 @@ func DuplicateTemplate(rw http.ResponseWriter, r *http.Request) {
 	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
 	templateID := uint(aByteToInt)
 	defer r.Body.Close()
+	checkExists := projectstorage.CheckTemplate(ctx, config.DB, templateID)
+	if !checkExists {
+		handlersfunc.HandleMissingTemplateError(rw)
+		return
+	}
 	
 	_, err = projectstorage.DuplicateTemplate(ctx, config.DB, templateID)
 
@@ -1862,6 +1953,11 @@ func UpdateTemplate(rw http.ResponseWriter, r *http.Request) {
     }
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
+	checkExists := projectstorage.CheckTemplate(ctx, config.DB, templateID)
+	if !checkExists {
+		handlersfunc.HandleMissingTemplateError(rw)
+		return
+	}
 	
 	_, err = projectstorage.UpdateTemplate(ctx, config.DB, templateID, TemplateObj.Name, TemplateObj.Category)
 
@@ -2161,6 +2257,7 @@ func UpdateCover(rw http.ResponseWriter, r *http.Request) {
 	projectID := uint(aByteToInt)
 	userID := handlersfunc.UserIDContextReader(r)
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	defer cancel()
 	userCheck := userstorage.CheckUserHasProject(ctx, config.DB, userID, projectID)
 
 	if userCheck == false {
@@ -2168,12 +2265,30 @@ func UpdateCover(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	defer cancel()
-	projectBool := projectstorage.CheckProjectActive(ctx, config.DB, projectID)
+	projectBool := projectstorage.CheckProjectPublished(ctx, config.DB, projectID)
 	if projectBool == false {
-		handlersfunc.HandleDatabaseServerError(rw)
+		handlersfunc.HandleProjectNotPublished(rw)
 		return
 	}
+	projectBool = projectstorage.CheckProjectNotCompleted(ctx, config.DB, projectID)
+	if projectBool == false {
+		handlersfunc.HandleOrderCompleted(rw)
+		return
+	}
+    if CoverObj.Cover == "LEATHERETTE" {
+		leatherBool := projectstorage.CheckLeatherID(ctx, config.DB, CoverObj.LeatherID)
+		if leatherBool == false {
+				handlersfunc.HandleMissingLeatherID(rw)
+				return
+		}
+	} else {
+		coverBool := projectstorage.CheckHardCover(ctx, config.DB, projectID)
+		if coverBool == false {
+				handlersfunc.HandleCoverBoolError(rw)
+				return
+		}
+	}
+
 	log.Printf("Update project cover for user")
 	err = projectstorage.UpdateCover(ctx, config.DB, projectID, CoverObj)
 
@@ -2207,8 +2322,35 @@ func UpdateSurface(rw http.ResponseWriter, r *http.Request) {
 	projectID := uint(aByteToInt)
 
 	defer r.Body.Close()
+	// Create a new validator instance
+    validate := validator.New()
+
+    // Validate the User struct
+    err = validate.Struct(SurfaceObj)
+    if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
+	userID := handlersfunc.UserIDContextReader(r)
+	userCheck := userstorage.CheckUserHasProject(ctx, config.DB, userID, projectID)
+
+	if userCheck == false {
+		handlersfunc.HandlePermissionError(rw)
+		return
+	}
+	projectBool := projectstorage.CheckProjectPublished(ctx, config.DB, projectID)
+	if projectBool == false {
+		handlersfunc.HandleProjectNotPublished(rw)
+		return
+	}
+	projectBool = projectstorage.CheckProjectNotCompleted(ctx, config.DB, projectID)
+	if projectBool == false {
+		handlersfunc.HandleOrderCompleted(rw)
+		return
+	}
 	log.Printf("Update project surface for user")
 	err = projectstorage.UpdateSurface(ctx, config.DB, projectID, SurfaceObj)
 

@@ -140,7 +140,7 @@ func AdminHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		userID := handlersfunc.UserIDContextReader(r)
-		userCategory, err := userstorage.CheckUserCategory(r.Context(), config.DB, userID)
+		userCategory, _, err := userstorage.CheckUserCategory(r.Context(), config.DB, userID)
 		resp := make(map[string]string)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)

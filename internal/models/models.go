@@ -115,7 +115,7 @@ type Promooffers struct {
 }
 
 type CheckPromooffer struct {
-	Code string `json:"code"  validate:"required"`
+	Code string `json:"code"  validate:"required,min=1"`
 	
 }
 
@@ -131,7 +131,6 @@ type PromocodeCheck struct {
 }
 
 type CheckPromocode struct {
-	Status    string     `json:"status" validate:"required"`
 	Promocode ResponsePromocode `json:"promocode" validate:"required"`
   }
 
@@ -312,6 +311,7 @@ type Page struct {
 	Type string `json:"type"`
 	Sort uint `json:"sort"`
 	CreatingImageLink *string `json:"creating_image_link"`
+	PreviewImageLink *string `json:"preview_image_link"`
 	Data        json.RawMessage      `json:"data"`
 	UsedPhotoIDs []uint `json:"used_photo_ids"`
 	
@@ -326,6 +326,7 @@ type TemplatePage struct {
 	Type string `json:"type"`
 	Sort uint `json:"sort"`
 	CreatingImageLink *string `json:"creating_image_link"`
+	PreviewImageLink *string `json:"preview_image_link"`
 	Data        json.RawMessage      `json:"data"`
 	UsedPhotoIDs []uint `json:"used_photo_ids"`
 	
@@ -359,7 +360,7 @@ type ResponseProject struct {
 	Name *string `json:"name"`
 	Status string `json:"status"`
 	Size string `json:"size"`
-	FrontPage FrontPage `json:"front_page"`
+	Cover string `json:"cover"`
 	Pages []Page `json:"pages"`
   }
 
@@ -384,14 +385,13 @@ type CartObj struct {
 	Cover string `json:"cover" validate:"required,oneof=HARD LEATHERETTE"`
 	Surface string `json:"surface" validate:"required,oneof=GLOSS MATTE"`
 	Category string `json:"category" validate:"required,oneof=VACATION WEDDING HOLIDAYS CHILDREN ANIMALS UNIVERSAL"`
-	PreviewLink string `json:"preview_link"`
 	FrontPage FrontPage `json:"front_page"`
 	CountPages int `json:"count_pages"`
 	BasePrice float64 `json:"base_price"`
 	UpdatedPagesPrice float64 `json:"updated_pages_price"`
 	UpdatedCoverPrice float64 `json:"updated_cover_price"`
 	CoverBool bool `json:"cover_bool"`
-	LeatherImage string `json:"leather_image"`
+	LeatherID uint `json:"leather_id"`
   }
 
 type PaidCartObj struct {
@@ -404,7 +404,6 @@ type PaidCartObj struct {
 	FrontPage FrontPage `json:"front_page"`
 	CountPages int `json:"count_pages"`
 	BasePrice float64 `json:"base_price"`
-	LeatherImage string `json:"leather_image"`
   }
 
 type ResponseCart struct {
@@ -500,15 +499,13 @@ type UpdateSurface struct {
 
 type UpdateCover struct {
 
-	Cover string `json:"cover" validate:"required,oneof=HARD LEATHERETTE"`
+	Cover string `json:"cover" validate:"required,oneof=LEATHERETTE HARD"`
 	LeatherID uint `json:"leather_id" validate:"required`
   }
 
 type NewOrder struct {
 
 	ProjectID    uint     `json:"project_id"`
-	PreviewLink string `json:"preview_link"`
-	PrintLink string `json:"print_link"`
 
   }
 
@@ -817,10 +814,10 @@ type ResponsePaymentStatus struct {
 
 }
 type UserRequestDeliveryCost struct {
-	Method string `json:"method" validate:"required"`
+	Method string `json:"method" validate:"required,oneof=door_to_door door_to_office"`
 	PostalCode string `json:"postal_code" validate:"required"`
-	Address string `json:"address"`
-	Code string `json:"code"`
+	Address string `json:"address" validate:"required"`
+	Code string `json:"code",omitempty`
 	City string `json:"city"`
 	CountProjects int `json:"count_projects" validate:"required"`
 } 
@@ -835,9 +832,9 @@ type RequestDeliveryCost struct {
 
 type Location struct {
 	
-	PostalCode string `json:"postal_code"`
+	PostalCode string `json:"postal_code" validate:"required"`
 	City string `json:"city"`
-	Address string `json:"address"`
+	Address string `json:"address" validate:"required"`
 	Code string `json:"code"`
 
 }
@@ -857,11 +854,11 @@ type Package struct {
 }
 
 type ApiResponseDeliveryCost struct {
-	PeriodMin int `json:"period_min" validate:"required"`
-	PeriodMax int `json:"period_max" validate:"required"`
+	PeriodMin int64 `json:"period_min" validate:"required"`
+	PeriodMax int64 `json:"period_max" validate:"required"`
 	DeliverySum float64 `json:"delivery_sum" validate:"required"`
 	WeightCalc float64 `json:"weight_calc" validate:"required"`
-	Currency string `json:"period_max" validate:"required"`
+	Currency string `json:"currency" validate:"required"`
 	TotalSum float64 `json:"total_sum" validate:"required"`
 	Services []Service `json:"services" validate:"required"`
 }
@@ -886,4 +883,10 @@ type LimitOffset struct {
 
 	Limit *uint `json:"limit" validate:"required"`
 	Offset *uint `json:"offset" validate:"required"`
+}
+type LimitOffsetSize struct {
+
+	Limit *uint `json:"limit" validate:"required"`
+	Offset *uint `json:"offset" validate:"required"`
+	Size *string `json:"size" validate:"required,oneof=SMALL_SQUARE SQUARE VERTICAL HORIZONTAL"`
 }

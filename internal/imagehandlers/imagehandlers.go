@@ -151,6 +151,19 @@ func saveImage(imgByte []byte, filename string) (string, error) {
 			log.Printf("Image saving error%s", err)
 			return "", err
 		}
+	} else if strings.Contains(filename, "jpg") {
+		img, err := jpeg.Decode(bytes.NewReader(imgByte))
+		if err != nil {
+			log.Printf("Image decoding error%s", err)
+			return "", err
+		}
+		out, _ := os.Create(filename)
+		defer out.Close()
+		err = jpeg.Encode(out, img, &jpeg.Options{100})
+		if err != nil {
+			log.Printf("Image saving error%s", err)
+			return "", err
+		}
 	}
 
 	return filename, err

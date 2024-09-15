@@ -23,6 +23,53 @@ import (
 
 var err error
 
+
+func CheckProjectPublished(ctx context.Context, storeDB *pgxpool.Pool, projectID uint) bool {
+	var statusActive bool
+	
+	err = storeDB.QueryRow(ctx, "SELECT CASE WHEN EXISTS (SELECT * FROM projects WHERE status = ($1) AND projects_id = ($2)) THEN TRUE ELSE FALSE END;", "PUBLISHED", projectID).Scan(&statusActive)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		log.Printf("Error happened when checking if project active. Err: %s", err)
+		return false
+	}
+
+	return statusActive
+}
+
+func CheckCountProjects(ctx context.Context, storeDB *pgxpool.Pool, userID uint, countPassed uint) bool {
+	var correctCount bool
+	var countReal uint
+	var orderID uint
+	err = storeDB.QueryRow(ctx, "SELECT orders_id FROM orders WHERE users_id = ($1) AND status = ($2);", userID, "AWAITING_PAYMENT").Scan(&orderID)
+	if err != nil {
+			log.Printf("Error happened when retrieving order id data from db. Err: %s", err)
+			return false
+	}
+	err := storeDB.QueryRow(ctx, "SELECT COUNT(projects_id) FROM orders_has_projects WHERE orders_id = ($1);", orderID).Scan(&countReal)
+	if err != nil {
+		log.Printf("Error happened when counting projects in the order. Err: %s", err)
+		return false
+	}
+	if countPassed <= countReal {
+		correctCount = true
+	}
+
+	return correctCount
+}
+
+
+func CheckProject(ctx context.Context, storeDB *pgxpool.Pool, projectID uint) bool {
+	var statusExists bool
+	err = storeDB.QueryRow(ctx, "SELECT CASE WHEN EXISTS (SELECT * FROM projects WHERE projects_id = ($1)) THEN TRUE ELSE FALSE END;", projectID).Scan(&statusExists)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		log.Printf("Error happened when checking if project exists. Err: %s", err)
+		return false
+	}
+
+	return statusExists
+}
+
+
 func CalculateBasePrice(ctx context.Context, storeDB *pgxpool.Pool, size string, variant string, cover string, surface string, countPages uint) (float64, error) {
 
 	var totalBaseprice float64
@@ -149,7 +196,7 @@ func LoadCart(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (models.R
 	var responseCart models.ResponseCart
 	responseCart.Projects = []models.CartObj{}
 	var orderID uint
-	err := storeDB.QueryRow(ctx, "SELECT orders_id FROM orders WHERE users_id = ($1) and status = ($2);", userID, "AWAITING PAYMENT").Scan(&orderID)
+	err := storeDB.QueryRow(ctx, "SELECT orders_id FROM orders WHERE users_id = ($1) and status = ($2);", userID, "AWAITING_PAYMENT").Scan(&orderID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 				log.Printf("Error happened when retrieving unpaid order info from pgx table. Err: %s", err)
 				return responseCart, err
@@ -166,25 +213,18 @@ func LoadCart(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (models.R
 	for rows.Next() {
 		var photobook models.CartObj
 		var pID uint
-		var leatherID *uint
 		if err = rows.Scan(&pID); err != nil {
 			log.Printf("Error happened when scanning projects. Err: %s", err)
 			return responseCart, err
 		}
 		log.Println(pID)
 
-		err := storeDB.QueryRow(ctx, "SELECT name, size, variant, paper, cover, count_pages, leather_id FROM projects WHERE projects_id = ($1);", pID).Scan(&photobook.Name, &photobook.Size, &photobook.Variant, &photobook.Surface, &photobook.Cover, &photobook.CountPages, &leatherID)
+		err := storeDB.QueryRow(ctx, "SELECT name, size, variant, paper, cover, count_pages, leather_id FROM projects WHERE projects_id = ($1);", pID).Scan(&photobook.Name, &photobook.Size, &photobook.Variant, &photobook.Surface, &photobook.Cover, &photobook.CountPages, &photobook.LeatherID)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			log.Printf("Error happened when retrieving project info from pgx table. Err: %s", err)
 			return responseCart, err
 		}
-		if photobook.Cover == "LEATHERETTE" && leatherID != nil {
-			err := storeDB.QueryRow(ctx, "SELECT colourlink FROM leather WHERE leather_id = ($1);", leatherID).Scan(&photobook.LeatherImage)
-			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-				log.Printf("Error happened when retrieving leather cover info from pgx table. Err: %s", err)
-				return responseCart, err
-			}
-		}
+
 		photobook.BasePrice, err = CalculateBasePrice(ctx, storeDB, photobook.Size, photobook.Variant, photobook.Cover, photobook.Surface, uint(photobook.CountPages))
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			log.Printf("Error happened when counting baseprice. Err: %s", err)
@@ -197,6 +237,11 @@ func LoadCart(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (models.R
 		}
 		photobook.ProjectID = pID
 		photobook.FrontPage, err = projectstorage.RetrieveFrontPage(ctx, storeDB, pID, false)
+		err = storeDB.QueryRow(ctx, "SELECT CASE WHEN EXISTS (SELECT * FROM pages WHERE projects_id = ($1) AND is_template = ($2) AND type = ($3)) THEN TRUE ELSE FALSE END;", pID, "false", "front").Scan(&photobook.CoverBool)
+		if err != nil {
+			log.Printf("Error happened when retrieving front page from pgx table. Err: %s", err)
+			photobook.CoverBool = false
+		}
 		responseCart.Projects = append(responseCart.Projects, photobook)
 
 	}
@@ -211,9 +256,7 @@ func CreateOrder(ctx context.Context, storeDB *pgxpool.Pool, userID uint, order 
 	var orderID uint
 	t := time.Now()
 	
-	_, err := storeDB.Exec(ctx, "UPDATE projects SET preview_link = ($1), print_link = ($2), status = ($3) WHERE projects_id = ($4);",
-			order.PreviewLink,
-			order.PrintLink,
+	_, err := storeDB.Exec(ctx, "UPDATE projects SET status = ($1) WHERE projects_id = ($2);",
 			"PUBLISHED",
 			order.ProjectID,
 	)
@@ -290,7 +333,6 @@ func OrderPayment(ctx context.Context, storeDB *pgxpool.Pool, orderObj models.Re
 	}
 	toLoc.Address = deliveryObj.Address
 	toLoc.PostalCode = deliveryObj.PostalCode
-	toLoc.Code = deliveryObj.Code
 	rApiCost.ToLocation = toLoc
 	p.Weight = (300 * len(orderObj.Projects))
 	p.Height = 3 * len(orderObj.Projects)
@@ -332,19 +374,28 @@ func OrderPayment(ctx context.Context, storeDB *pgxpool.Pool, orderObj models.Re
 	var deposit float64
 	requestP.Projects = orderObj.Projects
 	requestP.Code = orderObj.Promocode
-	
-	responseP, err = userstorage.UsePromocode(ctx, storeDB, requestP)
-	deposit, _, err = userstorage.UseCertificate(ctx, storeDB, orderObj.Giftcertificate, userID)
-	if err != nil {
-		log.Printf("Error happened when calculating discounted price. Err: %s", err)
-		return depositPrice, orderID, err
+	var PromoffersID uint
+	if requestP.Code != "" {
+		responseP, err = userstorage.UsePromocode(ctx, storeDB, requestP)
+		err = storeDB.QueryRow(ctx, "SELECT promooffers_id FROM promooffers WHERE code = ($1);", orderObj.Promocode).Scan(&PromoffersID)
+		if err != nil {
+			log.Printf("Failed to retrieve promooffers id. Err: %s", err)
+			return depositPrice, orderID, err
+		}
+	}
+	if orderObj.Giftcertificate != "" {
+		deposit, _, err = userstorage.UseCertificate(ctx, storeDB, orderObj.Giftcertificate, userID)
+		if err != nil {
+			log.Printf("Error happened when calculating discounted price. Err: %s", err)
+			return depositPrice, orderID, err
+		}
 	}
 
 	var usedDeposit float64
 	var GiftcertificatesID uint
 	priceWithDelivery := responseP.DiscountedPrice + ApiPaymentObj.TotalSum
 	if deposit != 0.0 {
-		depositPrice = math.Max(0, priceWithDelivery - deposit)
+		depositPrice = math.Max(1, priceWithDelivery - deposit)
 		usedDeposit = priceWithDelivery - depositPrice
 		log.Println(usedDeposit)
 		log.Println(depositPrice)
@@ -366,12 +417,7 @@ func OrderPayment(ctx context.Context, storeDB *pgxpool.Pool, orderObj models.Re
 		depositPrice = priceWithDelivery
 	}
 	
-	var PromoffersID uint
-	err = storeDB.QueryRow(ctx, "SELECT promooffers_id FROM promooffers WHERE code = ($1);", orderObj.Promocode).Scan(&PromoffersID)
-	if err != nil {
-		log.Printf("Failed to retrieve promooffers id. Err: %s", err)
-		return depositPrice, orderID, err
-	}
+	
 	
 	err := storeDB.QueryRow(ctx, "INSERT INTO orders (status, created_at, last_updated_at, users_id, firstname, lastname, email, phone, baseprice, finalprice, promooffers_id, giftcertificates_id, package_box, giftcertificates_deposit, delivery_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING orders_id;",
 		"PAYMENTINPROGRESS",
@@ -619,13 +665,7 @@ func RetrieveOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint, isA
 				log.Printf("Error happened when retrieving project info from pgx table. Err: %s", err)
 				return orderset, err
 			}
-			if photobook.Cover == "LEATHERETTE" && leatherID != nil {
-				err := storeDB.QueryRow(ctx, "SELECT colourlink FROM leather WHERE leather_id = ($1);", leatherID).Scan(&photobook.LeatherImage)
-				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-					log.Printf("Error happened when retrieving leather cover info from pgx table. Err: %s", err)
-					return orderset, err
-				}
-			}
+			
 			photobook.BasePrice, err = CalculateBasePrice(ctx, storeDB, photobook.Size, photobook.Variant, photobook.Cover, photobook.Surface, uint(photobook.CountPages))
 			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 				log.Printf("Error happened when counting baseprice. Err: %s", err)
@@ -702,13 +742,7 @@ func RetrieveSingleOrder(ctx context.Context, storeDB *pgxpool.Pool, orderID uin
 				log.Printf("Error happened when retrieving project info from pgx table. Err: %s", err)
 				return orderObj, err
 			}
-			if photobook.Cover == "LEATHERETTE" && leatherID != 0 {
-				err := storeDB.QueryRow(ctx, "SELECT colourlink FROM leather WHERE leather_id = ($1);", leatherID).Scan(&photobook.LeatherImage)
-				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-					log.Printf("Error happened when retrieving leather cover info from pgx table. Err: %s", err)
-					return orderObj, err
-				}
-			}
+
 			photobook.BasePrice, err = CalculateBasePrice(ctx, storeDB, photobook.Size, photobook.Variant, photobook.Cover, photobook.Surface, uint(photobook.CountPages))
 			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 				log.Printf("Error happened when counting baseprice. Err: %s", err)
@@ -872,13 +906,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 				log.Printf("Error happened when retrieving project info from pgx table. Err: %s", err)
 				return orderset, err
 			}
-			if photobook.Cover == "LEATHERETTE" && leatherID != nil {
-				err := storeDB.QueryRow(ctx, "SELECT colourlink FROM leather WHERE leather_id = ($1);", leatherID).Scan(&photobook.LeatherImage)
-				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-					log.Printf("Error happened when retrieving leather cover info from pgx table. Err: %s", err)
-					return orderset, err
-				}
-			}
+
 			photobook.BasePrice, err = CalculateBasePrice(ctx, storeDB, photobook.Size, photobook.Variant, photobook.Cover, photobook.Surface, uint(photobook.CountPages))
 			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 				log.Printf("Error happened when counting baseprice. Err: %s", err)
@@ -1418,7 +1446,7 @@ func OrdersToPrint(ctx context.Context, storeDB *pgxpool.Pool, order models.Paid
 
 	now:=time.Now()
 	tdifference := now.Sub(order.LastEditedAt).Hours()
-	if tdifference > 2.0 || tdifference == 2.0 {
+	if tdifference > 0.5 || tdifference == 0.5 {
 
 		//orderObj, err := RetrieveSingleOrder(ctx , storeDB, order.OrdersID) 
 

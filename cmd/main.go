@@ -137,7 +137,7 @@ func main() {
 	noAuthRouter.HandleFunc("/api/v1/load-templates", projecthandlers.LoadTemplates).Methods("GET","OPTIONS")
 	//noAuthRouter.HandleFunc("/api/v1/load-template/{id}", projecthandlers.LoadTemplate).Methods("GET","OPTIONS")
 	noAuthRouter.HandleFunc("/api/v1/load-prices", projecthandlers.LoadPrices).Methods("GET","OPTIONS")
-	noAuthRouter.HandleFunc("/api/v1/load-colours", projecthandlers.LoadColours).Methods("GET","OPTIONS")
+	noAuthRouter.HandleFunc("/api/v1/load-colors", projecthandlers.LoadColours).Methods("GET","OPTIONS")
 	noAuthRouter.HandleFunc("/api/v1/load-promocodes", userhandlers.LoadPromocodes).Methods("GET","OPTIONS")
 	
 	noAuthRouter.HandleFunc("/api/v1/greet", authhandlers.Greet).Methods("GET","OPTIONS")
@@ -155,6 +155,7 @@ func main() {
 	// authRouter.Use(middleware.MiddlewareValidateRefreshToken)
 	// adminRouter.Use(middleware.MiddlewareValidateRefreshToken)
 	adminRouter.Use(middleware.AdminHandler)
+	
 
 
 	adminRouter.HandleFunc("/api/v1/admin/create-template", projecthandlers.CreateTemplate).Methods("POST","OPTIONS")
@@ -172,7 +173,7 @@ func main() {
 	adminRouter.HandleFunc("/api/v1/admin/create-promocode", userhandlers.CreatePromocode).Methods("POST","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/load-projects", projecthandlers.AdminLoadProjects).Methods("GET","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/load-templates", projecthandlers.AdminLoadTemplates).Methods("GET","OPTIONS")
-	adminRouter.HandleFunc("/api/v1/admin/load-template/{id}", projecthandlers.LoadTemplate).Methods("GET","OPTIONS")
+	adminRouter.HandleFunc("/api/v1/admin/load-template/{id}", projecthandlers.AdminLoadTemplate).Methods("GET","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/load-orders", orderhandlers.LoadAdminOrders).Methods("GET","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/delivery-status/{id}", orderhandlers.LoadDelivery).Methods("GET","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/change-order-status/{id}", orderhandlers.UpdateOrderStatus).Methods("POST","OPTIONS")

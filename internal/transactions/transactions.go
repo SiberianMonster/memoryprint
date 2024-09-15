@@ -22,7 +22,7 @@ func CreateTransaction(orderID uint, finalPrice float64, goodType string) (strin
 	registrationURL := &url.URL{
         Scheme: "https",
         Host:   config.BankDomain,
-		Path:   "/payment/rest/register.do",
+		Path:   "/payment/rest/registerPreAuth.do",
     }
 	uniqueNumber := goodType + strconv.Itoa(int(orderID))
 	returnURL := "https://memoriprint.ru/paymentresults/" + uniqueNumber
@@ -189,7 +189,7 @@ func CancelTransaction(orderID uint) error {
 			return errors.New("failed reading response from bank")
 		}
 		// need to be fixed
-		if transaction.ErrorCode != "6" {
+		if transaction.ErrorCode != "7" {
 
 			return errors.New("failed reading response from bank")
 		}

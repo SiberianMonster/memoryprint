@@ -158,7 +158,7 @@ func CheckUserHasProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 
 	var checkProject bool
 	var email string
-	userCat, err := CheckUserCategory(ctx, storeDB , userID)
+	userCat, _, err := CheckUserCategory(ctx, storeDB , userID)
 	if userCat == "ADMIN" {
 		return true
 	}
@@ -301,16 +301,17 @@ func CheckCredentialsByID(ctx context.Context, storeDB *pgxpool.Pool, userID uin
 	return dbUser, nil
 }
 
-func CheckUserCategory(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (string, error) {
+func CheckUserCategory(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (string, string, error) {
 
 	var userCategory string
+	var name string
 	
-	err = storeDB.QueryRow(ctx, "SELECT category FROM users WHERE users_id=($1);", userID).Scan(&userCategory)
+	err = storeDB.QueryRow(ctx, "SELECT category, username FROM users WHERE users_id=($1);", userID).Scan(&userCategory, &name)
 	if err != nil {
 		log.Printf("Error happened when retrieving user category from the db. Err: %s", err)
-		return userCategory, err
+		return userCategory, name, err
 	}
-	return userCategory, nil
+	return userCategory, name, nil
 }
 
 
@@ -556,43 +557,47 @@ func CreatePromooffer(ctx context.Context, storeDB *pgxpool.Pool, p *models.NewP
 	return nil
 }
 
-func CheckPromocode(ctx context.Context, storeDB *pgxpool.Pool, code string, usersID uint) (models.CheckPromocode, error) {
+func CheckPromocode(ctx context.Context, storeDB *pgxpool.Pool, code string, usersID uint) (models.CheckPromocode, string, error) {
 
 	var promooffer models.CheckPromocode
 	var responseP models.ResponsePromocode
 	var userID uint
 	var isUsed bool
 	var isOnetime bool
+	var status string
 	now:=time.Now()
 		
 	err = storeDB.QueryRow(ctx, "SELECT discount, category, is_onetime, is_used, expires_at, users_id FROM promooffers WHERE code=($1);", code).Scan(&responseP.Discount, &responseP.Category, &isOnetime, &isUsed, &responseP.ExpiresAt, &userID)
 	tm := time.Unix(responseP.ExpiresAt, 0)
+	log.Println(tm)
 
 	if err != nil && err != pgx.ErrNoRows { 
 		log.Printf("Error happened when retrieving promooffer data from the db. Err: %s", err)
-		return promooffer, err
+		return promooffer, status, err
 	}
 	if err == pgx.ErrNoRows {
-		promooffer.Status = "INVALID"
-		return promooffer, nil
+		status = "INVALID"
+		return promooffer, status, nil
 	}
 	if userID != 0 {
 		if userID != usersID {
-			promooffer.Status = "FORBIDDEN"
-			return promooffer, nil
+			status = "FORBIDDEN"
+			return promooffer, status, nil
 		}
 
-	} else if isOnetime == true && isUsed == true {
-		promooffer.Status = "ALREADY USED"
-		return promooffer, nil
+	} 
+	if isOnetime == true && isUsed == true {
+		status = "ALREADY USED"
+		return promooffer, status, nil
 
-	} else if now.After(tm) || now.Equal(tm) {
-		promooffer.Status = "EXPIRED"
-		return promooffer, nil
+	} 
+	if now.After(tm) || now.Equal(tm) {
+		status = "EXPIRED"
+		return promooffer, status, nil
 	}
-	promooffer.Status = "VALID"
+	status = "VALID"
 	promooffer.Promocode = responseP
-	return promooffer, nil
+	return promooffer, status, nil
 }
 
 

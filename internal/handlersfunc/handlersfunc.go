@@ -77,7 +77,19 @@ func HandlePermissionError(rw http.ResponseWriter) {
 }
 
 func HandleExpiredError(rw http.ResponseWriter) {
-    rw.WriteHeader(http.StatusGone)
+    rw.WriteHeader(http.StatusOK)
+    resp := make(map[string]ErrorBody)
+    var errorB ErrorBody
+    errorB.ErrorCode = 410
+    errorB.ErrorMessage = "Expired promooffer"
+
+    resp["error"] = errorB
+    jsonResp, err := json.Marshal(resp)
+    if err != nil {
+        log.Printf("Error happened in JSON marshal. Err: %s", err)
+        return
+    }
+    rw.Write(jsonResp)
 }
 
 func HandleAlreadyUsedError(rw http.ResponseWriter) {
@@ -105,7 +117,7 @@ func HandleAlreadyUsedGiftcertificateError(rw http.ResponseWriter) {
     
     resp := make(map[string]ErrorBody)
     var errorB ErrorBody
-    errorB.ErrorCode = 302
+    errorB.ErrorCode = 301
     errorB.ErrorMessage = "Already used gift certificate"
 
     resp["error"] = errorB
@@ -165,7 +177,7 @@ func HandleDatabaseServerError(rw http.ResponseWriter) {
 }
 
 func HandleJWTError(rw http.ResponseWriter) {
-    rw.WriteHeader(http.StatusOK)
+    rw.WriteHeader(http.StatusUnauthorized)
     resp := make(map[string]ErrorBody)
     var errorB ErrorBody
     errorB.ErrorCode = 401
@@ -249,6 +261,38 @@ func HandleMissingPageError(rw http.ResponseWriter) {
     var errorB ErrorBody
     errorB.ErrorCode = 404
     errorB.ErrorMessage = "One or more pages are missing"
+
+    resp["error"] = errorB
+    jsonResp, err := json.Marshal(resp)
+    if err != nil {
+        log.Printf("Error happened in JSON marshal. Err: %s", err)
+        return
+    }
+    rw.Write(jsonResp)
+}
+
+func HandleMissingTemplateError(rw http.ResponseWriter) {
+    rw.WriteHeader(http.StatusOK)
+    resp := make(map[string]ErrorBody)
+    var errorB ErrorBody
+    errorB.ErrorCode = 404
+    errorB.ErrorMessage = "template with this id does not exist"
+
+    resp["error"] = errorB
+    jsonResp, err := json.Marshal(resp)
+    if err != nil {
+        log.Printf("Error happened in JSON marshal. Err: %s", err)
+        return
+    }
+    rw.Write(jsonResp)
+}
+
+func HandleMissingProjectError(rw http.ResponseWriter) {
+    rw.WriteHeader(http.StatusOK)
+    resp := make(map[string]ErrorBody)
+    var errorB ErrorBody
+    errorB.ErrorCode = 404
+    errorB.ErrorMessage = "project with this id does not exist"
 
     resp["error"] = errorB
     jsonResp, err := json.Marshal(resp)
@@ -493,7 +537,7 @@ func HandleWrongGiftCodeError(rw http.ResponseWriter) {
     rw.WriteHeader(http.StatusOK)
     resp := make(map[string]ErrorBody)
     var errorB ErrorBody
-    errorB.ErrorCode = 412
+    errorB.ErrorCode = 414
     errorB.ErrorMessage = "Gift certificate code invalid"
 
     resp["error"] = errorB
@@ -544,6 +588,102 @@ func HandleFailedRenewSubscription(rw http.ResponseWriter) {
     var errorB ErrorBody
     errorB.ErrorCode = 423
     errorB.ErrorMessage = "Failed to renew subscription"
+
+    resp["error"] = errorB
+    jsonResp, err := json.Marshal(resp)
+    if err != nil {
+        log.Printf("Error happened in JSON marshal. Err: %s", err)
+        return
+    }
+    rw.Write(jsonResp)
+}
+
+func HandleMissingLeatherID(rw http.ResponseWriter) {
+    rw.WriteHeader(http.StatusOK)
+    resp := make(map[string]ErrorBody)
+    var errorB ErrorBody
+    errorB.ErrorCode = 404
+    errorB.ErrorMessage = "Missing leather id"
+
+    resp["error"] = errorB
+    jsonResp, err := json.Marshal(resp)
+    if err != nil {
+        log.Printf("Error happened in JSON marshal. Err: %s", err)
+        return
+    }
+    rw.Write(jsonResp)
+}
+
+func HandleProjectNotPublished(rw http.ResponseWriter) {
+    rw.WriteHeader(http.StatusOK)
+    resp := make(map[string]ErrorBody)
+    var errorB ErrorBody
+    errorB.ErrorCode = 425
+    errorB.ErrorMessage = "Project not published"
+
+    resp["error"] = errorB
+    jsonResp, err := json.Marshal(resp)
+    if err != nil {
+        log.Printf("Error happened in JSON marshal. Err: %s", err)
+        return
+    }
+    rw.Write(jsonResp)
+}
+
+func HandleProjectPublished(rw http.ResponseWriter) {
+    rw.WriteHeader(http.StatusOK)
+    resp := make(map[string]ErrorBody)
+    var errorB ErrorBody
+    errorB.ErrorCode = 426
+    errorB.ErrorMessage = "Project published"
+
+    resp["error"] = errorB
+    jsonResp, err := json.Marshal(resp)
+    if err != nil {
+        log.Printf("Error happened in JSON marshal. Err: %s", err)
+        return
+    }
+    rw.Write(jsonResp)
+}
+
+func HandleOrderCompleted(rw http.ResponseWriter) {
+    rw.WriteHeader(http.StatusOK)
+    resp := make(map[string]ErrorBody)
+    var errorB ErrorBody
+    errorB.ErrorCode = 451
+    errorB.ErrorMessage = "Order already completed"
+
+    resp["error"] = errorB
+    jsonResp, err := json.Marshal(resp)
+    if err != nil {
+        log.Printf("Error happened in JSON marshal. Err: %s", err)
+        return
+    }
+    rw.Write(jsonResp)
+}
+
+func HandleCoverBoolError(rw http.ResponseWriter) {
+    rw.WriteHeader(http.StatusOK)
+    resp := make(map[string]ErrorBody)
+    var errorB ErrorBody
+    errorB.ErrorCode = 428
+    errorB.ErrorMessage = "Hard cover unavailable"
+
+    resp["error"] = errorB
+    jsonResp, err := json.Marshal(resp)
+    if err != nil {
+        log.Printf("Error happened in JSON marshal. Err: %s", err)
+        return
+    }
+    rw.Write(jsonResp)
+}
+
+func HandleCountProjectError(rw http.ResponseWriter) {
+    rw.WriteHeader(http.StatusOK)
+    resp := make(map[string]ErrorBody)
+    var errorB ErrorBody
+    errorB.ErrorCode = 413
+    errorB.ErrorMessage = "Wrong count of projects"
 
     resp["error"] = errorB
     jsonResp, err := json.Marshal(resp)
