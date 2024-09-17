@@ -177,6 +177,23 @@ func CheckUserHasProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 	return checkProject
 }
 
+func CheckUserHasOrder(ctx context.Context, storeDB *pgxpool.Pool, userID uint, orderID uint) bool {
+
+	var checkProject bool
+	userCat, _, err := CheckUserCategory(ctx, storeDB , userID)
+	if userCat == "ADMIN" {
+		return true
+	}
+	err = storeDB.QueryRow(ctx, "SELECT CASE WHEN EXISTS (SELECT * FROM orders WHERE orders_id = ($1) AND users_id = ($2)) THEN TRUE ELSE FALSE END;", orderID, userID).Scan(&checkProject)
+	if err != nil {
+		log.Printf("Error happened when checking if user can edit project in db. Err: %s", err)
+		return false
+	}
+	log.Println(checkProject)
+
+	return checkProject
+}
+
 func GetUserData(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (models.UserInfo, error) {
 
 	var dbUser models.UserInfo
@@ -689,7 +706,7 @@ func UseCertificate(ctx context.Context, storeDB *pgxpool.Pool, code string, use
 
 	if status == "FORBIDDEN" {
 		return 0, "INVALID", nil
-	} else if status == "DEPLETED" {
+	} else if status == "DEPLETED" || status == "RESERVED"  {
 		return 0, "DEPLETED", nil
 		
 	} else if status == "PAID" {

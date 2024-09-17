@@ -325,6 +325,11 @@ func DuplicateProject(ctx context.Context, storeDB *pgxpool.Pool, projectID uint
 		return pID, err
 	}
 	projectObj.Name = projectObj.Name + "_1"
+	//_, err = storeDB.Exec(ctx, "SELECT setval('projects_id', MAX(projects_id)) FROM projects;")
+	//if err != nil {
+	//		log.Printf("Error happened when nulling id sequence. Err: %s", err)
+	//		return pID, err
+	//}
 
 	err = storeDB.QueryRow(ctx, "INSERT INTO projects (name, created_at, last_edited_at, status, size, variant, count_pages, cover, paper, creating_spine_link, preview_spine_link, users_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING projects_id;",
 		projectObj.Name,
@@ -349,7 +354,7 @@ func DuplicateProject(ctx context.Context, storeDB *pgxpool.Pool, projectID uint
 			log.Printf("Error happened when retrieving user email data from db. Err: %s", err)
 			return pID, err
 	}
-
+	
 	_, err = storeDB.Exec(ctx, "INSERT INTO users_edit_projects (projects_id, email, users_id, category) VALUES ($1, $2, $3, $4);",
 		pID,
 		email,
@@ -724,12 +729,12 @@ func UpdateNewUserProjects(ctx context.Context, storeDB *pgxpool.Pool, email str
 
 
 // LoadProject function performs the operation of retrieving project by id from pgx database with a query.
-func LoadProject(ctx context.Context, storeDB *pgxpool.Pool, pID uint) (models.ProjectObj, error) {
+func LoadProject(ctx context.Context, storeDB *pgxpool.Pool, pID uint) (models.ResponseProjectObj, error) {
 
-	var projectObj models.ProjectObj
+	var projectObj models.ResponseProjectObj
 	var updateTimeStorage time.Time
 	var createTimeStorage time.Time
-	err := storeDB.QueryRow(ctx, "SELECT name, size, variant, created_at, paper, cover, last_edited_at, creating_spine_link, preview_spine_link FROM projects WHERE projects_id = ($1);", pID).Scan(&projectObj.Name, &projectObj.Size, &projectObj.Variant, &createTimeStorage, &projectObj.Surface, &projectObj.Cover, &updateTimeStorage, &projectObj.CreatingSpineLink, &projectObj.PreviewSpineLink)
+	err := storeDB.QueryRow(ctx, "SELECT name, size, variant, created_at, cover, last_edited_at, creating_spine_link, preview_spine_link FROM projects WHERE projects_id = ($1);", pID).Scan(&projectObj.Name, &projectObj.Size, &projectObj.Variant, &createTimeStorage, &projectObj.Cover, &updateTimeStorage, &projectObj.CreatingSpineLink, &projectObj.PreviewSpineLink)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		log.Printf("Error happened when retrieving project from pgx table. Err: %s", err)
 		return projectObj, err
@@ -1491,7 +1496,7 @@ func RetrieveAdminTemplates(ctx context.Context, storeDB *pgxpool.Pool, offset u
 				return templateset, err
 			}
 
-			err = storeDB.QueryRow(ctx, "SELECT name, size FROM templates WHERE templates_id = ($1) ORDER BY last_edited_at DESC;", tID).Scan(&templateObj.Name, &templateObj.Size)
+			err = storeDB.QueryRow(ctx, "SELECT name, size, status FROM templates WHERE templates_id = ($1) ORDER BY last_edited_at DESC;", tID).Scan(&templateObj.Name, &templateObj.Size, &templateObj.Status)
 			if err != nil && err != pgx.ErrNoRows {
 				log.Printf("Error happened when retrieving template data from db. Err: %s", err)
 				return templateset, err
@@ -1737,7 +1742,7 @@ func LoadPromocodeTemplates(ctx context.Context, storeDB *pgxpool.Pool, tcategor
 				return templateset, err
 			}
 
-			err = storeDB.QueryRow(ctx, "SELECT name, size,  FROM templates WHERE templates_id = ($1) ORDER BY last_edited_at DESC;", tID).Scan(&templateObj.Name, &templateObj.Size)
+			err = storeDB.QueryRow(ctx, "SELECT name, size FROM templates WHERE templates_id = ($1) ORDER BY last_edited_at DESC;", tID).Scan(&templateObj.Name, &templateObj.Size)
 			if err != nil && err != pgx.ErrNoRows {
 				log.Printf("Error happened when retrieving template data from db. Err: %s", err)
 				return templateset, err

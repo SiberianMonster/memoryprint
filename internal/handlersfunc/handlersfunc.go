@@ -73,7 +73,7 @@ func HandleWrongCredentialsError(rw http.ResponseWriter) {
 }
 
 func HandlePermissionError(rw http.ResponseWriter) {
-    rw.WriteHeader(http.StatusUnauthorized)
+    rw.WriteHeader(http.StatusForbidden)
 }
 
 func HandleExpiredError(rw http.ResponseWriter) {
@@ -272,35 +272,12 @@ func HandleMissingPageError(rw http.ResponseWriter) {
 }
 
 func HandleMissingTemplateError(rw http.ResponseWriter) {
-    rw.WriteHeader(http.StatusOK)
-    resp := make(map[string]ErrorBody)
-    var errorB ErrorBody
-    errorB.ErrorCode = 404
-    errorB.ErrorMessage = "template with this id does not exist"
-
-    resp["error"] = errorB
-    jsonResp, err := json.Marshal(resp)
-    if err != nil {
-        log.Printf("Error happened in JSON marshal. Err: %s", err)
-        return
-    }
-    rw.Write(jsonResp)
+    rw.WriteHeader(http.StatusNotFound)
 }
 
 func HandleMissingProjectError(rw http.ResponseWriter) {
-    rw.WriteHeader(http.StatusOK)
-    resp := make(map[string]ErrorBody)
-    var errorB ErrorBody
-    errorB.ErrorCode = 404
-    errorB.ErrorMessage = "project with this id does not exist"
-
-    resp["error"] = errorB
-    jsonResp, err := json.Marshal(resp)
-    if err != nil {
-        log.Printf("Error happened in JSON marshal. Err: %s", err)
-        return
-    }
-    rw.Write(jsonResp)
+    rw.WriteHeader(http.StatusNotFound)
+    
 }
 
 func HandleCoverPageError(rw http.ResponseWriter) {

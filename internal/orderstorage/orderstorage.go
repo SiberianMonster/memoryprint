@@ -69,6 +69,17 @@ func CheckProject(ctx context.Context, storeDB *pgxpool.Pool, projectID uint) bo
 	return statusExists
 }
 
+func CheckOrder(ctx context.Context, storeDB *pgxpool.Pool, orderID uint) bool {
+	var statusExists bool
+	err = storeDB.QueryRow(ctx, "SELECT CASE WHEN EXISTS (SELECT * FROM orders WHERE orders_id = ($1)) THEN TRUE ELSE FALSE END;", orderID).Scan(&statusExists)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		log.Printf("Error happened when checking if order exists. Err: %s", err)
+		return false
+	}
+
+	return statusExists
+}
+
 
 func CalculateBasePrice(ctx context.Context, storeDB *pgxpool.Pool, size string, variant string, cover string, surface string, countPages uint) (float64, error) {
 
@@ -681,7 +692,7 @@ func RetrieveOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint, isA
 		if isActive == true && orderObj.Status != "COMPLETED" && orderObj.Status != "CANCELLED" {
 			orderSlice = append(orderSlice, orderObj)
 			countActive = countActive + 1
-		} else if orderObj.Status == "COMPLETED" && orderObj.Status == "CANCELLED" {
+		} else if orderObj.Status == "COMPLETED" || orderObj.Status == "CANCELLED" {
 			orderSlice = append(orderSlice, orderObj)
 			countClosed= countClosed + 1
 		}
@@ -922,7 +933,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 				if createdAfter <= uint(orderObj.CreatedAt) && createdBefore >= uint(orderObj.CreatedAt) {
 					if isActive == true && orderObj.Status != "COMPLETED" && orderObj.Status != "CANCELLED" {
 						orderSlice = append(orderSlice, orderObj)
-					} else  if orderObj.Status == "COMPLETED" && orderObj.Status == "CANCELLED" {
+					} else  if orderObj.Status == "COMPLETED" || orderObj.Status == "CANCELLED" {
 						orderSlice = append(orderSlice, orderObj)
 					}
 				}
@@ -930,7 +941,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 				if createdAfter <= uint(orderObj.CreatedAt) {
 					if isActive == true && orderObj.Status != "COMPLETED" && orderObj.Status != "CANCELLED" {
 						orderSlice = append(orderSlice, orderObj)
-					} else  if orderObj.Status == "COMPLETED" && orderObj.Status == "CANCELLED" {
+					} else  if orderObj.Status == "COMPLETED" || orderObj.Status == "CANCELLED" {
 						orderSlice = append(orderSlice, orderObj)
 					}
 				}
@@ -939,14 +950,14 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 			if createdBefore >= uint(orderObj.CreatedAt) {
 				if isActive == true && orderObj.Status != "COMPLETED" && orderObj.Status != "CANCELLED" {
 					orderSlice = append(orderSlice, orderObj)
-				} else  if orderObj.Status == "COMPLETED" && orderObj.Status == "CANCELLED" {
+				} else  if orderObj.Status == "COMPLETED" || orderObj.Status == "CANCELLED" {
 					orderSlice = append(orderSlice, orderObj)
 				}
 			}
 		} else {
 			if isActive == true && orderObj.Status != "COMPLETED" && orderObj.Status != "CANCELLED" {
 				orderSlice = append(orderSlice, orderObj)
-			} else  if orderObj.Status == "COMPLETED" && orderObj.Status == "CANCELLED" {
+			} else  if orderObj.Status == "COMPLETED" || orderObj.Status == "CANCELLED" {
 				orderSlice = append(orderSlice, orderObj)
 			}
 			

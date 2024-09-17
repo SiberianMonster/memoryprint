@@ -341,11 +341,7 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 	//		log.Printf("Error happened when creating layout table. Err: %s", err)
 	//		return nil, false
 	//}
-	_, err = db.Exec(ctx, "ALTER TABLE decorations ADD COLUMN small_image varchar;")
-	if err != nil {
-			log.Printf("Error happened when creating layout table. Err: %s", err)
-			return nil, false
-	}
+
 	//_, err = db.Exec(ctx, "ALTER TABLE projects ADD COLUMN creating_spine_link varchar;")
 	//if err != nil {
 	//		log.Printf("Error happened when creating layout table. Err: %s", err)

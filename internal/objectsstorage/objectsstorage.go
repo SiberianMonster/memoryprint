@@ -1229,7 +1229,7 @@ func RetrievePrices(ctx context.Context, storeDB *pgxpool.Pool) ([]models.Price,
 
 	prices := []models.Price{}
 
-	rows, err := storeDB.Query(ctx, "SELECT cover, variant, size, baseprice, extrapage FROM prices;")
+	rows, err := storeDB.Query(ctx, "SELECT cover, variant, size, surface, baseprice, extrapage FROM prices;")
 	if err != nil {
 			log.Printf("Error happened when retrieving prices from pgx table. Err: %s", err)
 			return prices, err
@@ -1239,7 +1239,7 @@ func RetrievePrices(ctx context.Context, storeDB *pgxpool.Pool) ([]models.Price,
 	for rows.Next() {
 
 			var priceObj models.Price
-			if err = rows.Scan(&priceObj.Cover, &priceObj.Variant, &priceObj.Size, &priceObj.BasePrice, &priceObj.ExtraPage); err != nil {
+			if err = rows.Scan(&priceObj.Cover, &priceObj.Variant, &priceObj.Size, &priceObj.Surface, &priceObj.BasePrice, &priceObj.ExtraPage); err != nil {
 				log.Printf("Error happened when scanning prices. Err: %s", err)
 				return prices, err
 			}

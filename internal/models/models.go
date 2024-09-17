@@ -75,19 +75,19 @@ type Colour struct {
 }
 
 type ResponseColour struct {
-	Colours []Colour `json:"colours"`
+	Colors []Colour `json:"colors"`
 }
 
 type GiftCertificate struct {
 	ID uint `json:"id"`
 	Code string `json:"code"`
 	Deposit      float64    `json:"deposit"`
-	Recipientemail string `json:"recipientemail" validate:"required"`
-	Recipientname string `json:"recipientname" validate:"required"`
-	Buyerfirstname string `json:"buyerfirstname" validate:"required"`
-	Buyerlastname string `json:"buyerlastname" validate:"required"`
-	Buyeremail string `json:"buyeremail" validate:"required"`
-	Buyerphone string `json:"buyerphone" validate:"required,e164"`
+	Recipientemail string `json:"recipient_email" validate:"required"`
+	Recipientname string `json:"recipient_name" validate:"required"`
+	Buyerfirstname string `json:"buyer_first_name" validate:"required"`
+	Buyerlastname string `json:"buyer_last_name" validate:"required"`
+	Buyeremail string `json:"buyer_email" validate:"required"`
+	Buyerphone string `json:"buyer_phone" validate:"required,e164"`
 	MailAt int64 `json:"mail_at"`
 	TransactionID string `json:"transaction_id"`
 }
@@ -301,6 +301,19 @@ type ProjectObj struct {
 	LastEditedAt int64`json:"updated_at"`
 	CreatedAt int64 `json:"created_at"`
 	LeatherID uint `json:"leather_id"`
+  }
+
+  // swagger:model ResponseProject
+  type ResponseProjectObj struct {
+	Name string `json:"name"`
+	Size string `json:"size"`
+	Cover string `json:"cover"`
+	Variant string `json:"variant"`
+	CreatingSpineLink *string `json:"creating_spine_link"`
+	PreviewSpineLink *string `json:"preview_spine_link"`
+	LastEditedAt int64`json:"updated_at"`
+	CreatedAt int64 `json:"created_at"`
+	Pages []Page `json:"pages"`
   }
 
 // swagger:model Page
@@ -554,7 +567,7 @@ type RequestTemplate struct {
 	Limit    uint     `json:"limit"`
 	Category string `json:"category"`
 	Size string `json:"size"`
-	Status string `json:"status" "`
+	Status string `json:"status"`
   }
 
 type RequestLayout struct {
@@ -889,4 +902,21 @@ type LimitOffsetSize struct {
 	Limit *uint `json:"limit" validate:"required"`
 	Offset *uint `json:"offset" validate:"required"`
 	Size *string `json:"size" validate:"required,oneof=SMALL_SQUARE SQUARE VERTICAL HORIZONTAL"`
+	Category *string `json:"category" validate:"omitempty,oneof=VACATION WEDDING HOLIDAYS CHILDREN ANIMALS UNIVERSAL"`
+
+}
+
+type LimitOffsetIsActive struct {
+
+	Limit *uint `json:"limit" validate:"required"`
+	Offset *uint `json:"offset" validate:"required"`
+	IsActive *bool `json:"is_active" validate:"required"`
+}
+
+type LimitOffsetIsActiveStatus struct {
+
+	Limit *uint `json:"limit" validate:"required"`
+	Offset *uint `json:"offset" validate:"required"`
+	IsActive *bool `json:"is_active" validate:"required"`
+	Status *string `json:"status" validate:"omitempty,oneof=AWAITING_PAYMENT PAYMENT_IN_PROGRESS PAID IN_PRINT READY_FOR_DELIVERY IN_DELIVERY COMPLETED CANCELLED"`
 }

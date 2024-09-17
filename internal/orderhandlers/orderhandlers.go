@@ -11,6 +11,8 @@ import (
 	"net/url"
 	"strconv"
 	"time"
+	"strings"
+
 	"github.com/SiberianMonster/memoryprint/internal/config"
 	"github.com/SiberianMonster/memoryprint/internal/delivery"
 	"github.com/SiberianMonster/memoryprint/internal/emailutils"
@@ -228,7 +230,7 @@ func OrderPayment(rw http.ResponseWriter, r *http.Request) {
 	priceforlink, oID, err = orderstorage.OrderPayment(ctx, config.DB, OrderObj, userID)
 
 	if err != nil {
-		handlersfunc.HandleDatabaseServerError(rw)
+		handlersfunc.HandleFailedPaymentURL(rw)
 		return
 	}
 
@@ -257,9 +259,22 @@ func CancelPayment(rw http.ResponseWriter, r *http.Request) {
 	orderID := uint(aByteToInt)
 
 	defer r.Body.Close()
-	userID := handlersfunc.UserIDContextReader(r)
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
+	
+	checkExists := orderstorage.CheckOrder(ctx, config.DB, orderID)
+	if !checkExists {
+			handlersfunc.HandleMissingProjectError(rw)
+			return
+	}
+	userID := handlersfunc.UserIDContextReader(r)
+	log.Printf("Cancel order for user %d", userID)
+	userCheck := userstorage.CheckUserHasOrder(ctx, config.DB, userID, orderID)
+
+	if userCheck == false {
+		handlersfunc.HandlePermissionError(rw)
+		return
+	}
 
 	err := transactions.CancelTransaction(orderID)
 	if err != nil {
@@ -306,14 +321,17 @@ func LoadOrders(rw http.ResponseWriter, r *http.Request) {
 	myUrl, _ := url.Parse(r.URL.String())
 	params, _ := url.ParseQuery(myUrl.RawQuery)
 	
-	isactive, _ := strconv.ParseBool(r.URL.Query().Get("isactive"))
+	isactive, _ := strconv.ParseBool(r.URL.Query().Get("is_active"))
 	rOffset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 	rLimit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	offset := uint(rOffset)
 	limit := uint(rLimit)
-	var lo models.LimitOffset
+	var lo models.LimitOffsetIsActive
 	if _, ok := params["offset"]; ok {
 		lo.Offset = &offset
+	}
+	if _, ok := params["is_active"]; ok {
+		lo.IsActive = &isactive
 	}
 	if limit != 0 {
 		lo.Limit = &limit
@@ -333,6 +351,7 @@ func LoadOrders(rw http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	userID := handlersfunc.UserIDContextReader(r)
 	log.Printf("Load orders of the user %d", userID)
+	
 	respOrders, err := orderstorage.RetrieveOrders(ctx, config.DB, userID, isactive, offset, limit)
 	
 	if err != nil {
@@ -368,7 +387,7 @@ func LoadAdminOrders(rw http.ResponseWriter, r *http.Request) {
 	myUrl, _ := url.Parse(r.URL.String())	
 	params, _ := url.ParseQuery(myUrl.RawQuery)
 		
-	isactive, _ := strconv.ParseBool(r.URL.Query().Get("isactive"))
+	isactive, _ := strconv.ParseBool(r.URL.Query().Get("is_active"))
 	orderID, _ := strconv.Atoi(r.URL.Query().Get("orderid"))
 	userID, _ := strconv.Atoi(r.URL.Query().Get("userid"))
 	orderID = orderID
@@ -378,18 +397,24 @@ func LoadAdminOrders(rw http.ResponseWriter, r *http.Request) {
 	createdAfter = createdAfter
 	createdBefore = createdBefore
 	email := r.URL.Query().Get("email")
-	status := r.URL.Query().Get("status")
+	status := strings.ToUpper(r.URL.Query().Get("status"))
 	rOffset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 	rLimit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	offset := uint(rOffset)
 	limit := uint(rLimit)
 
-	var lo models.LimitOffset
+	var lo models.LimitOffsetIsActiveStatus
 	if _, ok := params["offset"]; ok {
 		lo.Offset = &offset
 	}
+	if _, ok := params["is_active"]; ok {
+		lo.IsActive = &isactive
+	}
 	if limit != 0 {
 		lo.Limit = &limit
+	}
+	if status != "" {
+		lo.Status = &status
 	}
 	validate := validator.New()
 
@@ -438,6 +463,21 @@ func LoadOrder(rw http.ResponseWriter, r *http.Request) {
 	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
 	orderID := uint(aByteToInt)
 	defer r.Body.Close()
+	userID := handlersfunc.UserIDContextReader(r)
+
+	checkExists := orderstorage.CheckOrder(ctx, config.DB, orderID)
+	if !checkExists {
+			handlersfunc.HandleMissingProjectError(rw)
+			return
+	}
+	
+	userCheck := userstorage.CheckUserHasOrder(ctx, config.DB, userID, orderID)
+
+	if userCheck == false {
+		handlersfunc.HandlePermissionError(rw)
+		return
+	}
+
 	
 	retrievedOrder, err = orderstorage.LoadOrder(ctx, config.DB, orderID)
 	if err != nil {

@@ -17,6 +17,7 @@ import (
 	"github.com/SiberianMonster/memoryprint/internal/projectstorage"
 	"github.com/SiberianMonster/memoryprint/internal/userstorage"
 	"github.com/SiberianMonster/memoryprint/internal/objectsstorage"
+	"github.com/SiberianMonster/memoryprint/internal/orderstorage"
 	"github.com/SiberianMonster/memoryprint/internal/emailutils"
 	"github.com/SiberianMonster/memoryprint/internal/handlersfunc"
 	"github.com/go-playground/validator/v10"
@@ -220,6 +221,12 @@ func DuplicateProject(rw http.ResponseWriter, r *http.Request) {
 	projectID := uint(aByteToInt)
 	defer r.Body.Close()
 	userID := handlersfunc.UserIDContextReader(r)
+	checkExists := orderstorage.CheckProject(ctx, config.DB, projectID)
+	if !checkExists {
+			handlersfunc.HandleMissingProjectError(rw)
+			return
+	}
+
 	userCheck := userstorage.CheckUserHasProject(ctx, config.DB, userID, projectID)
 
 	if userCheck == false {
@@ -256,6 +263,12 @@ func DeleteProject(rw http.ResponseWriter, r *http.Request) {
 	
 	userID := handlersfunc.UserIDContextReader(r)
 	log.Printf("Delete project %d for user %d",projectID, userID)
+	checkExists := orderstorage.CheckProject(ctx, config.DB, projectID)
+	if !checkExists {
+			handlersfunc.HandleMissingProjectError(rw)
+			return
+	}
+
 	userCheck := userstorage.CheckUserHasProject(ctx, config.DB, userID, projectID)
 
 	if !userCheck {
@@ -341,8 +354,8 @@ func UnpublishTemplate(rw http.ResponseWriter, r *http.Request) {
 
 func LoadProject(rw http.ResponseWriter, r *http.Request) {
 
-	resp := make(map[string]models.SavedProjectObj)
-	var retrievedProject models.SavedProjectObj
+	resp := make(map[string]models.ResponseProjectObj)
+	var retrievedProject models.ResponseProjectObj
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
 	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
@@ -351,6 +364,12 @@ func LoadProject(rw http.ResponseWriter, r *http.Request) {
 
 	userID := handlersfunc.UserIDContextReader(r)
 	log.Printf("Load project %d for user %d",projectID, userID)
+	checkExists := orderstorage.CheckProject(ctx, config.DB, projectID)
+	if !checkExists {
+			handlersfunc.HandleMissingProjectError(rw)
+			return
+	}
+
 
 	userCheck := userstorage.CheckUserHasProject(ctx, config.DB, userID, projectID)
 
@@ -359,7 +378,7 @@ func LoadProject(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	retrievedProject.Project, err = projectstorage.LoadProject(ctx, config.DB, projectID)
+	retrievedProject, err = projectstorage.LoadProject(ctx, config.DB, projectID)
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
@@ -1368,6 +1387,12 @@ func UpdateProjectSpine(rw http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	userID := handlersfunc.UserIDContextReader(r)
 	log.Printf("Load project %d for user %d",projectID, userID)
+	checkExists := orderstorage.CheckProject(ctx, config.DB, projectID)
+	if !checkExists {
+			handlersfunc.HandleMissingProjectError(rw)
+			return
+	}
+
 
 	userCheck := userstorage.CheckUserHasProject(ctx, config.DB, userID, projectID)
 
@@ -1735,7 +1760,13 @@ func LoadTemplates(rw http.ResponseWriter, r *http.Request) {
 
     if size != "" {
 		requestT.Size = strings.ToUpper(r.URL.Query().Get("size"))
-		lo.Size = &size
+		lo.Size = &requestT.Size
+	}
+	category := r.URL.Query().Get("category")
+
+    if category != "" {
+		requestT.Category = strings.ToUpper(r.URL.Query().Get("category"))
+		lo.Category = &requestT.Category
 	}
 
 	requestT.Offset = uint(tOffset)
@@ -1757,11 +1788,7 @@ func LoadTemplates(rw http.ResponseWriter, r *http.Request) {
         return
     }
 	
-	category := r.URL.Query().Get("category")
-
-    if category != "" {
-		requestT.Category = strings.ToUpper(r.URL.Query().Get("category"))
-	}
+	
 	
 	defer r.Body.Close()
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
@@ -1794,15 +1821,20 @@ func AdminLoadTemplates(rw http.ResponseWriter, r *http.Request) {
 	category := r.URL.Query().Get("category")
 	size := r.URL.Query().Get("size")
 	status := r.URL.Query().Get("status")
+	var lo models.LimitOffsetSize
 	if status != "" {
 		requestT.Status = strings.ToUpper(r.URL.Query().Get("status"))
 	}
 
     if category != "" {
 		requestT.Category = strings.ToUpper(r.URL.Query().Get("category"))
+		lo.Category = &requestT.Category
+
 	}
 	if size != "" {
 		requestT.Size = strings.ToUpper(r.URL.Query().Get("size"))
+		lo.Size = &requestT.Size
+
 	}
 	myUrl, _ := url.Parse(r.URL.String())	
 	params, _ := url.ParseQuery(myUrl.RawQuery)
@@ -1812,13 +1844,13 @@ func AdminLoadTemplates(rw http.ResponseWriter, r *http.Request) {
 
 	requestT.Offset = uint(tOffset)
 	requestT.Limit = uint(tLimit)
-	var lo models.LimitOffset
 	if _, ok := params["offset"]; ok {
 		lo.Offset = &requestT.Offset
 	}
 	if requestT.Limit != 0 {
 		lo.Limit = &requestT.Limit
 	}
+
 	validate := validator.New()
 
     // Validate the User struct
@@ -2002,6 +2034,13 @@ func ShareLink(rw http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
+	checkExists := orderstorage.CheckProject(ctx, config.DB, pID)
+	log.Println(checkExists)
+	if checkExists == false {
+			handlersfunc.HandleMissingProjectError(rw)
+			return
+	}
+
 	userID := handlersfunc.UserIDContextReader(r)
 	userCheck := userstorage.CheckUserHasProject(ctx, config.DB, userID, pID)
 
@@ -2222,7 +2261,7 @@ func LoadColours(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	rw.WriteHeader(http.StatusOK)
-	coverObj.Colours = covers
+	coverObj.Colors = covers
 	resp["response"] = coverObj
 	jsonResp, err := json.Marshal(resp)
 	if err != nil {
@@ -2258,6 +2297,12 @@ func UpdateCover(rw http.ResponseWriter, r *http.Request) {
 	userID := handlersfunc.UserIDContextReader(r)
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
+	checkExists := orderstorage.CheckProject(ctx, config.DB, projectID)
+	if !checkExists {
+			handlersfunc.HandleMissingProjectError(rw)
+			return
+	}
+
 	userCheck := userstorage.CheckUserHasProject(ctx, config.DB, userID, projectID)
 
 	if userCheck == false {
@@ -2334,7 +2379,13 @@ func UpdateSurface(rw http.ResponseWriter, r *http.Request) {
     }
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
+
 	userID := handlersfunc.UserIDContextReader(r)
+	checkExists := orderstorage.CheckProject(ctx, config.DB, projectID)
+	if !checkExists {
+			handlersfunc.HandleMissingProjectError(rw)
+			return
+	}
 	userCheck := userstorage.CheckUserHasProject(ctx, config.DB, userID, projectID)
 
 	if userCheck == false {
