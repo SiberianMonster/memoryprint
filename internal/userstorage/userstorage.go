@@ -673,13 +673,13 @@ func CheckCertificate(ctx context.Context, storeDB *pgxpool.Pool, code string, u
 	status = "INVALID"
 
 	err := storeDB.QueryRow(ctx, "SELECT email FROM users WHERE users_id=($1);", users_id).Scan(&email)
-	if err != nil && err != pgx.ErrNoRows { 
+	if err != nil { 
 		log.Printf("Error happened when retrieving user email data from the db. Err: %s", err)
 		return status, deposit, err
 	}
 	
 	err = storeDB.QueryRow(ctx, "SELECT currentdeposit, status, receipientemail FROM giftcertificates WHERE code=($1);", code).Scan(&deposit, &status, &recipientEmail)
-	if err != nil && err != pgx.ErrNoRows { 
+	if err != nil { 
 		log.Printf("Error happened when retrieving gift certificate data from the db. Err: %s", err)
 		return status, deposit, err
 	}
