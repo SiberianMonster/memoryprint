@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"strconv"
-
+	"regexp"
 	"github.com/gorilla/mux"
 	
 	"github.com/SiberianMonster/memoryprint/internal/config"
@@ -23,6 +23,18 @@ import (
 	"time"
 
 )
+
+var (
+    phoneRegex = `^((8|\+7)[\- ]?)?(\(?\d{3}\)?[\- ]?)?[\d\- ]{7,10}$` // regex that compiles
+)
+
+// Phonevalidator implements validator.Func
+func PhoneValidator(fl validator.FieldLevel) bool {
+	matched, _ := regexp.MatchString(phoneRegex, fl.Field().String())
+	log.Println(matched)
+	
+	return matched
+}
 
 type TokenRespBody struct {
 	Token string `json:"token"`
@@ -495,6 +507,8 @@ func CreateCertificate(rw http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	// Create a new validator instance
     validate := validator.New()
+	validate.RegisterValidation("phone", PhoneValidator)
+
 	log.Println(certificate)
 
     // Validate the User struct

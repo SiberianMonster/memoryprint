@@ -362,17 +362,21 @@ func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 		defer rows.Close()
 		for rows.Next() {
 			var background models.Background
+			var dbtype string
 			if err = rows.Scan(&background.BackgroundID, &background.IsPersonal, &background.IsFavourite); err != nil {
 				log.Printf("Error happened when scanning backgrounds. Err: %s", err)
 				return responseBackground, err
 			}
-			err := storeDB.QueryRow(ctx, "SELECT link, small_image, category FROM backgrounds WHERE backgrounds_id = ($1);", background.BackgroundID).Scan(&background.Link, &background.SmallImage, &background.Type)
+			err := storeDB.QueryRow(ctx, "SELECT link, small_image, category FROM backgrounds WHERE backgrounds_id = ($1);", background.BackgroundID).Scan(&background.Link, &background.SmallImage, &btype)
 			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 				log.Printf("Error happened when retrieving backgrounds from backgrounds table. Err: %s", err)
 				return responseBackground, err
 			}
+			if dbtype != "" {
+				background.Type = &dbtype
+			}
 			if btype != "" {
-					if btype == background.Type {
+					if btype == dbtype {
 						responseBackground.Backgrounds = append(responseBackground.Backgrounds, background)
 					}
 				
@@ -393,13 +397,13 @@ func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 				log.Printf("Error happened when scanning backgrounds. Err: %s", err)
 				return responseBackground, err
 			}
-			err := storeDB.QueryRow(ctx, "SELECT link, small_image, category FROM backgrounds WHERE backgrounds_id = ($1);", background.BackgroundID).Scan(&background.Link, &background.SmallImage, &background.Type)
+			err := storeDB.QueryRow(ctx, "SELECT link, small_image FROM backgrounds WHERE backgrounds_id = ($1);", background.BackgroundID).Scan(&background.Link, &background.SmallImage)
 			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 				log.Printf("Error happened when retrieving backgrounds from backgrounds table. Err: %s", err)
 				return responseBackground, err
 			}
 			if btype != "" {
-				if btype == background.Type {
+				if btype == *background.Type {
 					responseBackground.Backgrounds = append(responseBackground.Backgrounds, background)
 				}
 			
@@ -643,25 +647,40 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 				log.Printf("Error happened when scanning decorations. Err: %s", err)
 				return responseDecoration, err
 			}
-			err := storeDB.QueryRow(ctx, "SELECT link, small_image, category, type FROM decorations WHERE decorations_id = ($1);", decoration.DecorationID).Scan(&decoration.Link, &decoration.SmallImage, &decoration.Type, &decoration.Category)
-			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-				log.Printf("Error happened when retrieving decorations from decorations table. Err: %s", err)
-				return responseDecoration, err
+			if decoration.IsPersonal == true {
+				err := storeDB.QueryRow(ctx, "SELECT link, small_image FROM decorations WHERE decorations_id = ($1);", decoration.DecorationID).Scan(&decoration.Link, &decoration.SmallImage)
+				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+					log.Printf("Error happened when retrieving decorations from decorations table. Err: %s", err)
+					return responseDecoration, err
+				}
+			} else {
+				err := storeDB.QueryRow(ctx, "SELECT link, small_image, category, type FROM decorations WHERE decorations_id = ($1);", decoration.DecorationID).Scan(&decoration.Link, &decoration.SmallImage, &decoration.Type, &decoration.Category)
+				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+					log.Printf("Error happened when retrieving decorations from decorations table. Err: %s", err)
+					return responseDecoration, err
+				}
 			}
 			if dtype != "" {
 				if dcategory != "" {
-					if dtype == decoration.Type && dcategory == decoration.Category {
-						responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
+					if decoration.IsPersonal == false {
+						if dtype == *decoration.Type && dcategory == *decoration.Category {
+							responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
+						}
 					}
+					
 				} else {
-					if dtype == decoration.Type {
-						responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
+					if decoration.IsPersonal == false {
+						if dtype == *decoration.Type {
+							responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
+						}
 					}
 				}
 			} else {
 				if dcategory != "" {
-					if dcategory == decoration.Category {
-						responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
+					if decoration.IsPersonal == false {
+						if dcategory == *decoration.Category {
+							responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
+						}
 					}
 				} else {
 					responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
@@ -682,25 +701,32 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 				log.Printf("Error happened when scanning decorations. Err: %s", err)
 				return responseDecoration, err
 			}
-			err := storeDB.QueryRow(ctx, "SELECT link, small_image, category, type FROM decorations WHERE decorations_id = ($1);", decoration.DecorationID).Scan(&decoration.Link, &decoration.SmallImage, &decoration.Type, &decoration.Category)
+			err := storeDB.QueryRow(ctx, "SELECT link, small_image FROM decorations WHERE decorations_id = ($1);", decoration.DecorationID).Scan(&decoration.Link, &decoration.SmallImage)
 			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 				log.Printf("Error happened when retrieving decorations from decorations table. Err: %s", err)
 				return responseDecoration, err
 			}
 			if dtype != "" {
 				if dcategory != "" {
-					if dtype == decoration.Type && dcategory == decoration.Category {
-						responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
+					if decoration.IsPersonal == false {
+						if dtype == *decoration.Type && dcategory == *decoration.Category {
+							responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
+						}
 					}
+					
 				} else {
-					if dtype == decoration.Type {
-						responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
+					if decoration.IsPersonal == false {
+						if dtype == *decoration.Type {
+							responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
+						}
 					}
 				}
 			} else {
 				if dcategory != "" {
-					if dcategory == decoration.Category {
-						responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
+					if decoration.IsPersonal == false {
+						if dcategory == *decoration.Category {
+							responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)
+						}
 					}
 				} else {
 					responseDecoration.Decorations = append(responseDecoration.Decorations, decoration)

@@ -3,9 +3,7 @@ package models
 import (
 	"encoding/json"
 	"time"
-
 )
-
 
 const (
 	CustomerCategory        = "CUSTOMER"
@@ -87,7 +85,7 @@ type GiftCertificate struct {
 	Buyerfirstname string `json:"buyer_first_name" validate:"required"`
 	Buyerlastname string `json:"buyer_last_name" validate:"required"`
 	Buyeremail string `json:"buyer_email" validate:"required"`
-	Buyerphone string `json:"buyer_phone" validate:"required,e164"`
+	Buyerphone string `json:"buyer_phone" validate:"required,phone"`
 	MailAt int64 `json:"mail_at"`
 	TransactionID string `json:"transaction_id"`
 }
@@ -270,7 +268,7 @@ type Background struct {
 	BackgroundID uint `json:"background_id"`
 	Link    string `json:"link"`
 	SmallImage    *string `json:"small_image"`
-	Type string `json:"type" validate:"required,oneof=VACATION WEDDING HOLIDAYS CHILDREN ANIMALS UNIVERSAL"`
+	Type *string `json:"type" validate:"required,oneof=VACATION WEDDING HOLIDAYS CHILDREN ANIMALS UNIVERSAL"`
 	IsFavourite bool `json:"is_favourite"`
 	IsPersonal bool `json:"is_personal"`
 }
@@ -280,8 +278,8 @@ type Decoration struct {
 	DecorationID uint `json:"decoration_id"`
 	Link    string `json:"link" validate:"required"`
 	SmallImage    *string `json:"small_image"`
-	Category string `json:"category" validate:"required,oneof=VACATION WEDDING HOLIDAYS CHILDREN ANIMALS UNIVERSAL"`
-	Type string `json:"type" validate:"required,oneof=RIBBON FRAME STICKER"` 
+	Category *string `json:"category" validate:"required,oneof=VACATION WEDDING HOLIDAYS CHILDREN ANIMALS UNIVERSAL"`
+	Type *string `json:"type" validate:"required,oneof=RIBBON FRAME STICKER"` 
 	IsFavourite bool `json:"is_favourite"`
 	IsPersonal bool `json:"is_personal"`
 }
@@ -489,7 +487,7 @@ type Contacts struct {
 	FirstName string `json:"first_name"`
 	LastName string `json:"last_name"`
 	Email string `json:"email" validate:"required,email"`
-	Phone string `json:"phone" validate:"required,e164"`
+	Phone string `json:"phone" validate:"required,phone"`
 }
 
 type Delivery struct {

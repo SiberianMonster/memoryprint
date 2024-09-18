@@ -12,7 +12,8 @@ import (
 	"strconv"
 	"time"
 	"strings"
-
+	"regexp"
+	
 	"github.com/SiberianMonster/memoryprint/internal/config"
 	"github.com/SiberianMonster/memoryprint/internal/delivery"
 	"github.com/SiberianMonster/memoryprint/internal/emailutils"
@@ -30,6 +31,18 @@ import (
 var err error
 var resp map[string]string
 
+var (
+    phoneRegex = `/^(^8|7|\+7)[(]?[0-9]{3}[)]?[-\s]?[0-9]{3}[-\s]?[0-9]{2}[-\s]?[0-9]{2}$/` // regex that compiles
+)
+
+// Phonevalidator implements validator.Func
+func PhoneValidator(fl validator.FieldLevel) bool {
+	re := regexp.MustCompile(phoneRegex)
+	if  re.MatchString(fl.Field().String()) == false {
+		return false
+	}
+	return true
+}
 
 func AddWorkdays(date time.Time, days int) time.Time {
 	for {
@@ -174,6 +187,8 @@ func OrderPayment(rw http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	// Create a new validator instance
     validate := validator.New()
+	validate.RegisterValidation("phone", PhoneValidator)
+
 
     // Validate the User struct
     err = validate.Struct(OrderObj)

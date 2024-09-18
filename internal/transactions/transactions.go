@@ -143,6 +143,7 @@ func CancelTransaction(orderID uint) error {
 	ctx, cancel := context.WithTimeout(context.Background(), config.ContextDBTimeout)
 	// не забываем освободить ресурс
 	defer cancel()
+	log.Println(orderID)
 	banktransactionID, _ := orderstorage.GetBankTransactionID(ctx, config.DB, orderID)
 	cancellationURL := &url.URL{
         Scheme: "https",
@@ -189,7 +190,7 @@ func CancelTransaction(orderID uint) error {
 			return errors.New("failed reading response from bank")
 		}
 		// need to be fixed
-		if transaction.ErrorCode != "7" {
+		if transaction.ErrorCode != "7" && transaction.ErrorCode != "6"{
 
 			return errors.New("failed reading response from bank")
 		}

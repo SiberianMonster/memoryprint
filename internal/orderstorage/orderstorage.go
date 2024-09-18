@@ -490,7 +490,7 @@ func CancelPayment(ctx context.Context, storeDB *pgxpool.Pool, orderID uint, use
 		return err
 	}
 	
-	err = storeDB.QueryRow(ctx, "SELECT orders_id FROM orders WHERE users_id = ($1) and status = ($2) ORDER BY created_at;", userID, "AWAITING PAYMENT").Scan(&awaitedOrderID)
+	err = storeDB.QueryRow(ctx, "SELECT orders_id FROM orders WHERE users_id = ($1) and status = ($2) ORDER BY created_at;", userID, "AWAITING_PAYMENT").Scan(&awaitedOrderID)
 	if err != nil {
 		log.Printf("Error happened when searching for draft order into pgx table. Err: %s", err)
 		return err
