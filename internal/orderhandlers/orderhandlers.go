@@ -32,7 +32,7 @@ var err error
 var resp map[string]string
 
 var (
-    phoneRegex = `/^(^8|7|\+7)[(]?[0-9]{3}[)]?[-\s]?[0-9]{3}[-\s]?[0-9]{2}[-\s]?[0-9]{2}$/` // regex that compiles
+    phoneRegex = `^(^8|7|\+7)[(]?[0-9]{3}[)]?[-\s]?[0-9]{3}[-\s]?[0-9]{2}[-\s]?[0-9]{2}$` // regex that compiles
 )
 
 // Phonevalidator implements validator.Func
