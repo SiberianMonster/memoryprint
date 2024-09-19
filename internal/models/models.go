@@ -442,7 +442,7 @@ type ResponseOrderInfo struct {
 	PromocodeDiscountPercent float64 `json:"promocode_discount_percent"`
 	Promocode string `json:"promocode"`
 	TransactionID uint `json:"transaction_id"`
-	PreviewLinks    []PreviewObject     `json:"preview_links" validate:"required"`
+	Projects    []PreviewObject     `json:"projects" validate:"required"`
   }
 
 
@@ -479,8 +479,8 @@ type ResponseApiDeliveryInfo struct {
   }
 
 type PreviewObject struct {
+	ProjectID    uint     `json:"project_id" validate:"required"`
 	Name string `json:"name"`
-	Link string `json:"link"`
 }
 
 type Contacts struct {
@@ -825,7 +825,7 @@ type ResponsePaymentStatus struct {
 
 }
 type UserRequestDeliveryCost struct {
-	Method string `json:"method" validate:"required,oneof=door_to_door door_to_office"`
+	Method string `json:"method" validate:"required,oneof=DOOR PVZ POSTAMAT"`
 	PostalCode string `json:"postal_code" validate:"required"`
 	Address string `json:"address" validate:"required"`
 	Code string `json:"code",omitempty`

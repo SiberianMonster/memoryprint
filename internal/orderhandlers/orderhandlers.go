@@ -776,11 +776,15 @@ func CalculateDelivery(rw http.ResponseWriter, r *http.Request) {
 
 
 	defer r.Body.Close()
-	if rCost.Method == "door_to_door" {
+	if rCost.Method == "DOOR" {
 		rApiCost.TariffCode = 139
-	} else if rCost.Method == "door_to_office" {
+	} else if rCost.Method == "POSTAMAT" {
+		rApiCost.TariffCode = 138
+	} else if rCost.Method == "PVZ" {
 		rApiCost.TariffCode = 138
 	}
+		
+	
 	toLoc.Address = rCost.Address
 	toLoc.PostalCode = rCost.PostalCode
 	toLoc.City = rCost.City

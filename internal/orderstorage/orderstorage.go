@@ -337,11 +337,14 @@ func OrderPayment(ctx context.Context, storeDB *pgxpool.Pool, orderObj models.Re
 	var s models.Service
 	var depositPrice float64
 
-	if deliveryObj.Method == "door_to_door" {
+	if deliveryObj.Method == "DOOR" {
 		rApiCost.TariffCode = 139
-	} else if deliveryObj.Method == "door_to_office" {
+	} else if deliveryObj.Method == "POSTAMAT" {
+		rApiCost.TariffCode = 138
+	} else if deliveryObj.Method == "PVZ" {
 		rApiCost.TariffCode = 138
 	}
+
 	toLoc.Address = deliveryObj.Address
 	toLoc.PostalCode = deliveryObj.PostalCode
 	rApiCost.ToLocation = toLoc
@@ -1055,6 +1058,7 @@ func LoadOrder(ctx context.Context, storeDB *pgxpool.Pool, orderID uint) (models
 		log.Printf("Error happened when retrieving delivery info from pgx table. Err: %s", err)
 		return orderObj, err
 	}
+	
 	err = storeDB.QueryRow(ctx, "SELECT code, discount FROM promooffers WHERE promooffers_id = ($1);", promocodeID).Scan(&orderObj.Promocode, &orderObj.PromocodeDiscountPercent)
 	if err != nil {
 		log.Printf("Error happened when retrieving promooffer info from pgx table. Err: %s", err)
@@ -1070,19 +1074,18 @@ func LoadOrder(ctx context.Context, storeDB *pgxpool.Pool, orderID uint) (models
 
 
 	for prows.Next() {
-		var pID uint
 		var previewObj models.PreviewObject
-		if err = prows.Scan(&pID); err != nil {
+		if err = prows.Scan(&previewObj.ProjectID); err != nil {
 			log.Printf("Error happened when scanning projects. Err: %s", err)
 			return orderObj, err
 		}
 
-		err := storeDB.QueryRow(ctx, "SELECT name, preview_link FROM projects WHERE projects_id = ($1);", pID).Scan(&previewObj.Name, &previewObj.Link)
+		err := storeDB.QueryRow(ctx, "SELECT name FROM projects WHERE projects_id = ($1);", previewObj.ProjectID).Scan(&previewObj.Name)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			log.Printf("Error happened when retrieving project preview link from pgx table. Err: %s", err)
 			return orderObj, err
 		}
-		orderObj.PreviewLinks = append(orderObj.PreviewLinks, previewObj)
+		orderObj.Projects = append(orderObj.Projects, previewObj)
 	}
 	return orderObj, nil
 
@@ -1129,19 +1132,18 @@ func AdminLoadOrder(ctx context.Context, storeDB *pgxpool.Pool, orderID uint) (m
 
 
 	for prows.Next() {
-		var pID uint
 		var previewObj models.PreviewObject
-		if err = prows.Scan(&pID); err != nil {
+		if err = prows.Scan(&previewObj.ProjectID); err != nil {
 			log.Printf("Error happened when scanning projects. Err: %s", err)
 			return orderObj, err
 		}
 
-		err := storeDB.QueryRow(ctx, "SELECT name, preview_link FROM projects WHERE projects_id = ($1);", pID).Scan(&previewObj.Name, &previewObj.Link)
+		err := storeDB.QueryRow(ctx, "SELECT name FROM projects WHERE projects_id = ($1);", previewObj.ProjectID).Scan(&previewObj.Name)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			log.Printf("Error happened when retrieving project preview link from pgx table. Err: %s", err)
 			return orderObj, err
 		}
-		orderObj.PreviewLinks = append(orderObj.PreviewLinks, previewObj)
+		orderObj.Projects = append(orderObj.Projects, previewObj)
 	}
 	return orderObj, nil
 
