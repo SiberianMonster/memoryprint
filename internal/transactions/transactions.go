@@ -34,6 +34,7 @@ func CreateTransaction(orderID uint, finalPrice float64, goodType string) (strin
 	priceInCents := finalPrice * 100.0
 	queryValues.Add("amount", strconv.Itoa(int(priceInCents)))
     registrationURL.RawQuery = queryValues.Encode()
+	log.Println(registrationURL.String())
     
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, registrationURL.String(), nil)
 	if err != nil {
@@ -59,6 +60,7 @@ func CreateTransaction(orderID uint, finalPrice float64, goodType string) (strin
 	if response.StatusCode == http.StatusOK {
 		var transaction models.ResponseTransaction
 		err := json.NewDecoder(response.Body).Decode(&transaction)
+		log.Println(transaction)
 		defer response.Body.Close()
 		if err != nil {
 			log.Printf("Error in getting payment url for the order %s", strconv.Itoa(int(orderID)) )

@@ -79,7 +79,7 @@ type ResponseColour struct {
 type GiftCertificate struct {
 	ID uint `json:"id"`
 	Code string `json:"code"`
-	Deposit      float64    `json:"deposit"`
+	Deposit      float64    `json:"deposit" validate:"required,min=1000.00,max=50000.00"`
 	Recipientemail string `json:"recipient_email" validate:"required"`
 	Recipientname string `json:"recipient_name" validate:"required"`
 	Buyerfirstname string `json:"buyer_first_name" validate:"required"`
@@ -395,14 +395,14 @@ type CartObj struct {
 	Variant string `json:"variant"  validate:"required,oneof=STANDARD PREMIUM"`
 	Cover string `json:"cover" validate:"required,oneof=HARD LEATHERETTE"`
 	Surface string `json:"surface" validate:"required,oneof=GLOSS MATTE"`
-	Category string `json:"category" validate:"required,oneof=VACATION WEDDING HOLIDAYS CHILDREN ANIMALS UNIVERSAL"`
+	Category *string `json:"category"`
 	FrontPage FrontPage `json:"front_page"`
 	CountPages int `json:"count_pages"`
 	BasePrice float64 `json:"base_price"`
 	UpdatedPagesPrice float64 `json:"updated_pages_price"`
 	UpdatedCoverPrice float64 `json:"updated_cover_price"`
 	CoverBool bool `json:"cover_bool"`
-	LeatherID uint `json:"leather_id"`
+	LeatherID *uint `json:"leather_id"`
   }
 
 type PaidCartObj struct {
@@ -484,17 +484,17 @@ type PreviewObject struct {
 }
 
 type Contacts struct {
-	FirstName string `json:"first_name"`
-	LastName string `json:"last_name"`
+	FirstName string `json:"first_name" validate:"required,min=1,max=20"`
+	LastName string `json:"last_name" validate:"required,min=1"`
 	Email string `json:"email" validate:"required,email"`
 	Phone string `json:"phone" validate:"required,phone"`
 }
 
 type Delivery struct {
-	Method string `json:"method"`
+	Method string `json:"method" validate:"required"`
 	Code string `json:"code"`
-	PostalCode string `json:"postal_code"`
-	Address string `json:"address"`
+	PostalCode string `json:"postal_code" validate:"required"`
+	Address string `json:"address" validate:"required"`
 	Amount float64 `json:"amount"`
 }
 
@@ -516,7 +516,7 @@ type UpdateCover struct {
 
 type NewOrder struct {
 
-	ProjectID    uint     `json:"project_id"`
+	ProjectID    uint     `json:"project_id" validate:"required`
 
   }
 
@@ -743,10 +743,11 @@ type ResponseOrder struct {
 	CreatedAt int64 `json:"created_at"`
 	BasePrice *float64 `json:"base_price"`
 	FinalPrice *float64 `json:"final_price"`
+	DeliveryPrice *float64 `json:"delivery_price"`
 	TrackingNumber string `json:"tracking_number"`
-	PromocodeDiscountPercent *float64 `json:"promocode_discount_percent"`
-	PromocodeCategory *string `json:"promocode_category"`
-	PromocodeDiscount float64 `json:"promocode_discount"`
+	PromocodeDiscountPercent *float64 `json:"promocode_discount_percent",omitempty`
+	PromocodeCategory *string `json:"promocode_category",omitempty`
+	PromocodeDiscount float64 `json:"promocode_discount",omitempty`
 	CertificateDeposit *float64 `json:"certificate_deposit"`
   }
 
@@ -786,7 +787,7 @@ type ResponseAdminOrders struct {
 
 type RequestUpdateOrderStatus struct {
 
-	Status string `json:"status" validate:"required"`
+	Status string `json:"status" validate:"required,oneof=AWAITING_PAYMENT PAYMENT_IN_PROGRESS PAID IN_PRINT READY_FOR_DELIVERY IN_DELIVERY COMPLETED CANCELLED"`
   }
 
 type RequestUpdateOrderCommentary struct {
@@ -903,6 +904,7 @@ type LimitOffsetSize struct {
 	Category *string `json:"category" validate:"omitempty,oneof=VACATION WEDDING HOLIDAYS CHILDREN ANIMALS UNIVERSAL"`
 
 }
+
 
 type LimitOffsetIsActive struct {
 

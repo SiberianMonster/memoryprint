@@ -1562,7 +1562,7 @@ func RetrieveAdminTemplates(ctx context.Context, storeDB *pgxpool.Pool, offset u
 	} else {
 		if tcategory != "" {
 			if tsize != "" {
-				err = storeDB.QueryRow(ctx, "SELECT COUNT(templates_id) FROM templates size = ($1) AND category = ($2);", tsize, tcategory).Scan(&countAllString)
+				err = storeDB.QueryRow(ctx, "SELECT COUNT(templates_id) FROM templates WHERE size = ($1) AND category = ($2);", tsize, tcategory).Scan(&countAllString)
 				if err != nil && err != pgx.ErrNoRows{
 					log.Printf("Error happened when counting templates in pgx table. Err: %s", err)
 					return templateset, err

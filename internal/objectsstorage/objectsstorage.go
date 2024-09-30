@@ -322,6 +322,7 @@ func RetrieveUserPhotos(ctx context.Context, storeDB *pgxpool.Pool, userID uint,
 // LoadBackgrounds function performs the operation of retrieving all backgrounds from the db for project editing.
 func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset uint, limit uint, btype string, isfavourite bool, ispersonal bool) (models.ResponseBackground, error) {
 
+	log.Println(userID)
 	var responseBackground models.ResponseBackground
 	responseBackground.Backgrounds = []models.Background{}
 	if isfavourite != true && ispersonal != true {
@@ -353,7 +354,8 @@ func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 			responseBackground.Backgrounds = append(responseBackground.Backgrounds, background)
 		}
 
-	} else if isfavourite == true {
+	} 
+	if isfavourite == true {
 		rows, err := storeDB.Query(ctx, "SELECT backgrounds_id, is_personal, is_favourite FROM users_has_backgrounds WHERE users_id = ($1) AND is_favourite = ($2) ORDER BY backgrounds_id DESC LIMIT ($3) OFFSET ($4);", userID, true, limit, offset)
 				if err != nil {
 					log.Printf("Error happened when retrieving user_decorations from pgx table. Err: %s", err)
@@ -367,7 +369,7 @@ func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 				log.Printf("Error happened when scanning backgrounds. Err: %s", err)
 				return responseBackground, err
 			}
-			err := storeDB.QueryRow(ctx, "SELECT link, small_image, category FROM backgrounds WHERE backgrounds_id = ($1);", background.BackgroundID).Scan(&background.Link, &background.SmallImage, &btype)
+			err := storeDB.QueryRow(ctx, "SELECT link, small_image, category FROM backgrounds WHERE backgrounds_id = ($1);", background.BackgroundID).Scan(&background.Link, &background.SmallImage, &dbtype)
 			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 				log.Printf("Error happened when retrieving backgrounds from backgrounds table. Err: %s", err)
 				return responseBackground, err
@@ -384,7 +386,8 @@ func LoadBackgrounds(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 				responseBackground.Backgrounds = append(responseBackground.Backgrounds, background)
 			}
 		}
-	} else if ispersonal == true {
+	} 
+	if ispersonal == true {
 		rows, err := storeDB.Query(ctx, "SELECT backgrounds_id, is_personal, is_favourite FROM users_has_backgrounds WHERE users_id = ($1) AND is_personal = ($2) ORDER BY backgrounds_id DESC LIMIT ($3) OFFSET ($4);", userID, true, limit, offset)
 				if err != nil {
 					log.Printf("Error happened when retrieving user_decorations from pgx table. Err: %s", err)

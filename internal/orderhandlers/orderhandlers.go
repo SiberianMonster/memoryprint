@@ -124,7 +124,7 @@ func CreateOrder(rw http.ResponseWriter, r *http.Request) {
 	userCheck := userstorage.CheckUserHasProject(ctx, config.DB, userID, OrderObj.ProjectID)
 
 	if userCheck == false {
-		handlersfunc.HandlePermissionError(rw)
+		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 	checkExists := orderstorage.CheckProject(ctx, config.DB, OrderObj.ProjectID)
@@ -335,6 +335,7 @@ func LoadOrders(rw http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	myUrl, _ := url.Parse(r.URL.String())
 	params, _ := url.ParseQuery(myUrl.RawQuery)
+	log.Println(params)
 	
 	isactive, _ := strconv.ParseBool(r.URL.Query().Get("is_active"))
 	rOffset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
@@ -366,7 +367,8 @@ func LoadOrders(rw http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	userID := handlersfunc.UserIDContextReader(r)
 	log.Printf("Load orders of the user %d", userID)
-	
+	log.Println(isactive)
+
 	respOrders, err := orderstorage.RetrieveOrders(ctx, config.DB, userID, isactive, offset, limit)
 	
 	if err != nil {
@@ -577,11 +579,20 @@ func UpdateOrderStatus(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleDecodeError(rw, err)
 		return
 	}
+	validate := validator.New()
+
+    // Validate the User struct
+    err = validate.Struct(StatusObj)
 
 	defer r.Body.Close()
    
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
+	checkExists := orderstorage.CheckOrder(ctx, config.DB, orderID)
+	if !checkExists {
+			handlersfunc.HandleMissingProjectError(rw)
+			return
+	}
 	
 	err = orderstorage.UpdateOrderStatus(ctx, config.DB, orderID, StatusObj)
 
@@ -654,8 +665,18 @@ func UpdateOrderCommentary(rw http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
    
+	validate := validator.New()
+
+    // Validate the User struct
+    err = validate.Struct(CommentaryObj)
+   
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
+	checkExists := orderstorage.CheckOrder(ctx, config.DB, orderID)
+	if !checkExists {
+			handlersfunc.HandleMissingProjectError(rw)
+			return
+	}
 	
 	err = orderstorage.UpdateOrderCommentary(ctx, config.DB, orderID, CommentaryObj)
 
@@ -689,9 +710,18 @@ func UploadOrderVideo(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	defer r.Body.Close()
+	validate := validator.New()
+
+    // Validate the User struct
+    err = validate.Struct(VideoObj)
    
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
+	checkExists := orderstorage.CheckOrder(ctx, config.DB, orderID)
+	if !checkExists {
+			handlersfunc.HandleMissingProjectError(rw)
+			return
+	}
 	
 	err = orderstorage.UploadOrderVideo(ctx, config.DB, orderID, VideoObj)
 
@@ -765,6 +795,27 @@ func CalculateDelivery(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleValidationError(rw, err)
         return
     }
+	if rCost.Method == "PVZ" || rCost.Method == "POSTAMAT" {
+		if rCost.Code == "" {
+			rw.WriteHeader(http.StatusOK)
+			resp := make(map[string]handlersfunc.ValidationErrorBody)
+			var errorB handlersfunc.ValidationErrorBody
+			errorB.ErrorCode = 422
+			errorB.ErrorMessage = "Validation failed"
+			out := make(map[string][]string, 1)
+			out["code"] = []string{"required"}
+			errorB.Errors = out
+			resp["error"] = errorB
+			jsonResp, err := json.Marshal(resp)
+			if err != nil {
+				log.Printf("Error happened in JSON marshal. Err: %s", err)
+				return
+			}
+			rw.Write(jsonResp)
+			return
+		}
+	}
+
 	userID := handlersfunc.UserIDContextReader(r)
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
@@ -783,8 +834,7 @@ func CalculateDelivery(rw http.ResponseWriter, r *http.Request) {
 	} else if rCost.Method == "PVZ" {
 		rApiCost.TariffCode = 138
 	}
-		
-	
+
 	toLoc.Address = rCost.Address
 	toLoc.PostalCode = rCost.PostalCode
 	toLoc.City = rCost.City

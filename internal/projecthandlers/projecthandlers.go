@@ -688,7 +688,7 @@ func LoadBackground(rw http.ResponseWriter, r *http.Request) {
 	log.Printf("Load backgrounds for user %d", userID)
 	
 	
-	
+	log.Println(requestB)
 	backgroundSet, err := objectsstorage.LoadBackgrounds(ctx, config.DB, userID, requestB.Offset, requestB.Limit, requestB.Type, requestB.IsFavourite, requestB.IsPersonal)
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
@@ -1821,20 +1821,16 @@ func AdminLoadTemplates(rw http.ResponseWriter, r *http.Request) {
 	category := r.URL.Query().Get("category")
 	size := r.URL.Query().Get("size")
 	status := r.URL.Query().Get("status")
-	var lo models.LimitOffsetSize
+	var lo models.LimitOffset
 	if status != "" {
 		requestT.Status = strings.ToUpper(r.URL.Query().Get("status"))
 	}
 
     if category != "" {
 		requestT.Category = strings.ToUpper(r.URL.Query().Get("category"))
-		lo.Category = &requestT.Category
-
 	}
 	if size != "" {
 		requestT.Size = strings.ToUpper(r.URL.Query().Get("size"))
-		lo.Size = &requestT.Size
-
 	}
 	myUrl, _ := url.Parse(r.URL.String())	
 	params, _ := url.ParseQuery(myUrl.RawQuery)

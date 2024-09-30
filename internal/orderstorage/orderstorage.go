@@ -224,13 +224,15 @@ func LoadCart(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (models.R
 	for rows.Next() {
 		var photobook models.CartObj
 		var pID uint
+		var leatherID uint
+		var category string
 		if err = rows.Scan(&pID); err != nil {
 			log.Printf("Error happened when scanning projects. Err: %s", err)
 			return responseCart, err
 		}
 		log.Println(pID)
 
-		err := storeDB.QueryRow(ctx, "SELECT name, size, variant, paper, cover, count_pages, leather_id FROM projects WHERE projects_id = ($1);", pID).Scan(&photobook.Name, &photobook.Size, &photobook.Variant, &photobook.Surface, &photobook.Cover, &photobook.CountPages, &photobook.LeatherID)
+		err := storeDB.QueryRow(ctx, "SELECT name, size, variant, paper, cover, category, count_pages, leather_id FROM projects WHERE projects_id = ($1);", pID).Scan(&photobook.Name, &photobook.Size, &photobook.Variant, &photobook.Surface, &photobook.Cover, &category, &photobook.CountPages, &leatherID)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			log.Printf("Error happened when retrieving project info from pgx table. Err: %s", err)
 			return responseCart, err
@@ -253,6 +255,13 @@ func LoadCart(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (models.R
 			log.Printf("Error happened when retrieving front page from pgx table. Err: %s", err)
 			photobook.CoverBool = false
 		}
+		if photobook.Cover == "LEATHERETTE" {
+			photobook.LeatherID = &leatherID
+		}
+		if category != "" {
+			photobook.Category = &category
+		}
+		
 		responseCart.Projects = append(responseCart.Projects, photobook)
 
 	}
@@ -275,7 +284,7 @@ func CreateOrder(ctx context.Context, storeDB *pgxpool.Pool, userID uint, order 
 			log.Printf("Error happened when updating project to published into pgx table. Err: %s", err)
 			return orderID, err
 	}
-	err = storeDB.QueryRow(ctx, "SELECT orders_id FROM orders WHERE users_id = ($1) and status = ($2) ORDER BY created_at;", userID, "AWAITING PAYMENT").Scan(&orderID)
+	err = storeDB.QueryRow(ctx, "SELECT orders_id FROM orders WHERE users_id = ($1) and status = ($2) ORDER BY created_at;", userID, "AWAITING_PAYMENT").Scan(&orderID)
 	if err == nil {
 		_, err := storeDB.Exec(ctx, "UPDATE orders SET last_updated_at = ($1) WHERE orders_id = ($2);",
 			t,
@@ -295,10 +304,10 @@ func CreateOrder(ctx context.Context, storeDB *pgxpool.Pool, userID uint, order 
 	} else if errors.Is(err, pgx.ErrNoRows) {
 		
 		err := storeDB.QueryRow(ctx, "INSERT INTO orders (status, created_at, last_updated_at, users_id) VALUES ($1, $2, $3, $4) RETURNING orders_id ;",
-		"AWAITING PAYMENT",
+		"AWAITING_PAYMENT",
 		t,
 		t,
-		order.ProjectID).Scan(&orderID)
+		userID).Scan(&orderID)
 		if err != nil {
 			log.Printf("Error happened when creating order entry into pgx table. Err: %s", err)
 			return orderID, err
@@ -434,7 +443,7 @@ func OrderPayment(ctx context.Context, storeDB *pgxpool.Pool, orderObj models.Re
 	
 	
 	err := storeDB.QueryRow(ctx, "INSERT INTO orders (status, created_at, last_updated_at, users_id, firstname, lastname, email, phone, baseprice, finalprice, promooffers_id, giftcertificates_id, package_box, giftcertificates_deposit, delivery_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING orders_id;",
-		"PAYMENTINPROGRESS",
+		"PAYMENT_IN_PROGRESS",
 		t,
 		t,
 		userID,
@@ -664,7 +673,7 @@ func RetrieveOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint, isA
 			log.Printf("Error happened when retrieving order projects from pgx table. Err: %s", err)
 			return orderset, err
 		}
-
+		orderObj.DeliveryPrice = &deliveryAmount
 		for prows.Next() {
 			var photobook models.PaidCartObj
 			var pID uint
@@ -695,9 +704,11 @@ func RetrieveOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint, isA
 		if isActive == true && orderObj.Status != "COMPLETED" && orderObj.Status != "CANCELLED" {
 			orderSlice = append(orderSlice, orderObj)
 			countActive = countActive + 1
-		} else if orderObj.Status == "COMPLETED" || orderObj.Status == "CANCELLED" {
+		} else if isActive == false {
+			if orderObj.Status == "COMPLETED" || orderObj.Status == "CANCELLED" {
 			orderSlice = append(orderSlice, orderObj)
 			countClosed= countClosed + 1
+			}
 		}
 		
 		
