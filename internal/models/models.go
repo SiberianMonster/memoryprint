@@ -274,7 +274,6 @@ type Background struct {
 }
 
 type Decoration struct {
-
 	DecorationID uint `json:"decoration_id"`
 	Link    string `json:"link" validate:"required"`
 	SmallImage    *string `json:"small_image"`
@@ -424,9 +423,9 @@ type ResponseCart struct {
 
 type RequestOrderPayment struct {
 
-	Projects    []uint     `json:"projects" validate:"required"`
+	Projects    []uint     `json:"projects" validate:"required,min=1"`
 	ContactData Contacts `json:"contact_data" validate:"required"`
-	DeliveryData Delivery `json:"delivery_data"`
+	DeliveryData Delivery `json:"delivery_data" validate:"required"`
 	PackageBox bool `json:"package_box"`
 	Giftcertificate string `json:"giftcertificate"`
 	Promocode string `json:"promocode"`
@@ -438,9 +437,9 @@ type ResponseOrderInfo struct {
 	Status string `json:"status" validate:"required"`
 	ContactData Contacts `json:"contact_data" validate:"required"`
 	DeliveryData Delivery `json:"delivery_data" validate:"required"`
-	GiftcertificateDeposit float64 `json:"giftcertificate_deposit"`
-	PromocodeDiscountPercent float64 `json:"promocode_discount_percent"`
-	Promocode string `json:"promocode"`
+	GiftcertificateDeposit *float64 `json:"giftcertificate_deposit"`
+	PromocodeDiscountPercent *float64 `json:"promocode_discount_percent", validate:"omitempty"`
+	Promocode *string `json:"promocode", validate:"omitempty"`
 	TransactionID uint `json:"transaction_id"`
 	Projects    []PreviewObject     `json:"projects" validate:"required"`
   }
@@ -454,13 +453,16 @@ type ResponseDeliveryInfo struct {
 	TrackingNumber *string `json:"tracking_number" validate:"required"`
 	DeliveryStatus *string `json:"delivery_status" validate:"required"`
 	DeliveryID *string `json:"delivery_id" validate:"required"`
-	Address *string `json:"address" validate:"required"`
-	Code *string `json:"address" validate:"required"`
+	DeliveryData ResponseDelivery `json:"delivery_data"`
 	ContactData Contacts `json:"contact_data" validate:"required"`
-	Method string `json:"method" validate:"required"`
 	ExpectedDeliveryFrom int64 `json:"expected_delivery_from" validate:"required"`
 	ExpectedDeliveryTo int64 `json:"expected_delivery_to" validate:"required"`
   }
+
+type ResponseDelivery struct {
+	Address *string `json:"address" validate:"required"`
+	Method string `json:"method" validate:"required"`
+}
 
 
 type ResponseApiDeliveryInfo struct {
@@ -491,12 +493,13 @@ type Contacts struct {
 }
 
 type Delivery struct {
-	Method string `json:"method" validate:"required"`
-	Code string `json:"code"`
+	Method string `json:"method" validate:"required,oneof=DOOR PVZ POSTAMAT"`
+	Code string `json:"code" validate:"required_unless=Method DOOR,omitempty`
 	PostalCode string `json:"postal_code" validate:"required"`
 	Address string `json:"address" validate:"required"`
-	Amount float64 `json:"amount"`
+	Amount float64 `json:"amount" validate:"required"`
 }
+
 
 type ResponsePayment struct {
 
@@ -516,7 +519,7 @@ type UpdateCover struct {
 
 type NewOrder struct {
 
-	ProjectID    uint     `json:"project_id" validate:"required`
+	ProjectID    uint     `json:"project_id" validate:"required,min=1"`
 
   }
 
@@ -745,9 +748,9 @@ type ResponseOrder struct {
 	FinalPrice *float64 `json:"final_price"`
 	DeliveryPrice *float64 `json:"delivery_price"`
 	TrackingNumber string `json:"tracking_number"`
-	PromocodeDiscountPercent *float64 `json:"promocode_discount_percent",omitempty`
-	PromocodeCategory *string `json:"promocode_category",omitempty`
-	PromocodeDiscount float64 `json:"promocode_discount",omitempty`
+	PromocodeDiscountPercent *float64 `json:"promocode_discount_percent", validate:"omitempty"`
+	PromocodeCategory *string `json:"promocode_category", validate:"omitempty"`
+	PromocodeDiscount *float64 `json:"promocode_discount"`
 	CertificateDeposit *float64 `json:"certificate_deposit"`
   }
 
@@ -770,11 +773,12 @@ type ResponseAdminOrder struct {
 	CreatedAt int64 `json:"created_at"`
 	BasePrice *float64 `json:"base_price"`
 	FinalPrice *float64 `json:"final_price"`
+	DeliveryPrice *float64 `json:"delivery_price"`
 	TrackingNumber *string `json:"tracking_number"`
 	VideoLink *string `json:"video_link"`
-	PromocodeDiscountPercent float64 `json:"promocode_discount_percent"`
-	PromocodeCategory string `json:"promocode_category"`
-	PromocodeDiscount float64 `json:"promocode_discount"`
+	PromocodeDiscountPercent *float64 `json:"promocode_discount_percent", validate:"omitempty"`
+	PromocodeCategory *string `json:"promocode_category", validate:"omitempty"`
+	PromocodeDiscount *float64 `json:"promocode_discount"`
 	CertificateDeposit *float64 `json:"certificate_deposit"`
   }
 
@@ -829,7 +833,7 @@ type UserRequestDeliveryCost struct {
 	Method string `json:"method" validate:"required,oneof=DOOR PVZ POSTAMAT"`
 	PostalCode string `json:"postal_code" validate:"required"`
 	Address string `json:"address" validate:"required"`
-	Code string `json:"code",omitempty`
+	Code string `json:"code" validate:"required_unless=Method DOOR,omitempty`
 	City string `json:"city"`
 	CountProjects int `json:"count_projects" validate:"required"`
 } 
@@ -901,6 +905,14 @@ type LimitOffsetSize struct {
 	Limit *uint `json:"limit" validate:"required"`
 	Offset *uint `json:"offset" validate:"required"`
 	Size *string `json:"size" validate:"required,oneof=SMALL_SQUARE SQUARE VERTICAL HORIZONTAL"`
+	Category *string `json:"category" validate:"omitempty,oneof=VACATION WEDDING HOLIDAYS CHILDREN ANIMALS UNIVERSAL"`
+
+}
+type LimitOffsetSizeAdmin struct {
+
+	Limit *uint `json:"limit" validate:"required"`
+	Offset *uint `json:"offset" validate:"required"`
+	Size *string `json:"size" validate:"omitempty,oneof=SMALL_SQUARE SQUARE VERTICAL HORIZONTAL"`
 	Category *string `json:"category" validate:"omitempty,oneof=VACATION WEDDING HOLIDAYS CHILDREN ANIMALS UNIVERSAL"`
 
 }

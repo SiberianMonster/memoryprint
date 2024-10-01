@@ -662,12 +662,20 @@ func RetrieveOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint, isA
 		if orderObj.BasePrice != nil {
 			baseValue = *orderObj.BasePrice
 		}
-		orderObj.PromocodeDiscount = finalValue - baseValue - certValue + deliveryAmount
-		err = storeDB.QueryRow(ctx, "SELECT discount, category FROM promooffers WHERE promooffers_id = ($1);", promooffersID).Scan(&orderObj.PromocodeDiscountPercent, &orderObj.PromocodeCategory)
+		var pdPercent float64
+		var pdCategory string
+		err = storeDB.QueryRow(ctx, "SELECT discount, category FROM promooffers WHERE promooffers_id = ($1);", promooffersID).Scan(&pdPercent, &pdCategory)
 		if err != nil && err != pgx.ErrNoRows {
 			log.Printf("Error happened when retrieving promocode data from db. Err: %s", err)
 			return orderset, err
 		}
+		if pdCategory != ""{
+			orderObj.PromocodeCategory = &pdCategory
+			orderObj.PromocodeDiscountPercent = &pdPercent
+			pDiscount := finalValue - baseValue - certValue + deliveryAmount
+			orderObj.PromocodeDiscount = &pDiscount
+		}
+
 		prows, err := storeDB.Query(ctx, "SELECT projects_id FROM orders_has_projects WHERE orders_id = ($1);", oID)
 		if err != nil {
 			log.Printf("Error happened when retrieving order projects from pgx table. Err: %s", err)
@@ -904,12 +912,21 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 		if orderObj.BasePrice != nil {
 			baseValue = *orderObj.BasePrice
 		}
-		orderObj.PromocodeDiscount = finalValue - baseValue - certValue + deliveryAmount
-		err = storeDB.QueryRow(ctx, "SELECT discount, category FROM promooffers WHERE promooffers_id = ($1);", promooffersID).Scan(&orderObj.PromocodeDiscountPercent, &orderObj.PromocodeCategory)
+		orderObj.DeliveryPrice = &deliveryAmount
+		var pdPercent float64
+		var pdCategory string
+		err = storeDB.QueryRow(ctx, "SELECT discount, category FROM promooffers WHERE promooffers_id = ($1);", promooffersID).Scan(&pdPercent, &pdCategory)
 		if err != nil && err != pgx.ErrNoRows {
 			log.Printf("Error happened when retrieving promocode data from db. Err: %s", err)
 			return orderset, err
 		}
+		if pdCategory != ""{
+			orderObj.PromocodeCategory = &pdCategory
+			orderObj.PromocodeDiscountPercent = &pdPercent
+			pDiscount := finalValue - baseValue - certValue + deliveryAmount
+			orderObj.PromocodeDiscount = &pDiscount
+		}
+
 		prows, err := storeDB.Query(ctx, "SELECT projects_id FROM orders_has_projects WHERE orders_id = ($1);", oID)
 		if err != nil {
 			log.Printf("Error happened when retrieving order projects from pgx table. Err: %s", err)
@@ -1051,30 +1068,43 @@ func LoadOrder(ctx context.Context, storeDB *pgxpool.Pool, orderID uint) (models
 	orderObj := models.ResponseOrderInfo{}
 	var contactData models.Contacts
 	var deliveryData models.Delivery
-	var deliveryID uint
-	var promocodeID uint
+	var deliveryID *uint
+	var promocodeID *uint
 
 	err := storeDB.QueryRow(ctx, "SELECT status, users_id, delivery_id, firstname, lastname, email, phone, giftcertificates_deposit, promooffers_id FROM orders WHERE orders_id = ($1);", orderID).Scan(&orderObj.Status, &orderObj.UserID, &deliveryID, &contactData.FirstName, &contactData.LastName, &contactData.Email, &contactData.Phone, &orderObj.GiftcertificateDeposit, &promocodeID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 				log.Printf("Error happened when retrieving order info from pgx table. Err: %s", err)
 				return orderObj, err
 	}
+	
 	err = storeDB.QueryRow(ctx, "SELECT transactions_id FROM orders_has_transactions WHERE orders_id = ($1) ORDER BY transactions_id;", orderID).Scan(&orderObj.TransactionID)
-	if err != nil {
+	if err != nil && err != pgx.ErrNoRows {
 		log.Printf("Error happened when retrieving transaction info from pgx table. Err: %s", err)
 		return orderObj, err
 	}
-	err = storeDB.QueryRow(ctx, "SELECT method, address, code, postal_code, amount FROM delivery WHERE delivery_id = ($1);", deliveryID).Scan(&deliveryData.Method, &deliveryData.Address, &deliveryData.Code, &deliveryData.PostalCode, &deliveryData.Amount)
-	if err != nil {
-		log.Printf("Error happened when retrieving delivery info from pgx table. Err: %s", err)
-		return orderObj, err
+	if deliveryID != nil {
+		err = storeDB.QueryRow(ctx, "SELECT method, address, code, postal_code, amount FROM delivery WHERE delivery_id = ($1);", deliveryID).Scan(&deliveryData.Method, &deliveryData.Address, &deliveryData.Code, &deliveryData.PostalCode, &deliveryData.Amount)
+		if err != nil {
+			log.Printf("Error happened when retrieving delivery info from pgx table. Err: %s", err)
+			return orderObj, err
+		}
 	}
 	
-	err = storeDB.QueryRow(ctx, "SELECT code, discount FROM promooffers WHERE promooffers_id = ($1);", promocodeID).Scan(&orderObj.Promocode, &orderObj.PromocodeDiscountPercent)
-	if err != nil {
-		log.Printf("Error happened when retrieving promooffer info from pgx table. Err: %s", err)
-		return orderObj, err
+	
+	var pdPercent float64
+	var pdCode string
+	if promocodeID != nil {
+		err = storeDB.QueryRow(ctx, "SELECT discount, code FROM promooffers WHERE promooffers_id = ($1);", promocodeID).Scan(&pdPercent, &pdCode)
+		if err != nil && err != pgx.ErrNoRows {
+			log.Printf("Error happened when retrieving promocode data from db. Err: %s", err)
+			return orderObj, err
+		}
 	}
+	if pdCode != ""{
+		orderObj.Promocode = &pdCode
+		orderObj.PromocodeDiscountPercent = &pdPercent
+	}
+
 	orderObj.ContactData = contactData
 	orderObj.DeliveryData = deliveryData
 	prows, err := storeDB.Query(ctx, "SELECT projects_id FROM orders_has_projects WHERE orders_id = ($1);", orderID)
@@ -1108,8 +1138,8 @@ func AdminLoadOrder(ctx context.Context, storeDB *pgxpool.Pool, orderID uint) (m
 	orderObj := models.ResponseOrderInfo{}
 	var contactData models.Contacts
 	var deliveryData models.Delivery
-	var deliveryID uint
-	var promoofferID uint
+	var deliveryID *uint
+	var promoofferID *uint
 
 	err := storeDB.QueryRow(ctx, "SELECT users_id, delivery_id, firstname, lastname, email, phone, giftcertificates_deposit, promooffers_id FROM orders WHERE orders_id = ($1);", orderID).Scan(&orderObj.UserID, &deliveryID, &contactData.FirstName, &contactData.LastName, &contactData.Email, &contactData.Phone, &orderObj.GiftcertificateDeposit, &promoofferID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
@@ -1118,20 +1148,24 @@ func AdminLoadOrder(ctx context.Context, storeDB *pgxpool.Pool, orderID uint) (m
 	}
 
 	err = storeDB.QueryRow(ctx, "SELECT transactions_id FROM orders_has_transactions WHERE orders_id = ($1) ORDER BY transactions_id;", orderID).Scan(&orderObj.TransactionID)
-	if err != nil {
+	if err != nil && !errors.Is(err, pgx.ErrNoRows){
 		log.Printf("Error happened when retrieving transaction info from pgx table. Err: %s", err)
 		return orderObj, err
 	}
 
-	err = storeDB.QueryRow(ctx, "SELECT method, address, amount, postal_code, code FROM delivery WHERE delivery_id = ($1);", deliveryID).Scan(&deliveryData.Method, &deliveryData.Address, &deliveryData.Amount, &deliveryData.PostalCode, &deliveryData.Code)
-	if err != nil {
-		log.Printf("Error happened when retrieving delivery info from pgx table. Err: %s", err)
-		return orderObj, err
+	if deliveryID != nil {
+		err = storeDB.QueryRow(ctx, "SELECT method, address, amount, postal_code, code FROM delivery WHERE delivery_id = ($1);", deliveryID).Scan(&deliveryData.Method, &deliveryData.Address, &deliveryData.Amount, &deliveryData.PostalCode, &deliveryData.Code)
+		if err != nil {
+			log.Printf("Error happened when retrieving delivery info from pgx table. Err: %s", err)
+			return orderObj, err
+		}
 	}
-	err = storeDB.QueryRow(ctx, "SELECT discount FROM promooffers WHERE promooffers_id = ($1);", promoofferID).Scan(&orderObj.PromocodeDiscountPercent)
-	if err != nil {
-		log.Printf("Error happened when retrieving promooffer info from pgx table. Err: %s", err)
-		return orderObj, err
+	if promoofferID != nil {
+		err = storeDB.QueryRow(ctx, "SELECT discount FROM promooffers WHERE promooffers_id = ($1);", promoofferID).Scan(&orderObj.PromocodeDiscountPercent)
+		if err != nil {
+			log.Printf("Error happened when retrieving promooffer info from pgx table. Err: %s", err)
+			return orderObj, err
+		}
 	}
 	orderObj.ContactData = contactData
 	orderObj.DeliveryData = deliveryData
@@ -1168,9 +1202,9 @@ func LoadDelivery(ctx context.Context, storeDB *pgxpool.Pool, orderID uint) (mod
 	var deliveryID uint
 	var deliveryTimeFrom *time.Time
 	var deliveryTimeTo *time.Time
-	var address *string
 	var trackingnumber *string
 	var code *string
+	var deliveryData models.ResponseDelivery
 
 	err := storeDB.QueryRow(ctx, "SELECT users_id, delivery_id, firstname, lastname, email, phone FROM orders WHERE orders_id = ($1);", orderID).Scan(&orderObj.UserID, &deliveryID, &contactData.FirstName, &contactData.LastName, &contactData.Email, &contactData.Phone)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
@@ -1178,16 +1212,13 @@ func LoadDelivery(ctx context.Context, storeDB *pgxpool.Pool, orderID uint) (mod
 				return orderObj, err
 	}
 	orderObj.ContactData = contactData
-	err = storeDB.QueryRow(ctx, "SELECT method, address, code, deliverystatus, deliveryid, trackingnumber, expected_delivery_from, expected_delivery_to FROM delivery WHERE delivery_id = ($1);", deliveryID).Scan(&orderObj.Method, &address, &code, &orderObj.DeliveryStatus, &orderObj.DeliveryID, &trackingnumber, &deliveryTimeFrom, &deliveryTimeTo)
+	err = storeDB.QueryRow(ctx, "SELECT method, address, code, deliverystatus, deliveryid, trackingnumber, expected_delivery_from, expected_delivery_to FROM delivery WHERE delivery_id = ($1);", deliveryID).Scan(&deliveryData.Method, &deliveryData.Address, &code, &orderObj.DeliveryStatus, &orderObj.DeliveryID, &trackingnumber, &deliveryTimeFrom, &deliveryTimeTo)
 	if err != nil {
 		log.Printf("Error happened when retrieving delivery info from pgx table. Err: %s", err)
 		return orderObj, err
 	}
-	if code != nil {
-		orderObj.Code = code
-	} else {
-		orderObj.Address = address
-	}
+	orderObj.DeliveryData = deliveryData
+	
 	if trackingnumber != nil {
 	   orderObj.TrackingNumber = trackingnumber
 	}

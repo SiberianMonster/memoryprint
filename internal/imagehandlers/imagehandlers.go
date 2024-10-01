@@ -346,8 +346,22 @@ func LoadImage(rw http.ResponseWriter, r *http.Request) {
 	//imageBytes = r.MultipartForm.File
 	err := r.ParseMultipartForm(32 << 20) // maxMemory 32MB
 	if err != nil {
-		rw.WriteHeader(http.StatusBadRequest)
-		return
+			rw.WriteHeader(http.StatusOK)
+			resp := make(map[string]handlersfunc.ValidationErrorBody)
+			var errorB handlersfunc.ValidationErrorBody
+			errorB.ErrorCode = 422
+			errorB.ErrorMessage = "Validation failed"
+			out := make(map[string][]string, 1)
+			out["data"] = []string{"required"}
+			errorB.Errors = out
+			resp["error"] = errorB
+			jsonResp, err := json.Marshal(resp)
+			if err != nil {
+				log.Printf("Error happened in JSON marshal. Err: %s", err)
+				return
+			}
+			rw.Write(jsonResp)
+			return
 	}
 	imageObj.Extention = r.PostFormValue("extension")
 	log.Println(imageObj.Extention)

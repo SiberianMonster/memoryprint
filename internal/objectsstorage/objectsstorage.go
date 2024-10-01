@@ -531,7 +531,7 @@ func UpdateBackground(ctx context.Context, storeDB *pgxpool.Pool, bID uint, newB
 // UpdateDecoration function performs the operation of updating decoration to the db.
 func UpdateDecoration(ctx context.Context, storeDB *pgxpool.Pool, dID uint, newD models.Decoration) ( error) {
 
-	_, err = storeDB.Exec(ctx, "UPDATE decorations SET link = ($1), small_image = ($2), category = ($3), type = ($4) WHERE decorations_id = ($5);",
+	_, err = storeDB.Exec(ctx, "UPDATE decorations SET link = ($1), small_image = ($2), type = ($3), category = ($4) WHERE decorations_id = ($5);",
 		newD.Link,
 		newD.SmallImage,
 		newD.Type,
@@ -599,14 +599,14 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 		
 		if dtype != "" {
 			if dcategory != "" {
-				rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, small_image, category, type FROM decorations WHERE category = ($1) AND type = ($2) ORDER BY decorations_id DESC LIMIT ($3) OFFSET ($4);", dtype, dcategory, limit, offset)
+				rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, small_image, category, type FROM decorations WHERE type = ($1) AND category = ($2) ORDER BY decorations_id DESC LIMIT ($3) OFFSET ($4);", dtype, dcategory, limit, offset)
 				if err != nil {
 					log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
 					return responseDecoration, err
 				}
 				defer rows.Close()
 			} else {
-				rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, small_image, category, type FROM decorations WHERE category = ($1) ORDER BY decorations_id DESC LIMIT ($2) OFFSET ($3);",  dtype, limit, offset)
+				rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, small_image, category, type FROM decorations WHERE type = ($1) ORDER BY decorations_id DESC LIMIT ($2) OFFSET ($3);",  dtype, limit, offset)
 				if err != nil {
 					log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
 					return responseDecoration, err
@@ -615,7 +615,7 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 			}
 		} else {
 			if dcategory != "" {
-				rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, small_image, category, type FROM decorations WHERE type = ($1) ORDER BY decorations_id DESC LIMIT ($2) OFFSET ($3);", dcategory, limit, offset)
+				rows, err = storeDB.Query(ctx, "SELECT decorations_id, link, small_image, category, type FROM decorations WHERE category = ($1) ORDER BY decorations_id DESC LIMIT ($2) OFFSET ($3);", dcategory, limit, offset)
 				if err != nil {
 					log.Printf("Error happened when retrieving decorations from pgx table. Err: %s", err)
 					return responseDecoration, err
@@ -626,7 +626,7 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 
 		for rows.Next() {
 			var decoration models.Decoration
-			if err = rows.Scan(&decoration.DecorationID, &decoration.Link, &decoration.SmallImage, &decoration.Type, &decoration.Category); err != nil {
+			if err = rows.Scan(&decoration.DecorationID, &decoration.Link, &decoration.SmallImage, &decoration.Category, &decoration.Type); err != nil {
 				log.Printf("Error happened when scanning decorations. Err: %s", err)
 				return responseDecoration, err
 			}
@@ -657,7 +657,7 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 					return responseDecoration, err
 				}
 			} else {
-				err := storeDB.QueryRow(ctx, "SELECT link, small_image, category, type FROM decorations WHERE decorations_id = ($1);", decoration.DecorationID).Scan(&decoration.Link, &decoration.SmallImage, &decoration.Type, &decoration.Category)
+				err := storeDB.QueryRow(ctx, "SELECT link, small_image, category, type FROM decorations WHERE decorations_id = ($1);", decoration.DecorationID).Scan(&decoration.Link, &decoration.SmallImage, &decoration.Category, &decoration.Type)
 				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 					log.Printf("Error happened when retrieving decorations from decorations table. Err: %s", err)
 					return responseDecoration, err
@@ -762,7 +762,7 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 				log.Printf("Error happened when scanning decorations. Err: %s", err)
 				return responseDecoration, err
 			}
-			err := storeDB.QueryRow(ctx, "SELECT category, type FROM decorations WHERE decorations_id = ($1);", dId).Scan(&dType, &dCategory)
+			err := storeDB.QueryRow(ctx, "SELECT type, category FROM decorations WHERE decorations_id = ($1);", dId).Scan(&dType, &dCategory)
 			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 				log.Printf("Error happened when retrieving decorations from decorations table. Err: %s", err)
 				return responseDecoration, err
@@ -808,7 +808,7 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 				log.Printf("Error happened when scanning decorations. Err: %s", err)
 				return responseDecoration, err
 			}
-			err := storeDB.QueryRow(ctx, "SELECT category, type FROM decorations WHERE decorations_id = ($1);", dId).Scan(&dType, &dCategory)
+			err := storeDB.QueryRow(ctx, "SELECT type, category FROM decorations WHERE decorations_id = ($1);", dId).Scan(&dType, &dCategory)
 			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 				log.Printf("Error happened when retrieving decorations from decorations table. Err: %s", err)
 				return responseDecoration, err
@@ -845,13 +845,13 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 		}
 		if dtype != "" {
 			if dcategory != "" {
-				err = storeDB.QueryRow(ctx, "SELECT COUNT(decorations_id) FROM decorations WHERE category = ($1) AND type = ($2);", dtype, dcategory).Scan(&countAllString)
+				err = storeDB.QueryRow(ctx, "SELECT COUNT(decorations_id) FROM decorations WHERE type = ($1) AND category = ($2);", dtype, dcategory).Scan(&countAllString)
 				if err != nil {
 					log.Printf("Error happened when counting decorations from pgx table. Err: %s", err)
 					return responseDecoration, err
 				}
 			} else {
-				err = storeDB.QueryRow(ctx, "SELECT COUNT(decorations_id) FROM decorations WHERE category = ($1);", dtype).Scan(&countAllString)
+				err = storeDB.QueryRow(ctx, "SELECT COUNT(decorations_id) FROM decorations WHERE type = ($1);", dtype).Scan(&countAllString)
 				if err != nil {
 					log.Printf("Error happened when counting decorations from pgx table. Err: %s", err)
 					return responseDecoration, err
@@ -859,7 +859,7 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 			}
 		} else {
 			if dcategory != "" {
-				err = storeDB.QueryRow(ctx, "SELECT COUNT(decorations_id) FROM decorations WHERE type = ($1);", dcategory).Scan(&countAllString)
+				err = storeDB.QueryRow(ctx, "SELECT COUNT(decorations_id) FROM decorations WHERE category = ($1);", dcategory).Scan(&countAllString)
 				if err != nil {
 					log.Printf("Error happened when counting decorations from pgx table. Err: %s", err)
 					return responseDecoration, err
@@ -877,7 +877,7 @@ func LoadDecorations(ctx context.Context, storeDB *pgxpool.Pool, userID uint, of
 func AddAdminDecoration(ctx context.Context, storeDB *pgxpool.Pool, newD models.Decoration) (uint, error) {
 
 	var dID uint
-	_, err = storeDB.Exec(ctx, "INSERT INTO decorations (link, small_image, category, type) VALUES ($1, $2, $3, $4);",
+	_, err = storeDB.Exec(ctx, "INSERT INTO decorations (link, small_image, type, category) VALUES ($1, $2, $3, $4);",
 		newD.Link,
 		newD.SmallImage,
 		newD.Type,

@@ -201,6 +201,14 @@ func OrderPayment(rw http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	userID := handlersfunc.UserIDContextReader(r)
 	log.Printf("Payment for order for user %d", userID)
+	for _, projectID := range OrderObj.Projects {
+		userCheck := userstorage.CheckUserHasProject(ctx, config.DB, userID, projectID)
+
+		if userCheck == false {
+			rw.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+	}
 	if OrderObj.Giftcertificate != "" {
 		_, status, _ := userstorage.UseCertificate(ctx, config.DB, OrderObj.Giftcertificate, userID)
 		if status == "INVALID" {
@@ -549,6 +557,12 @@ func LoadDelivery(rw http.ResponseWriter, r *http.Request) {
 	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
 	orderID := uint(aByteToInt)
 	defer r.Body.Close()
+	checkExists := orderstorage.CheckOrder(ctx, config.DB, orderID)
+	if !checkExists {
+			handlersfunc.HandleMissingProjectError(rw)
+			return
+	}
+	
 	
 	retrievedOrder, err = orderstorage.LoadDelivery(ctx, config.DB, orderID)
 	if err != nil {
@@ -583,6 +597,11 @@ func UpdateOrderStatus(rw http.ResponseWriter, r *http.Request) {
 
     // Validate the User struct
     err = validate.Struct(StatusObj)
+	if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
 
 	defer r.Body.Close()
    
@@ -669,6 +688,11 @@ func UpdateOrderCommentary(rw http.ResponseWriter, r *http.Request) {
 
     // Validate the User struct
     err = validate.Struct(CommentaryObj)
+	if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
    
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
@@ -714,6 +738,11 @@ func UploadOrderVideo(rw http.ResponseWriter, r *http.Request) {
 
     // Validate the User struct
     err = validate.Struct(VideoObj)
+	if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
    
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
