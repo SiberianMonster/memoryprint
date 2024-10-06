@@ -465,6 +465,13 @@ func OrderPayment(ctx context.Context, storeDB *pgxpool.Pool, orderObj models.Re
 	
 
 	for _, project := range orderObj.Projects {
+		_, err = storeDB.Exec(ctx, "DELETE FROM orders_has_projects WHERE projects_id=($1);",
+		project,
+		)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			log.Printf("Error happened when deleting project from orders_has_projects pgx table. Err: %s", err)
+			return depositPrice, orderID, err
+		}
         _, err = storeDB.Exec(ctx, "INSERT INTO orders_has_projects (orders_id, projects_id) VALUES ($1, $2);",
 		orderID,
 		project,

@@ -121,17 +121,18 @@ func CreateOrder(rw http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	userID := handlersfunc.UserIDContextReader(r)
 	log.Printf("Create order for user %d", userID)
-	userCheck := userstorage.CheckUserHasProject(ctx, config.DB, userID, OrderObj.ProjectID)
-
-	if userCheck == false {
-		rw.WriteHeader(http.StatusUnauthorized)
-		return
-	}
 	checkExists := orderstorage.CheckProject(ctx, config.DB, OrderObj.ProjectID)
 	if !checkExists {
 			handlersfunc.HandleMissingProjectError(rw)
 			return
 	}
+	userCheck := userstorage.CheckUserHasProject(ctx, config.DB, userID, OrderObj.ProjectID)
+
+	if userCheck == false {
+		rw.WriteHeader(http.StatusForbidden)
+		return
+	}
+
 	checkActive := orderstorage.CheckProjectPublished(ctx, config.DB, OrderObj.ProjectID)
 	if checkActive {
 			handlersfunc.HandleProjectPublished(rw)

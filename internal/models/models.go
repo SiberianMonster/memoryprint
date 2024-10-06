@@ -80,11 +80,11 @@ type GiftCertificate struct {
 	ID uint `json:"id"`
 	Code string `json:"code"`
 	Deposit      float64    `json:"deposit" validate:"required,min=1000.00,max=50000.00"`
-	Recipientemail string `json:"recipient_email" validate:"required"`
+	Recipientemail string `json:"recipient_email" validate:"required,email"`
 	Recipientname string `json:"recipient_name" validate:"required"`
 	Buyerfirstname string `json:"buyer_first_name" validate:"required"`
 	Buyerlastname string `json:"buyer_last_name" validate:"required"`
-	Buyeremail string `json:"buyer_email" validate:"required"`
+	Buyeremail string `json:"buyer_email" validate:"required,email"`
 	Buyerphone string `json:"buyer_phone" validate:"required,phone"`
 	MailAt int64 `json:"mail_at"`
 	TransactionID string `json:"transaction_id"`
@@ -425,8 +425,8 @@ type RequestOrderPayment struct {
 
 	Projects    []uint     `json:"projects" validate:"required,min=1"`
 	ContactData Contacts `json:"contact_data" validate:"required"`
-	DeliveryData Delivery `json:"delivery_data" validate:"required"`
-	PackageBox bool `json:"package_box"`
+	DeliveryData Delivery `json:"delivery_data"`
+	PackageBox bool `json:"package_box" validate:"required"`
 	Giftcertificate string `json:"giftcertificate"`
 	Promocode string `json:"promocode"`
   }
@@ -494,10 +494,10 @@ type Contacts struct {
 
 type Delivery struct {
 	Method string `json:"method" validate:"required,oneof=DOOR PVZ POSTAMAT"`
-	Code string `json:"code" validate:"required_unless=Method DOOR,omitempty`
+	Code string `json:"code",required_unless=Method DOOR,omitempty`
 	PostalCode string `json:"postal_code" validate:"required"`
 	Address string `json:"address" validate:"required"`
-	Amount float64 `json:"amount" validate:"required"`
+	Amount float64 `json:"amount"`
 }
 
 
@@ -833,7 +833,7 @@ type UserRequestDeliveryCost struct {
 	Method string `json:"method" validate:"required,oneof=DOOR PVZ POSTAMAT"`
 	PostalCode string `json:"postal_code" validate:"required"`
 	Address string `json:"address" validate:"required"`
-	Code string `json:"code" validate:"required_unless=Method DOOR,omitempty`
+	Code string `json:"code" binding:"required_unless=Method DOOR,omitempty`
 	City string `json:"city"`
 	CountProjects int `json:"count_projects" validate:"required"`
 } 
