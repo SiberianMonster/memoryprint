@@ -1011,7 +1011,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 			if createdBefore != 0 {
 				if createdAfter <= uint(orderObj.CreatedAt) && createdBefore >= uint(orderObj.CreatedAt) {
 					if isActive == true {
-						if orderObj.Status != "COMPLETED" && orderObj.Status != "CANCELLED" {
+						if orderObj.Status != "COMPLETED" && orderObj.Status != "CANCELLED" && orderObj.Status != "AWAITING_PAYMENT" {
 
 						orderSlice = append(orderSlice, orderObj)
 						}
@@ -1022,7 +1022,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 			} else {
 				if createdAfter <= uint(orderObj.CreatedAt) {
 					if isActive == true {
-						if orderObj.Status != "COMPLETED" && orderObj.Status != "CANCELLED" {
+						if orderObj.Status != "COMPLETED" && orderObj.Status != "CANCELLED" && orderObj.Status != "AWAITING_PAYMENT"  {
 							orderSlice = append(orderSlice, orderObj)
 						}
 					} else  if orderObj.Status == "COMPLETED" || orderObj.Status == "CANCELLED" {
@@ -1033,7 +1033,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 		} else if createdBefore != 0 {
 			if createdBefore >= uint(orderObj.CreatedAt) {
 				if isActive == true {
-					if orderObj.Status != "COMPLETED" && orderObj.Status != "CANCELLED" {
+					if orderObj.Status != "COMPLETED" && orderObj.Status != "CANCELLED" && orderObj.Status != "AWAITING_PAYMENT" {
 					orderSlice = append(orderSlice, orderObj)
 					}
 				} else  if orderObj.Status == "COMPLETED" || orderObj.Status == "CANCELLED" {
@@ -1042,7 +1042,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 			}
 		} else {
 			if isActive == true {
-				if orderObj.Status != "COMPLETED" && orderObj.Status != "CANCELLED" {
+				if orderObj.Status != "COMPLETED" && orderObj.Status != "CANCELLED" && orderObj.Status != "AWAITING_PAYMENT"  {
 					orderSlice = append(orderSlice, orderObj)
 				}
 			} else if orderObj.Status == "COMPLETED" || orderObj.Status == "CANCELLED" {
