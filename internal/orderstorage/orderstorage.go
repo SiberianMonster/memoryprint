@@ -834,7 +834,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 	}
 	defer rows.Close()
 	if orderID != 0 && userID != 0 && status != "" {
-		rows, err := storeDB.Query(ctx, "SELECT orders_id, users_id, commentary, status, created_at, baseprice, finalprice, videolink, delivery_id, promooffers_id, giftcertificates_id, giftcertificates_deposit FROM orders WHERE orders_id = ($1) AND users_id = ($2) AND status = ($3) ORDER BY orders_id DESC LIMIT ($4) OFFSET ($5);", orderID, userID, status, limit, offset)
+		rows, err = storeDB.Query(ctx, "SELECT orders_id, users_id, commentary, status, created_at, baseprice, finalprice, videolink, delivery_id, promooffers_id, giftcertificates_id, giftcertificates_deposit FROM orders WHERE orders_id = ($1) AND users_id = ($2) AND status = ($3) ORDER BY orders_id DESC LIMIT ($4) OFFSET ($5);", orderID, userID, status, limit, offset)
 		if err != nil && err != pgx.ErrNoRows{
 			log.Printf("Error happened when retrieving orders from pgx table. Err: %s", err)
 			return orderset, err
@@ -845,7 +845,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 		}
 		defer rows.Close()
 	} else if orderID != 0 && userID != 0 {
-		rows, err := storeDB.Query(ctx, "SELECT orders_id, users_id, commentary, status, created_at, baseprice, finalprice, videolink, delivery_id, promooffers_id, giftcertificates_id, giftcertificates_deposit FROM orders WHERE orders_id = ($1) AND users_id = ($2) ORDER BY orders_id DESC LIMIT ($3) OFFSET ($4);", orderID, userID, limit, offset)
+		rows, err = storeDB.Query(ctx, "SELECT orders_id, users_id, commentary, status, created_at, baseprice, finalprice, videolink, delivery_id, promooffers_id, giftcertificates_id, giftcertificates_deposit FROM orders WHERE orders_id = ($1) AND users_id = ($2) ORDER BY orders_id DESC LIMIT ($3) OFFSET ($4);", orderID, userID, limit, offset)
 		if err != nil && err != pgx.ErrNoRows{
 			log.Printf("Error happened when retrieving orders from pgx table. Err: %s", err)
 			return orderset, err
@@ -856,7 +856,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 		}
 		defer rows.Close()
 	} else if orderID != 0 && status != "" {
-			rows, err := storeDB.Query(ctx, "SELECT orders_id, users_id, commentary, status, created_at, baseprice, finalprice, videolink, delivery_id, promooffers_id, giftcertificates_id, giftcertificates_deposit FROM orders WHERE orders_id = ($1) AND status = ($2) ORDER BY orders_id DESC LIMIT ($3) OFFSET ($4);", orderID, status, limit, offset)
+			rows, err = storeDB.Query(ctx, "SELECT orders_id, users_id, commentary, status, created_at, baseprice, finalprice, videolink, delivery_id, promooffers_id, giftcertificates_id, giftcertificates_deposit FROM orders WHERE orders_id = ($1) AND status = ($2) ORDER BY orders_id DESC LIMIT ($3) OFFSET ($4);", orderID, status, limit, offset)
 			if err != nil && err != pgx.ErrNoRows{
 				log.Printf("Error happened when retrieving orders by status from pgx table. Err: %s", err)
 				return orderset, err
@@ -867,7 +867,8 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 			}
 			defer rows.Close()
 	} else if orderID != 0 {
-				rows, err := storeDB.Query(ctx, "SELECT orders_id, users_id, commentary, status, created_at, baseprice, finalprice, videolink, delivery_id, promooffers_id, giftcertificates_id, giftcertificates_deposit FROM orders WHERE orders_id = ($1) ORDER BY orders_id DESC LIMIT ($2) OFFSET ($3);", orderID, limit, offset)
+				log.Println("extracting by id")
+				rows, err = storeDB.Query(ctx, "SELECT orders_id, users_id, commentary, status, created_at, baseprice, finalprice, videolink, delivery_id, promooffers_id, giftcertificates_id, giftcertificates_deposit FROM orders WHERE orders_id = ($1) ORDER BY orders_id DESC LIMIT ($2) OFFSET ($3);", orderID, limit, offset)
 				if err != nil && err != pgx.ErrNoRows{
 					log.Printf("Error happened when retrieving orders from pgx table. Err: %s", err)
 					return orderset, err
@@ -879,7 +880,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 				defer rows.Close()
 			
 	} else if userID != 0 && status != "" {
-			rows, err := storeDB.Query(ctx, "SELECT orders_id, users_id, commentary, status, created_at, baseprice, finalprice, videolink, delivery_id, promooffers_id, giftcertificates_id, giftcertificates_deposit FROM orders WHERE status = ($1) AND users_id = ($2) ORDER BY orders_id DESC LIMIT ($3) OFFSET ($4);", status, userID, limit, offset)
+			rows, err = storeDB.Query(ctx, "SELECT orders_id, users_id, commentary, status, created_at, baseprice, finalprice, videolink, delivery_id, promooffers_id, giftcertificates_id, giftcertificates_deposit FROM orders WHERE status = ($1) AND users_id = ($2) ORDER BY orders_id DESC LIMIT ($3) OFFSET ($4);", status, userID, limit, offset)
 			if err != nil && err != pgx.ErrNoRows{
 				log.Printf("Error happened when retrieving orders from pgx table. Err: %s", err)
 				return orderset, err
@@ -890,7 +891,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 			}
 			defer rows.Close()
 	} else if userID != 0 {
-		rows, err := storeDB.Query(ctx, "SELECT orders_id, users_id, commentary, status, created_at, baseprice, finalprice, videolink, delivery_id, promooffers_id, giftcertificates_id, giftcertificates_deposit FROM orders WHERE users_id = ($1) ORDER BY orders_id DESC LIMIT ($2) OFFSET ($3);", userID, limit, offset)
+		rows, err = storeDB.Query(ctx, "SELECT orders_id, users_id, commentary, status, created_at, baseprice, finalprice, videolink, delivery_id, promooffers_id, giftcertificates_id, giftcertificates_deposit FROM orders WHERE users_id = ($1) ORDER BY orders_id DESC LIMIT ($2) OFFSET ($3);", userID, limit, offset)
 		if err != nil && err != pgx.ErrNoRows{
 			log.Printf("Error happened when retrieving orders from pgx table. Err: %s", err)
 			return orderset, err
@@ -901,7 +902,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 		}
 		defer rows.Close()
 	} else if status != "" {
-		rows, err := storeDB.Query(ctx, "SELECT orders_id, users_id, commentary, status, created_at, baseprice, finalprice, videolink, delivery_id, promooffers_id, giftcertificates_id, giftcertificates_deposit FROM orders WHERE status = ($1) ORDER BY orders_id DESC LIMIT ($2) OFFSET ($3);", status, limit, offset)
+		rows, err = storeDB.Query(ctx, "SELECT orders_id, users_id, commentary, status, created_at, baseprice, finalprice, videolink, delivery_id, promooffers_id, giftcertificates_id, giftcertificates_deposit FROM orders WHERE status = ($1) ORDER BY orders_id DESC LIMIT ($2) OFFSET ($3);", status, limit, offset)
 		if err != nil && err != pgx.ErrNoRows{
 			log.Printf("Error happened when retrieving orders from pgx table. Err: %s", err)
 			return orderset, err
@@ -926,6 +927,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 			log.Printf("Error happened when scanning orders. Err: %s", err)
 			return orderset, err
 		}
+		log.Println(orderObj.Status)
 		err = storeDB.QueryRow(ctx, "SELECT trackingnumber FROM delivery WHERE delivery_id = ($1);", deliveryID).Scan(&orderObj.TrackingNumber)
 		if err != nil && err != pgx.ErrNoRows {
 			log.Printf("Error happened when retrieving project data from db. Err: %s", err)
