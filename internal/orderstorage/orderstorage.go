@@ -810,6 +810,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 	log.Println(orderID)
 	log.Println(isActive)
 	log.Println(email)
+	orderset.Orders = orderSlice
 
 	if email != "" {
 		userID, err = userstorage.GetUserID(ctx, storeDB, email) 
