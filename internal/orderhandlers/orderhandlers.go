@@ -414,8 +414,8 @@ func LoadAdminOrders(rw http.ResponseWriter, r *http.Request) {
 	params, _ := url.ParseQuery(myUrl.RawQuery)
 		
 	isactive, _ := strconv.ParseBool(r.URL.Query().Get("is_active"))
-	orderID, _ := strconv.Atoi(r.URL.Query().Get("orderid"))
-	userID, _ := strconv.Atoi(r.URL.Query().Get("userid"))
+	orderID, _ := strconv.Atoi(r.URL.Query().Get("order_id"))
+	userID, _ := strconv.Atoi(r.URL.Query().Get("user_id"))
 	orderID = orderID
 	userID = userID
 	createdAfter, _ := strconv.Atoi(r.URL.Query().Get("createdafter"))
