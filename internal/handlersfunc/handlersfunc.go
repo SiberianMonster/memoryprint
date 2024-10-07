@@ -400,6 +400,9 @@ func HandleValidationError(rw http.ResponseWriter, err error) {
             for _, fe := range ve {
                 log.Println(fe.Tag())
                 out[strings.ToLower(fe.Field())] = []string{msgForTag(fe.Tag())}
+                if strings.ToLower(fe.Field()) == "phone" {
+                    out[strings.ToLower(fe.Field())] = []string{"e164"}
+                }
             }
             errorB.Errors = out
     }
