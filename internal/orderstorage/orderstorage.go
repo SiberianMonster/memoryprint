@@ -929,7 +929,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 		var promooffersID *uint
 		var giftcertificateID *uint
 
-		if err = rows.Scan(&oID, &orderObj.UserID, &orderObj.Commentary, &orderObj.Status, &createTimeStorage, &orderObj.BasePrice, &orderObj.FinalPrice, &orderObj.VideoLink, &deliveryID, &promooffersID, &giftcertificateID, &orderObj.CertificateDeposit); err != nil {
+		if err = rows.Scan(&oID, &orderObj.UserID, &orderObj.Commentary, &orderObj.Status, &createTimeStorage, &orderObj.BasePrice, &orderObj.FinalPrice, &orderObj.VideoLink, &deliveryID, &promooffersID, &giftcertificateID, &orderObj.CertificateDeposit); err != nil && err != pgx.ErrNoRows {
 			log.Printf("Error happened when scanning orders. Err: %s", err)
 			return orderset, err
 		}
