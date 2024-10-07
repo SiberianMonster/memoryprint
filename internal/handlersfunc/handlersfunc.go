@@ -403,6 +403,9 @@ func HandleValidationError(rw http.ResponseWriter, err error) {
                 if strings.ToLower(fe.Field()) == "buyerphone" {
                     out[strings.ToLower(fe.Field())] = []string{"e164"}
                 }
+                if strings.ToLower(fe.Field()) == "phone" {
+                    out[strings.ToLower(fe.Field())] = []string{"e164"}
+                }
             }
             errorB.Errors = out
     }
