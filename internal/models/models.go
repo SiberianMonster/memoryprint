@@ -423,7 +423,7 @@ type ResponseCart struct {
 
 type RequestOrderPayment struct {
 
-	Projects    []uint     `json:"projects" validate:"required,min=1"`
+	Projects    []uint     `json:"projects" validate:"required,dive,min=1"`
 	ContactData Contacts `json:"contact_data" validate:"required"`
 	DeliveryData Delivery `json:"delivery_data"`
 	PackageBox bool `json:"package_box" validate:"required"`
@@ -833,7 +833,7 @@ type UserRequestDeliveryCost struct {
 	Method string `json:"method" validate:"required,oneof=DOOR PVZ POSTAMAT"`
 	PostalCode string `json:"postal_code" validate:"required"`
 	Address string `json:"address" validate:"required"`
-	Code string `json:"code" binding:"required_unless=Method DOOR,omitempty`
+	Code string `json:"code" binding:"required_unless=Method DOOR`
 	City string `json:"city"`
 	CountProjects int `json:"count_projects" validate:"required"`
 } 

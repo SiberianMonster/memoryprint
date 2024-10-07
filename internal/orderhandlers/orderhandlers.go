@@ -206,7 +206,7 @@ func OrderPayment(rw http.ResponseWriter, r *http.Request) {
 		userCheck := userstorage.CheckUserHasProject(ctx, config.DB, userID, projectID)
 
 		if userCheck == false {
-			rw.WriteHeader(http.StatusUnauthorized)
+			rw.WriteHeader(http.StatusForbidden)
 			return
 		}
 	}
@@ -418,8 +418,8 @@ func LoadAdminOrders(rw http.ResponseWriter, r *http.Request) {
 	userID, _ := strconv.Atoi(r.URL.Query().Get("user_id"))
 	orderID = orderID
 	userID = userID
-	createdAfter, _ := strconv.Atoi(r.URL.Query().Get("createdafter"))
-	createdBefore, _ := strconv.Atoi(r.URL.Query().Get("createdbefore"))
+	createdAfter, _ := strconv.Atoi(r.URL.Query().Get("created_after"))
+	createdBefore, _ := strconv.Atoi(r.URL.Query().Get("created_before"))
 	createdAfter = createdAfter
 	createdBefore = createdBefore
 	email := r.URL.Query().Get("email")
