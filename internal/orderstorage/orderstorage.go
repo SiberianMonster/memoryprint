@@ -1091,6 +1091,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 					log.Printf("Error happened when counting orders in pgx table. Err: %s", err)
 					return orderset, err
 			}
+			log.Println(countAllString)
 
 			if orderID != 0 && userID != 0 && status != "" {
 				err = storeDB.QueryRow(ctx, "SELECT COUNT(orders_id) FROM orders WHERE orders_id = ($1) AND users_id = ($2) AND status = ($3) AND status IN ('PAYMENT_IN_PROGRESS', 'PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY');", orderID, userID, status).Scan(&countAllString)
