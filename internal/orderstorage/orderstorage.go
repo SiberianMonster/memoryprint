@@ -1194,6 +1194,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 		}
 
 			
+		log.Println(countAllString)
 		orderset.CountAll, _ = strconv.Atoi(countAllString)
 	}
 		
