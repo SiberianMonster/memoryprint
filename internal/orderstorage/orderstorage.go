@@ -919,7 +919,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 		}
 		defer rows.Close()
 	}
-
+	log.Println("string1")
 	for rows.Next() {
 
 		var orderObj models.ResponseAdminOrder
@@ -1076,10 +1076,6 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 		
 	}
 
-	if err != pgx.ErrNoRows && err != nil {
-		log.Printf("Error happened when retrieving orders from pgx table. Err: %s", err)
-		return orderset, err
-	}
 	orderset.Orders = orderSlice
 	var countAllString string
 	log.Println("string")
