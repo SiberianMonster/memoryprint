@@ -1015,6 +1015,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 			photobook.ProjectID = pID
 
 			orderObj.Projects = append(orderObj.Projects, photobook)
+		}
 		defer prows.Close()
 		
 		if createdAfter != 0 {
@@ -1070,12 +1071,10 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 			}
 			
 		}
-		}
-		defer rows.Close()
-		
+			
 		
 	}
-
+	
 	orderset.Orders = orderSlice
 	var countAllString string
 	log.Println("string")
