@@ -1070,7 +1070,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 			}
 			
 		}
-		
+		}
 		defer rows.Close()
 		
 		
@@ -1196,7 +1196,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 		orderset.CountAll, _ = strconv.Atoi(countAllString)
 	}
 		
-	}
+	
 	return orderset, nil
 }
 
