@@ -1082,6 +1082,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 	}
 	orderset.Orders = orderSlice
 	var countAllString string
+	log.Println("string")
 	if createdCounter != 0 {
 		orderset.CountAll = createdCounter
 	} else {
