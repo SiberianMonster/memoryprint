@@ -624,7 +624,7 @@ func RetrieveOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint, isA
 	orderset := models.ResponseOrders{}
 
 	rows, err := storeDB.Query(ctx, "SELECT orders_id, status, created_at, baseprice, finalprice, delivery_id, promooffers_id, giftcertificates_id, giftcertificates_deposit FROM orders WHERE users_id = ($1) ORDER BY orders_id DESC LIMIT ($2) OFFSET ($3);", userID, limit, offset)
-	if err != nil {
+	if err != nil && err != pgx.ErrNoRows {
 		log.Printf("Error happened when retrieving orders from pgx table. Err: %s", err)
 		return orderset, err
 	}
