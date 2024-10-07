@@ -732,16 +732,22 @@ func RetrieveOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint, isA
 		
 	}
 
-	if err = rows.Err(); err != nil {
-		log.Printf("Error happened when retrieving orders from pgx table. Err: %s", err)
-		return orderset, err
-	}
 	orderset.Orders = orderSlice
+	var countAllString string
 	if isActive == true {
-		orderset.CountAll = countActive
+		err = storeDB.QueryRow(ctx, "SELECT COUNT(orders_id) FROM orders WHERE users_id = ($1) AND status IN ('PAYMENT_IN_PROGRESS', 'PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY');", userID).Scan(&countAllString)
+		if err != nil && err != pgx.ErrNoRows{
+							log.Printf("Error happened when counting orders in pgx table. Err: %s", err)
+							return orderset, err
+		}
 	} else {
-		orderset.CountAll = countClosed
+		err = storeDB.QueryRow(ctx, "SELECT COUNT(orders_id) FROM orders WHERE users_id = ($1) AND status IN ('COMPLETED', 'CANCELLED');", userID).Scan(&countAllString)
+		if err != nil && err != pgx.ErrNoRows{
+							log.Printf("Error happened when counting orders in pgx table. Err: %s", err)
+							return orderset, err
+		}
 	}
+	orderset.CountAll, _ = strconv.Atoi(countAllString)
 		
 	return orderset, nil
 
