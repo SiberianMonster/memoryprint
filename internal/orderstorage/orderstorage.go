@@ -831,10 +831,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 		log.Printf("Error happened when retrieving orders from pgx table. Err: %s", err)
 		return orderset, err
 	}
-	if err == pgx.ErrNoRows {
-		log.Printf("Error happened when retrieving orders from pgx table. Err: %s", err)
-		return orderset, nil
-	}
+
 	defer rows.Close()
 	if orderID != 0 && userID != 0 && status != "" {
 		rows, err = storeDB.Query(ctx, "SELECT orders_id, users_id, commentary, status, created_at, baseprice, finalprice, videolink, delivery_id, promooffers_id, giftcertificates_id, giftcertificates_deposit FROM orders WHERE orders_id = ($1) AND users_id = ($2) AND status = ($3) ORDER BY orders_id DESC LIMIT ($4) OFFSET ($5);", orderID, userID, status, limit, offset)
