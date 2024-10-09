@@ -838,20 +838,20 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 
 	}
 	if createdAfter != 0 {
-		BASE_QUERY_STRING = BASE_QUERY_STRING + " AND created_at >= " + fmt.Sprintf("%d", createdAfter)
-		COUNT_QUERY_STRING = COUNT_QUERY_STRING + " AND created_at >= " + fmt.Sprintf("%d", createdAfter)
+		BASE_QUERY_STRING = BASE_QUERY_STRING + " AND created_at >= " + time.Unix(int64(createdAfter), 0).Format("2006-01-02 15:04:05")
+		COUNT_QUERY_STRING = COUNT_QUERY_STRING + " AND created_at >= " + time.Unix(int64(createdAfter), 0).Format("2006-01-02 15:04:05")
 	}
 	if createdBefore != 0 {
-		BASE_QUERY_STRING = BASE_QUERY_STRING + " AND created_at <= " + fmt.Sprintf("%d", createdBefore)
-		COUNT_QUERY_STRING = COUNT_QUERY_STRING + " AND created_at <= " + fmt.Sprintf("%d", createdBefore)
+		BASE_QUERY_STRING = BASE_QUERY_STRING + " AND created_at <= " + time.Unix(int64(createdBefore), 0).Format("2006-01-02 15:04:05")
+		COUNT_QUERY_STRING = COUNT_QUERY_STRING + " AND created_at <= " + time.Unix(int64(createdBefore), 0).Format("2006-01-02 15:04:05")
 	}
 	if orderID != 0 {
 		BASE_QUERY_STRING = BASE_QUERY_STRING + " AND orders_id = " + fmt.Sprintf("%d", orderID)
-		COUNT_QUERY_STRING = COUNT_QUERY_STRING + " AND created_at <= " + fmt.Sprintf("%d", orderID)
+		COUNT_QUERY_STRING = COUNT_QUERY_STRING + " AND orders_id <= " + fmt.Sprintf("%d", orderID)
 	}
 	if userID != 0 {
 		BASE_QUERY_STRING = BASE_QUERY_STRING + " AND users_id = " + fmt.Sprintf("%d", userID)
-		COUNT_QUERY_STRING = COUNT_QUERY_STRING + " AND created_at <= " + fmt.Sprintf("%d", userID)
+		COUNT_QUERY_STRING = COUNT_QUERY_STRING + " AND users_id <= " + fmt.Sprintf("%d", userID)
 	}
 	if status != "" {
 		BASE_QUERY_STRING = BASE_QUERY_STRING + " AND status = " + status
@@ -859,6 +859,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 	}
 
 	queryString := BASE_QUERY_STRING + " ORDER BY orders_id DESC LIMIT ($1) OFFSET ($2);"
+	log.Println(queryString)
 	countString := COUNT_QUERY_STRING + ";"
 	rows, err = storeDB.Query(ctx, queryString, limit, offset)
 	if err != nil && err != pgx.ErrNoRows{
