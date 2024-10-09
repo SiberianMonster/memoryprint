@@ -198,7 +198,7 @@ func OrderPayment(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleValidationError(rw, err)
         return
     }
-	deliveryObj = OrderObj.DeliveryData
+	deliveryObj := OrderObj.DeliveryData
 
 	if deliveryObj.Method == "PVZ" || deliveryObj.Method == "POSTAMAT" {
 		if deliveryObj.Code == "" {
