@@ -640,8 +640,9 @@ func RetrieveOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint, isA
 		var deliveryID *uint
 		var promooffersID *uint
 		var giftcertificateID *uint
+		var certificateDeposit *float64
 
-		if err = rows.Scan(&oID, &orderObj.Status, &createTimeStorage, &orderObj.BasePrice, &orderObj.FinalPrice, &deliveryID, &promooffersID, &giftcertificateID, &orderObj.CertificateDeposit); err != nil {
+		if err = rows.Scan(&oID, &orderObj.Status, &createTimeStorage, &orderObj.BasePrice, &orderObj.FinalPrice, &deliveryID, &promooffersID, &giftcertificateID, &certificateDeposit); err != nil {
 			log.Printf("Error happened when scanning orders. Err: %s", err)
 			return orderset, err
 		}
@@ -657,6 +658,12 @@ func RetrieveOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint, isA
 		
 		orderObj.OrderID = oID
 		orderObj.CreatedAt = createTimeStorage.Unix()
+		if certificateDeposit != nil {
+			if *certificateDeposit != float64(0.0) {
+				orderObj.CertificateDeposit = certificateDeposit
+			} 
+			
+		}
 		var certValue float64
 		if orderObj.CertificateDeposit != nil {
 			certValue = *orderObj.CertificateDeposit
@@ -928,8 +935,9 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 		var deliveryID *uint
 		var promooffersID *uint
 		var giftcertificateID *uint
+		var certificateDeposit *float64
 
-		if err = rows.Scan(&oID, &orderObj.UserID, &orderObj.Commentary, &orderObj.Status, &createTimeStorage, &orderObj.BasePrice, &orderObj.FinalPrice, &orderObj.VideoLink, &deliveryID, &promooffersID, &giftcertificateID, &orderObj.CertificateDeposit); err != nil && err != pgx.ErrNoRows {
+		if err = rows.Scan(&oID, &orderObj.UserID, &orderObj.Commentary, &orderObj.Status, &createTimeStorage, &orderObj.BasePrice, &orderObj.FinalPrice, &orderObj.VideoLink, &deliveryID, &promooffersID, &giftcertificateID, &certificateDeposit); err != nil && err != pgx.ErrNoRows {
 			log.Printf("Error happened when scanning orders. Err: %s", err)
 			return orderset, err
 		}
@@ -949,6 +957,12 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 		orderObj.OrderID = oID
 		orderObj.CreatedAt = createTimeStorage.Unix()
 		var deliveryAmount float64
+		if certificateDeposit != nil {
+			if *certificateDeposit != float64(0.0) {
+				orderObj.CertificateDeposit = certificateDeposit
+			} 
+			
+		}
 		if orderObj.Status == "IN_DELIVERY" {
 			err = storeDB.QueryRow(ctx, "SELECT trackingnumber, amount FROM delivery WHERE delivery_id = ($1);", deliveryID).Scan(&orderObj.TrackingNumber, &deliveryAmount)
 			if err != nil && err != pgx.ErrNoRows {
