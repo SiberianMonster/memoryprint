@@ -838,12 +838,12 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 
 	}
 	if createdAfter != 0 {
-		BASE_QUERY_STRING = BASE_QUERY_STRING + " AND created_at >= " + time.Unix(int64(createdAfter), 0).Format("2006-01-02 15:04:05")
-		COUNT_QUERY_STRING = COUNT_QUERY_STRING + " AND created_at >= " + time.Unix(int64(createdAfter), 0).Format("2006-01-02 15:04:05")
+		BASE_QUERY_STRING = BASE_QUERY_STRING + " AND created_at >= '" + time.Unix(int64(createdAfter), 0).Format("2006-01-02 15:04:05") + "'"
+		COUNT_QUERY_STRING = COUNT_QUERY_STRING + " AND created_at >= " + time.Unix(int64(createdAfter), 0).Format("2006-01-02 15:04:05") + "'"
 	}
 	if createdBefore != 0 {
-		BASE_QUERY_STRING = BASE_QUERY_STRING + " AND created_at <= " + time.Unix(int64(createdBefore), 0).Format("2006-01-02 15:04:05")
-		COUNT_QUERY_STRING = COUNT_QUERY_STRING + " AND created_at <= " + time.Unix(int64(createdBefore), 0).Format("2006-01-02 15:04:05")
+		BASE_QUERY_STRING = BASE_QUERY_STRING + " AND created_at <= '" + time.Unix(int64(createdBefore), 0).Format("2006-01-02 15:04:05") + "'"
+		COUNT_QUERY_STRING = COUNT_QUERY_STRING + " AND created_at <= '" + time.Unix(int64(createdBefore), 0).Format("2006-01-02 15:04:05") + "'"
 	}
 	if orderID != 0 {
 		BASE_QUERY_STRING = BASE_QUERY_STRING + " AND orders_id = " + fmt.Sprintf("%d", orderID)
