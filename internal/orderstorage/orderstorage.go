@@ -679,7 +679,7 @@ func RetrieveOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint, isA
 		if pdCategory != ""{
 			orderObj.PromocodeCategory = &pdCategory
 			orderObj.PromocodeDiscountPercent = &pdPercent
-			pDiscount := finalValue - baseValue - certValue + deliveryAmount
+			pDiscount := -(finalValue - baseValue - certValue + deliveryAmount)
 			orderObj.PromocodeDiscount = &pDiscount
 		}
 
@@ -980,7 +980,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 		if pdCategory != ""{
 			orderObj.PromocodeCategory = &pdCategory
 			orderObj.PromocodeDiscountPercent = &pdPercent
-			pDiscount := finalValue - baseValue - certValue + deliveryAmount
+			pDiscount := -(finalValue - baseValue - certValue + deliveryAmount)
 			orderObj.PromocodeDiscount = &pDiscount
 		}
 

@@ -322,7 +322,7 @@ type Page struct {
 	Sort uint `json:"sort"`
 	CreatingImageLink *string `json:"creating_image_link"`
 	PreviewImageLink *string `json:"preview_image_link"`
-	Data        json.RawMessage      `json:"data"`
+	Data        *string      `json:"data"`
 	UsedPhotoIDs []uint `json:"used_photo_ids"`
 	
   }
@@ -423,9 +423,9 @@ type ResponseCart struct {
 
 type RequestOrderPayment struct {
 
-	Projects    []uint     `json:"projects" validate:"required,dive,min=1"`
+	Projects    []uint     `json:"projects" validate:"required,min=1,dive,min=1"`
 	ContactData Contacts `json:"contact_data" validate:"required"`
-	DeliveryData Delivery `json:"delivery_data"`
+	DeliveryData Delivery `json:"delivery_data" validate:"required"`
 	PackageBox bool `json:"package_box" validate:"required"`
 	Giftcertificate string `json:"giftcertificate"`
 	Promocode string `json:"promocode"`

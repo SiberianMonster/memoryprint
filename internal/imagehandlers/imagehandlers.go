@@ -351,8 +351,7 @@ func LoadImage(rw http.ResponseWriter, r *http.Request) {
 			var errorB handlersfunc.ValidationErrorBody
 			errorB.ErrorCode = 422
 			errorB.ErrorMessage = "Validation failed"
-			out := make(map[string][]string, 1)
-			out["data"] = []string{"required"}
+			out := map[string][]string{} 
 			errorB.Errors = out
 			resp["error"] = errorB
 			jsonResp, err := json.Marshal(resp)

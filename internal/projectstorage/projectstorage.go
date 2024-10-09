@@ -6,7 +6,6 @@ package projectstorage
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"github.com/SiberianMonster/memoryprint/internal/models"
 	"github.com/SiberianMonster/memoryprint/internal/config"
@@ -870,18 +869,12 @@ func RetrieveProjectPages(ctx context.Context, storeDB *pgxpool.Pool, projectID 
 
 	for rows.Next() {
 		var page models.Page
-		var strdata *string
 		
-		if err = rows.Scan(&page.PageID, &page.Type, &page.Sort, &page.CreatingImageLink, &page.PreviewImageLink, &strdata); err != nil {
+		if err = rows.Scan(&page.PageID, &page.Type, &page.Sort, &page.CreatingImageLink, &page.PreviewImageLink, &page.Data); err != nil {
 			log.Printf("Error happened when scanning pages. Err: %s", err)
 			return nil, err
 		}
 
-		if strdata != nil{
-			page.Data = json.RawMessage(*strdata)
-		} else {
-			page.Data = nil
-		}
 		log.Println(page)
 		page.UsedPhotoIDs = []uint{}
 		photorows, err := storeDB.Query(ctx, "SELECT photos_id FROM page_has_photos WHERE pages_id = ($1);", page.PageID)
