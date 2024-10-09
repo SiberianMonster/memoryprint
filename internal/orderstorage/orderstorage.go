@@ -735,7 +735,7 @@ func RetrieveOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint, isA
 	orderset.Orders = orderSlice
 	var countAllString string
 	if isActive == true {
-		err = storeDB.QueryRow(ctx, "SELECT COUNT(orders_id) FROM orders WHERE users_id = ($1) AND status IN ('PAYMENT_IN_PROGRESS', 'PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY');", userID).Scan(&countAllString)
+		err = storeDB.QueryRow(ctx, "SELECT COUNT(orders_id) FROM orders WHERE users_id = ($1) AND status IN ('AWAITING_PAYMENT', 'PAYMENT_IN_PROGRESS', 'PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY');", userID).Scan(&countAllString)
 		if err != nil && err != pgx.ErrNoRows{
 							log.Printf("Error happened when counting orders in pgx table. Err: %s", err)
 							return orderset, err
@@ -1025,7 +1025,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 				log.Println(uint(orderObj.CreatedAt))
 				if createdAfter <= uint(orderObj.CreatedAt) && createdBefore >= uint(orderObj.CreatedAt) {
 					if isActive == true {
-						if orderObj.Status != "COMPLETED" && orderObj.Status != "CANCELLED" && orderObj.Status != "AWAITING_PAYMENT" {
+						if orderObj.Status != "COMPLETED" && orderObj.Status != "CANCELLED" {
 
 						orderSlice = append(orderSlice, orderObj)
 						createdCounter = createdCounter + 1
@@ -1038,7 +1038,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 			} else {
 				if createdAfter <= uint(orderObj.CreatedAt) {
 					if isActive == true {
-						if orderObj.Status != "COMPLETED" && orderObj.Status != "CANCELLED" && orderObj.Status != "AWAITING_PAYMENT"  {
+						if orderObj.Status != "COMPLETED" && orderObj.Status != "CANCELLED" {
 							orderSlice = append(orderSlice, orderObj)
 							createdCounter = createdCounter + 1
 						}
@@ -1052,7 +1052,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 			if createdBefore >= uint(orderObj.CreatedAt) {
 				log.Println(email)
 				if isActive == true {
-					if orderObj.Status != "COMPLETED" && orderObj.Status != "CANCELLED" && orderObj.Status != "AWAITING_PAYMENT" {
+					if orderObj.Status != "COMPLETED" && orderObj.Status != "CANCELLED"  {
 					orderSlice = append(orderSlice, orderObj)
 					createdCounter = createdCounter + 1
 					}
@@ -1063,7 +1063,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 			}
 		} else {
 			if isActive == true {
-				if orderObj.Status != "COMPLETED" && orderObj.Status != "CANCELLED" && orderObj.Status != "AWAITING_PAYMENT"  {
+				if orderObj.Status != "COMPLETED" && orderObj.Status != "CANCELLED"  {
 					orderSlice = append(orderSlice, orderObj)
 				}
 			} else if orderObj.Status == "COMPLETED" || orderObj.Status == "CANCELLED" {
@@ -1082,7 +1082,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 		orderset.CountAll = createdCounter
 	} else {
 		if isActive == true {
-			err = storeDB.QueryRow(ctx, "SELECT COUNT(orders_id) FROM orders WHERE status IN ('PAYMENT_IN_PROGRESS', 'PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY');").Scan(&countAllString)
+			err = storeDB.QueryRow(ctx, "SELECT COUNT(orders_id) FROM orders WHERE status IN ('AWAITING_PAYMENT', 'PAYMENT_IN_PROGRESS', 'PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY');").Scan(&countAllString)
 			if err != nil && err != pgx.ErrNoRows{
 					log.Printf("Error happened when counting orders in pgx table. Err: %s", err)
 					return orderset, err
@@ -1090,38 +1090,38 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 			log.Println(countAllString)
 
 			if orderID != 0 && userID != 0 && status != "" {
-				err = storeDB.QueryRow(ctx, "SELECT COUNT(orders_id) FROM orders WHERE orders_id = ($1) AND users_id = ($2) AND status = ($3) AND status IN ('PAYMENT_IN_PROGRESS', 'PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY');", orderID, userID, status).Scan(&countAllString)
+				err = storeDB.QueryRow(ctx, "SELECT COUNT(orders_id) FROM orders WHERE orders_id = ($1) AND users_id = ($2) AND status = ($3) AND status IN ('AWAITING_PAYMENT', 'PAYMENT_IN_PROGRESS', 'PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY');", orderID, userID, status).Scan(&countAllString)
 				if err != nil && err != pgx.ErrNoRows{
 					log.Printf("Error happened when counting orders in pgx table. Err: %s", err)
 					return orderset, err
 				}
 			} else if orderID != 0 && status != "" {
-					err = storeDB.QueryRow(ctx, "SELECT COUNT(orders_id) FROM orders WHERE orders_id = ($1) AND status = ($2) AND status IN ('PAYMENT_IN_PROGRESS', 'PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY');", orderID, status).Scan(&countAllString)
+					err = storeDB.QueryRow(ctx, "SELECT COUNT(orders_id) FROM orders WHERE orders_id = ($1) AND status = ($2) AND status IN ('AWAITING_PAYMENT', 'PAYMENT_IN_PROGRESS', 'PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY');", orderID, status).Scan(&countAllString)
 					if err != nil && err != pgx.ErrNoRows{
 						log.Printf("Error happened when counting orders in pgx table. Err: %s", err)
 						return orderset, err
 					}
 			} else if userID != 0 && status != "" {
-						err = storeDB.QueryRow(ctx, "SELECT COUNT(orders_id) FROM orders WHERE status = ($1) AND users_id = ($2) AND status IN ('PAYMENT_IN_PROGRESS', 'PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY');", status, userID).Scan(&countAllString)
+						err = storeDB.QueryRow(ctx, "SELECT COUNT(orders_id) FROM orders WHERE status = ($1) AND users_id = ($2) AND status IN ('AWAITING_PAYMENT', 'PAYMENT_IN_PROGRESS', 'PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY');", status, userID).Scan(&countAllString)
 						if err != nil && err != pgx.ErrNoRows{
 							log.Printf("Error happened when counting orders in pgx table. Err: %s", err)
 							return orderset, err
 						}
 			} else if status != "" {
-							err = storeDB.QueryRow(ctx, "SELECT COUNT(orders_id) FROM orders WHERE status = ($1) AND status IN ('PAYMENT_IN_PROGRESS', 'PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY');", status).Scan(&countAllString)
+							err = storeDB.QueryRow(ctx, "SELECT COUNT(orders_id) FROM orders WHERE status = ($1) AND status IN ('AWAITING_PAYMENT', 'PAYMENT_IN_PROGRESS', 'PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY');", status).Scan(&countAllString)
 							if err != nil && err != pgx.ErrNoRows{
 								log.Printf("Error happened when counting orders in pgx table. Err: %s", err)
 								return orderset, err
 							}
 			} else if orderID != 0 && userID != 0 {
-				err = storeDB.QueryRow(ctx, "SELECT COUNT(orders_id) FROM orders WHERE orders_id = ($1) AND users_id = ($2) AND status IN ('PAYMENT_IN_PROGRESS', 'PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY');", orderID, userID).Scan(&countAllString)
+				err = storeDB.QueryRow(ctx, "SELECT COUNT(orders_id) FROM orders WHERE orders_id = ($1) AND users_id = ($2) AND status IN ('AWAITING_PAYMENT', 'PAYMENT_IN_PROGRESS', 'PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY');", orderID, userID).Scan(&countAllString)
 				if err != nil && err != pgx.ErrNoRows{
 					log.Printf("Error happened when counting orders in pgx table. Err: %s", err)
 					return orderset, err
 				}
 
 			} else if orderID != 0 {
-						err = storeDB.QueryRow(ctx, "SELECT COUNT(orders_id) FROM orders WHERE orders_id = ($1) AND status IN ('PAYMENT_IN_PROGRESS', 'PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY');", orderID).Scan(&countAllString)
+						err = storeDB.QueryRow(ctx, "SELECT COUNT(orders_id) FROM orders WHERE orders_id = ($1) AND status IN ('AWAITING_PAYMENT', 'PAYMENT_IN_PROGRESS', 'PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY');", orderID).Scan(&countAllString)
 						if err != nil && err != pgx.ErrNoRows{
 							log.Printf("Error happened when counting orders in pgx table. Err: %s", err)
 							return orderset, err
@@ -1129,7 +1129,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 					
 
 			} else if userID != 0 {
-				err = storeDB.QueryRow(ctx, "SELECT COUNT(orders_id) FROM orders WHERE users_id = ($1) AND status IN ('PAYMENT_IN_PROGRESS', 'PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY');", userID).Scan(&countAllString)
+				err = storeDB.QueryRow(ctx, "SELECT COUNT(orders_id) FROM orders WHERE users_id = ($1) AND status IN ('AWAITING_PAYMENT', 'PAYMENT_IN_PROGRESS', 'PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY');", userID).Scan(&countAllString)
 				if err != nil && err != pgx.ErrNoRows{
 					log.Printf("Error happened when counting orders in pgx table. Err: %s", err)
 					return orderset, err
