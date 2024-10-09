@@ -198,6 +198,28 @@ func OrderPayment(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleValidationError(rw, err)
         return
     }
+	deliveryObj = OrderObj.DeliveryData
+
+	if deliveryObj.Method == "PVZ" || deliveryObj.Method == "POSTAMAT" {
+		if deliveryObj.Code == "" {
+			rw.WriteHeader(http.StatusOK)
+			resp := make(map[string]handlersfunc.ValidationErrorBody)
+			var errorB handlersfunc.ValidationErrorBody
+			errorB.ErrorCode = 422
+			errorB.ErrorMessage = "Validation failed"
+			out := make(map[string][]string, 1)
+			out["code"] = []string{"required"}
+			errorB.Errors = out
+			resp["error"] = errorB
+			jsonResp, err := json.Marshal(resp)
+			if err != nil {
+				log.Printf("Error happened in JSON marshal. Err: %s", err)
+				return
+			}
+			rw.Write(jsonResp)
+			return
+		}
+	}
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
 	userID := handlersfunc.UserIDContextReader(r)
