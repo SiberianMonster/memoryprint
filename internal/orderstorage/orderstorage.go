@@ -706,6 +706,7 @@ func RetrieveOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint, isA
 			return orderset, err
 		}
 		orderObj.DeliveryPrice = &deliveryAmount
+		orderObj.Projects = []models.PaidCartObj{}
 		for prows.Next() {
 			var photobook models.PaidCartObj
 			var pID uint
@@ -733,7 +734,11 @@ func RetrieveOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint, isA
 		}
 		defer prows.Close()
 		log.Println(orderObj)
-		orderSlice = append(orderSlice, orderObj)		
+		if len(orderObj.Projects) >= 1 {
+			orderSlice = append(orderSlice, orderObj)
+		}
+
+				
 		
 	}
 
@@ -771,7 +776,6 @@ func RetrieveSingleOrder(ctx context.Context, storeDB *pgxpool.Pool, orderID uin
 			log.Printf("Error happened when retrieving order projects from pgx table. Err: %s", err)
 			return orderObj, err
 	}
-
 	for prows.Next() {
 			var photobook models.PaidCartObj
 			var pID uint
@@ -834,7 +838,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 
 	if isActive == true { 
 		BASE_QUERY_STRING = "SELECT orders_id, users_id, commentary, status, created_at, baseprice, finalprice, videolink, delivery_id, promooffers_id, giftcertificates_id, giftcertificates_deposit FROM orders WHERE status IN ('AWAITING_PAYMENT', 'PAYMENT_IN_PROGRESS', 'PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY')"
-		COUNT_QUERY_STRING = "SELECT COUNT(orders_id) FROM orders WHERE status IN ('AWAITING_PAYMENT', 'PAYMENT_IN_PROGRESS', 'PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY')"
+		COUNT_QUERY_STRING = "SELECT COUNT(orders_id) FROM orders WHERE status IN ('PAYMENT_IN_PROGRESS', 'PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY')"
 
 	}
 	if createdAfter != 0 {
@@ -847,15 +851,15 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 	}
 	if orderID != 0 {
 		BASE_QUERY_STRING = BASE_QUERY_STRING + " AND orders_id = " + fmt.Sprintf("%d", orderID)
-		COUNT_QUERY_STRING = COUNT_QUERY_STRING + " AND orders_id <= " + fmt.Sprintf("%d", orderID)
+		COUNT_QUERY_STRING = COUNT_QUERY_STRING + " AND orders_id = " + fmt.Sprintf("%d", orderID)
 	}
 	if userID != 0 {
 		BASE_QUERY_STRING = BASE_QUERY_STRING + " AND users_id = " + fmt.Sprintf("%d", userID)
-		COUNT_QUERY_STRING = COUNT_QUERY_STRING + " AND users_id <= " + fmt.Sprintf("%d", userID)
+		COUNT_QUERY_STRING = COUNT_QUERY_STRING + " AND users_id = " + fmt.Sprintf("%d", userID)
 	}
 	if status != "" {
-		BASE_QUERY_STRING = BASE_QUERY_STRING + " AND status = " + status
-		COUNT_QUERY_STRING = COUNT_QUERY_STRING + " AND status = " + status
+		BASE_QUERY_STRING = BASE_QUERY_STRING + " AND status = '" + status + "'"
+		COUNT_QUERY_STRING = COUNT_QUERY_STRING + " AND status = '" + status + "'"
 	}
 
 	queryString := BASE_QUERY_STRING + " ORDER BY orders_id DESC LIMIT ($1) OFFSET ($2);"
@@ -947,7 +951,7 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 			return orderset, err
 		}
 
-
+		orderObj.Projects = []models.PaidCartObj{}
 		for prows.Next() {
 			var photobook models.PaidCartObj
 			var pID uint
@@ -974,7 +978,9 @@ func RetrieveAdminOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 			orderObj.Projects = append(orderObj.Projects, photobook)
 		}
 		defer prows.Close()
-		orderSlice = append(orderSlice, orderObj)
+		if len(orderObj.Projects) >= 1 {
+			orderSlice = append(orderSlice, orderObj)
+		}
 
 		
 	}
