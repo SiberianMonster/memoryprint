@@ -86,13 +86,16 @@ func CheckCoverPage(ctx context.Context, storeDB *pgxpool.Pool, pageID uint) boo
 	return false
 }
 func CheckHardCover(ctx context.Context, storeDB *pgxpool.Pool, projectID uint) bool {
-	var coverBool bool
-	err := storeDB.QueryRow(ctx, "SELECT CASE WHEN EXISTS (SELECT * FROM pages WHERE projects_id = ($1) AND is_template = ($2) AND type = ($3)) THEN TRUE ELSE FALSE END;", projectID, "false", "front").Scan(&coverBool)
-		if err != nil {
+	var imageLink *string
+	err := storeDB.QueryRow(ctx, "SELECT creating_image_link FROM pages WHERE projects_id = ($1) AND is_template = ($2) AND type = ($3);", projectID, "false", "front").Scan(&imageLink)
+	if err != nil {
 			log.Printf("Error happened when retrieving front page from pgx table. Err: %s", err)
 			return false
-		}
-	return coverBool
+	}
+	if imageLink != nil {
+		return true
+	}
+	return false
 }
 func CheckProjectPublished(ctx context.Context, storeDB *pgxpool.Pool, projectID uint) bool {
 	var statusActive bool
