@@ -375,12 +375,13 @@ func DuplicateProject(ctx context.Context, storeDB *pgxpool.Pool, projectID uint
 	}
 	for _, page := range projectPages {
 			var strdata *string
+			var pageID uint
 			err = storeDB.QueryRow(ctx, "SELECT data FROM pages WHERE pages_id = ($1);", page.PageID).Scan(&strdata)
 			if err != nil {
 					log.Printf("Error happened when retrieving project page data from db. Err: %s", err)
 					return 0, err
 			}
-			_, err = storeDB.Exec(ctx, "INSERT INTO pages (last_edited_at, sort, type, is_template, creating_image_link, data, projects_id) VALUES ($1, $2, $3, $4, $5, $6, $7);",
+			err = storeDB.QueryRow(ctx, "INSERT INTO pages (last_edited_at, sort, type, is_template, creating_image_link, data, projects_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING pages_id;",
 			t,
 			page.Sort,
 			page.Type,
@@ -388,10 +389,21 @@ func DuplicateProject(ctx context.Context, storeDB *pgxpool.Pool, projectID uint
 			page.CreatingImageLink,
 			strdata,
 			pID,
-			)
+			).Scan(&pageID)
 			if err != nil {
 				log.Printf("Error happened when inserting a new page from project into pgx table. Err: %s", err)
 				return pID, err
+			}
+			for _, photoID := range page.UsedPhotoIDs {
+				_, err = storeDB.Exec(ctx, "INSERT INTO page_has_photos (pages_id, photos_id, last_edited_at) VALUES ($1, $2, $3);",
+					pageID,
+					photoID,
+					t,
+				)
+				if err != nil {
+					log.Printf("Error happened when inserting a new entry into page_has_photos table. Err: %s", err)
+					return pID, err
+				}
 			}
 	}
 		
@@ -484,12 +496,13 @@ func DuplicateTemplate(ctx context.Context, storeDB *pgxpool.Pool, templateID ui
 	}
 	for _, page := range templatePages {
 			var strdata *string
+			var pageID uint
 			err = storeDB.QueryRow(ctx, "SELECT data FROM pages WHERE pages_id = ($1);", page.PageID).Scan(&strdata)
 			if err != nil {
 					log.Printf("Error happened when retrieving template page data from db. Err: %s", err)
 					return 0, err
 			}
-			_, err = storeDB.Exec(ctx, "INSERT INTO pages (last_edited_at, sort, type, is_template, creating_image_link, data, projects_id) VALUES ($1, $2, $3, $4, $5, $6, $7);",
+			err = storeDB.QueryRow(ctx, "INSERT INTO pages (last_edited_at, sort, type, is_template, creating_image_link, data, projects_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING pages_id;",
 			t,
 			page.Sort,
 			page.Type,
@@ -497,7 +510,22 @@ func DuplicateTemplate(ctx context.Context, storeDB *pgxpool.Pool, templateID ui
 			page.CreatingImageLink,
 			strdata,
 			tID,
-			)
+			).Scan(&pageID)
+			if err != nil {
+				log.Printf("Error happened when inserting a new page from project into pgx table. Err: %s", err)
+				return tID, err
+			}
+			for _, photoID := range page.UsedPhotoIDs {
+				_, err = storeDB.Exec(ctx, "INSERT INTO page_has_photos (pages_id, photos_id, last_edited_at) VALUES ($1, $2, $3);",
+					pageID,
+					photoID,
+					t,
+				)
+				if err != nil {
+					log.Printf("Error happened when inserting a new entry into page_has_photos table. Err: %s", err)
+					return tID, err
+				}
+			}
 			if err != nil {
 				log.Printf("Error happened when inserting a new page from template into pgx table. Err: %s", err)
 				return tID, err
