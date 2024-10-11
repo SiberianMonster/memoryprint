@@ -384,7 +384,8 @@ func LoadProject(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Println(retrievedProject)
-	retrievedProject.Pages, err = projectstorage.RetrieveProjectPages(ctx, config.DB, projectID, false)
+	var leatherID *uint
+	retrievedProject.Pages, err = projectstorage.RetrieveProjectPages(ctx, config.DB, projectID, false, leatherID)
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return

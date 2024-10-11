@@ -256,8 +256,9 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, proj
 	pagesRange := makeRange(0, 22)
 	if projectObj.TemplateID != 0 {
 		var templatePages []models.Page
-
-		templatePages, err = RetrieveProjectPages(ctx, storeDB, projectObj.TemplateID, true)
+		
+		var leatherID *uint
+		templatePages, err = RetrieveProjectPages(ctx, storeDB, projectObj.TemplateID, true, leatherID)
 		if err != nil {
 			log.Printf("Error happened when retrieving template pages from db. Err: %s", err)
 			return 0, err
@@ -269,18 +270,33 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, proj
 					log.Printf("Error happened when retrieving template page data from db. Err: %s", err)
 					return 0, err
 			}
-			_, err = storeDB.Exec(ctx, "INSERT INTO pages (last_edited_at, sort, type, is_template, creating_image_link, data, projects_id) VALUES ($1, $2, $3, $4, $5, $6, $7);",
-			t,
-			page.Sort,
-			page.Type,
-			false,
-			page.CreatingImageLink,
-			strdata,
-			pID,
-			)
-			if err != nil {
-				log.Printf("Error happened when inserting a new page from template into pgx table. Err: %s", err)
-				return pID, err
+			if projectObj.Cover == "LEATHERETTE" && page.Type != "page" {
+				_, err = storeDB.Exec(ctx, "INSERT INTO pages (last_edited_at, sort, type, is_template, data, projects_id) VALUES ($1, $2, $3, $4, $5, $6, $7);",
+				t,
+				page.Sort,
+				page.Type,
+				false,
+				strdata,
+				pID,
+				)
+				if err != nil {
+					log.Printf("Error happened when inserting a new page from template into pgx table. Err: %s", err)
+					return pID, err
+				}
+			} else {
+				_, err = storeDB.Exec(ctx, "INSERT INTO pages (last_edited_at, sort, type, is_template, creating_image_link, data, projects_id) VALUES ($1, $2, $3, $4, $5, $6, $7);",
+				t,
+				page.Sort,
+				page.Type,
+				false,
+				page.CreatingImageLink,
+				strdata,
+				pID,
+				)
+				if err != nil {
+					log.Printf("Error happened when inserting a new page from template into pgx table. Err: %s", err)
+					return pID, err
+				}
 			}
 			
 		}
@@ -321,7 +337,8 @@ func DuplicateProject(ctx context.Context, storeDB *pgxpool.Pool, projectID uint
 	var projectObj models.ProjectObj
 	var countPages uint
 	var email string
-	err := storeDB.QueryRow(ctx, "SELECT name, size, variant, count_pages, cover, paper, creating_spine_link, preview_spine_link FROM projects WHERE projects_id = ($1);", projectID).Scan(&projectObj.Name, &projectObj.Size, &projectObj.Variant, &countPages, &projectObj.Cover, &projectObj.Surface, &projectObj.CreatingSpineLink, &projectObj.PreviewSpineLink)
+	var leatherID *uint
+	err := storeDB.QueryRow(ctx, "SELECT name, size, variant, count_pages, cover, paper, creating_spine_link, preview_spine_link, leather_id FROM projects WHERE projects_id = ($1);", projectID).Scan(&projectObj.Name, &projectObj.Size, &projectObj.Variant, &countPages, &projectObj.Cover, &projectObj.Surface, &projectObj.CreatingSpineLink, &projectObj.PreviewSpineLink, &leatherID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		log.Printf("Error happened when retrieving project from pgx table. Err: %s", err)
 		return pID, err
@@ -371,7 +388,7 @@ func DuplicateProject(ctx context.Context, storeDB *pgxpool.Pool, projectID uint
 
 	var projectPages []models.Page
 
-	projectPages, err = RetrieveProjectPages(ctx, storeDB, projectID, false)
+	projectPages, err = RetrieveProjectPages(ctx, storeDB, projectID, false, leatherID)
 	if err != nil {
 			log.Printf("Error happened when retrieving project pages from db. Err: %s", err)
 			return 0, err
@@ -492,7 +509,8 @@ func DuplicateTemplate(ctx context.Context, storeDB *pgxpool.Pool, templateID ui
 
 	var templatePages []models.Page
 
-	templatePages, err = RetrieveProjectPages(ctx, storeDB, templateID, true)
+	var leatherID *uint
+	templatePages, err = RetrieveProjectPages(ctx, storeDB, templateID, true, leatherID)
 	if err != nil {
 			log.Printf("Error happened when retrieving template pages from db. Err: %s", err)
 			return 0, err
@@ -651,19 +669,20 @@ func RetrieveUserProjects(ctx context.Context, storeDB *pgxpool.Pool, userID uin
 
 		var projectObj models.ResponseProject
 		var pID uint
+		var leatherID *uint
 		if err = rows.Scan(&pID); err != nil {
 			log.Printf("Error happened when scanning projects. Err: %s", err)
 			return projectset, err
 		}
 
-		err = storeDB.QueryRow(ctx, "SELECT name, size, status, cover FROM projects WHERE projects_id = ($1) ORDER BY last_edited_at DESC;", pID).Scan(&projectObj.Name, &projectObj.Size, &projectObj.Status, &projectObj.Cover)
+		err = storeDB.QueryRow(ctx, "SELECT name, size, status, cover, leather_id FROM projects WHERE projects_id = ($1) ORDER BY last_edited_at DESC;", pID).Scan(&projectObj.Name, &projectObj.Size, &projectObj.Status, &projectObj.Cover, &leatherID)
 		if err != nil && err != pgx.ErrNoRows {
 			log.Printf("Error happened when retrieving project data from db. Err: %s", err)
 			return projectset, err
 		}
 		projectObj.ProjectID = pID
 		if projectObj.Status == "EDITED" || projectObj.Status == "PUBLISHED" {
-			projectObj.Pages, err = RetrieveProjectPages(ctx, storeDB, pID, false)
+			projectObj.Pages, err = RetrieveProjectPages(ctx, storeDB, pID, false, leatherID)
 			if err != nil {
 				log.Printf("Error happened when retrieving project pages from db. Err: %s", err)
 				return projectset, err
@@ -888,7 +907,7 @@ func AdminLoadTemplate(ctx context.Context, storeDB *pgxpool.Pool, pID uint) (mo
 
 
 // RetrieveProjectPages function performs the operation of retrieving a photobook project from pgx database with a query.
-func RetrieveProjectPages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint, isTemplate bool) ([]models.Page, error) {
+func RetrieveProjectPages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint, isTemplate bool, leatherID *uint) ([]models.Page, error) {
 
 	var pageslice []models.Page
 	rows, err := storeDB.Query(ctx, "SELECT pages_id, type, sort, creating_image_link, preview_link, data FROM pages WHERE projects_id = ($1) AND is_template = ($2) ORDER BY sort;", projectID, isTemplate)
@@ -905,7 +924,18 @@ func RetrieveProjectPages(ctx context.Context, storeDB *pgxpool.Pool, projectID 
 			log.Printf("Error happened when scanning pages. Err: %s", err)
 			return nil, err
 		}
+		if leatherID != nil && page.Type != "page" {
+			if *leatherID != 0 {
 
+				err := storeDB.QueryRow(ctx, "SELECT colourlink FROM leather WHERE leather_id = ($1);", leatherID).Scan(&page.CreatingImageLink)
+				if err != nil {
+					log.Printf("Error happened when retrieving colour image for leather cover from pgx table. Err: %s", err)
+					return nil, err
+				}
+				
+			}
+		}
+		
 		log.Println(page)
 		page.UsedPhotoIDs = []uint{}
 		photorows, err := storeDB.Query(ctx, "SELECT photos_id FROM page_has_photos WHERE pages_id = ($1);", page.PageID)
