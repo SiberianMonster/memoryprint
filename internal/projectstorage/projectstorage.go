@@ -928,6 +928,7 @@ func RetrieveProjectPages(ctx context.Context, storeDB *pgxpool.Pool, projectID 
 			if *leatherID != 0 {
 
 				err := storeDB.QueryRow(ctx, "SELECT colourlink FROM leather WHERE leather_id = ($1);", leatherID).Scan(&page.CreatingImageLink)
+				page.PreviewImageLink = page.CreatingImageLink
 				if err != nil {
 					log.Printf("Error happened when retrieving colour image for leather cover from pgx table. Err: %s", err)
 					return nil, err
