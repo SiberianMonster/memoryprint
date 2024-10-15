@@ -47,6 +47,7 @@ type UserRespBody struct {
 type AdminBool struct {
 	IsAdmin bool `json:"is_admin"`
 	Name string `json:"name"`
+	Email string `json:"email"`
 }
 
 func Register(rw http.ResponseWriter, r *http.Request) {
@@ -392,7 +393,7 @@ func CheckUserCategory(rw http.ResponseWriter, r *http.Request) {
 
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
-	userCategory, name, err := userstorage.CheckUserCategory(ctx, config.DB, userID)
+	userCategory, name, email, err := userstorage.CheckUserCategory(ctx, config.DB, userID)
 		
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
@@ -405,6 +406,7 @@ func CheckUserCategory(rw http.ResponseWriter, r *http.Request) {
 		isAdmin.IsAdmin = false
 	}
 	isAdmin.Name = name
+	isAdmin.Email = email
 
 	uBody.User = isAdmin
 	rw.WriteHeader(http.StatusOK)

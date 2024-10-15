@@ -158,7 +158,7 @@ func CheckUserHasProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 
 	var checkProject bool
 	var email string
-	userCat, _, err := CheckUserCategory(ctx, storeDB , userID)
+	userCat, _, _, err := CheckUserCategory(ctx, storeDB , userID)
 	if userCat == "ADMIN" {
 		return true
 	}
@@ -180,7 +180,7 @@ func CheckUserHasProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint
 func CheckUserHasOrder(ctx context.Context, storeDB *pgxpool.Pool, userID uint, orderID uint) bool {
 
 	var checkProject bool
-	userCat, _, err := CheckUserCategory(ctx, storeDB , userID)
+	userCat, _, _, err := CheckUserCategory(ctx, storeDB , userID)
 	if userCat == "ADMIN" {
 		return true
 	}
@@ -318,17 +318,18 @@ func CheckCredentialsByID(ctx context.Context, storeDB *pgxpool.Pool, userID uin
 	return dbUser, nil
 }
 
-func CheckUserCategory(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (string, string, error) {
+func CheckUserCategory(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (string, string, string, error) {
 
 	var userCategory string
 	var name string
+	var email string
 	
-	err = storeDB.QueryRow(ctx, "SELECT category, username FROM users WHERE users_id=($1);", userID).Scan(&userCategory, &name)
+	err = storeDB.QueryRow(ctx, "SELECT category, username, email FROM users WHERE users_id=($1);", userID).Scan(&userCategory, &name, &email)
 	if err != nil {
 		log.Printf("Error happened when retrieving user category from the db. Err: %s", err)
-		return userCategory, name, err
+		return userCategory, name, email, err
 	}
-	return userCategory, name, nil
+	return userCategory, name, email, nil
 }
 
 
