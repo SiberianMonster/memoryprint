@@ -230,12 +230,6 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 	//		return nil, false
 	//}
 
-	_, err = db.Exec(ctx, "DROP TABLE prices;")
-	if err != nil {
-			log.Printf("Error happened when creating prices table. Err: %s", err)
-			return nil, false
-
-	}
 	// prices table
 	_, err = db.Exec(ctx,
 			"CREATE TABLE IF NOT EXISTS prices (prices_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, cover varchar NOT NULL, variant varchar NOT NULL, surface varchar NOT NULL, size varchar NOT NULL, baseprice double precision NOT NULL, extrapage double precision NOT NULL)")
@@ -246,12 +240,6 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 	}
 
 	// table with leather colours
-	_, err = db.Exec(ctx, "DROP TABLE leather;")
-	if err != nil {
-			log.Printf("Error happened when creating prices table. Err: %s", err)
-			return nil, false
-
-	}
 	_, err = db.Exec(ctx,
 			"CREATE TABLE IF NOT EXISTS leather (leather_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, colourlink varchar NOT NULL, hexcode varchar NOT NULL, description varchar)")
 	if err != nil {
