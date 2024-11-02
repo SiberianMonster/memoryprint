@@ -343,7 +343,7 @@ func DuplicateProject(ctx context.Context, storeDB *pgxpool.Pool, projectID uint
 		log.Printf("Error happened when retrieving project from pgx table. Err: %s", err)
 		return pID, err
 	}
-	projectObj.Name = projectObj.Name + "_1"
+	projectObj.Name = "Копия_" + projectObj.Name 
 	//_, err = storeDB.Exec(ctx, "SELECT setval('projects_id', MAX(projects_id)) FROM projects;")
 	//if err != nil {
 	//		log.Printf("Error happened when nulling id sequence. Err: %s", err)
@@ -490,7 +490,7 @@ func DuplicateTemplate(ctx context.Context, storeDB *pgxpool.Pool, templateID ui
 		log.Printf("Error happened when retrieving template from pgx table. Err: %s", err)
 		return tID, err
 	}
-	projectObj.Name = projectObj.Name + "_1"
+	projectObj.Name = "Копия_" + projectObj.Name 
 
 	err = storeDB.QueryRow(ctx, "INSERT INTO templates (name, created_at, last_edited_at, status, size, category, creating_spine_link, preview_spine_link) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING templates_id;",
 		projectObj.Name,
@@ -601,6 +601,23 @@ func UnpublishTemplate(ctx context.Context, storeDB *pgxpool.Pool, templateID ui
 	)
 	if err != nil {
 		log.Printf("Error happened when unpublishing template. Err: %s", err)
+		return err
+	}
+	return nil
+
+}
+
+// UNPublishProject function performs the operation of rolling back project status.
+func UnpublishProject(ctx context.Context, storeDB *pgxpool.Pool, projectID uint) error {
+
+	var err error
+
+	_, err = storeDB.Exec(ctx, "UPDATE projects SET status = ($1) WHERE projects_id = ($2);",
+		"EDITED",
+		projectID,
+	)
+	if err != nil {
+		log.Printf("Error happened when unpublishing project. Err: %s", err)
 		return err
 	}
 	return nil

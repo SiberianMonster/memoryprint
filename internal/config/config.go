@@ -51,6 +51,7 @@ var BankPassword string
 var DeliveryDomain string
 var DeliveryClientID string
 var DeliverySecret string
+var EncryptionString string
 
 func GetEnv(key string, fallback *string) *string {
 	if value, ok := os.LookupEnv(key); ok {

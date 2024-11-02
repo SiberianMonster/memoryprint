@@ -47,8 +47,7 @@ func Hash(value, key string) (string, error) {
 }
 
 // GetAESDecrypted decrypts given text in AES 256 CBC
-func GetAESDecrypted(encrypted string) (string, error) {
-	iv := "2410196226071937"
+func GetAESDecrypted(encrypted string, iv string) (string, error) {
 
 	ciphertext, err := base64.StdEncoding.DecodeString(encrypted)
 
@@ -821,10 +820,10 @@ func MailCertificate(ctx context.Context, storeDB *pgxpool.Pool, certificate mod
 
 }
 
-func CancelSubscription(ctx context.Context, storeDB *pgxpool.Pool, code string) (error) {
+func CancelSubscription(ctx context.Context, storeDB *pgxpool.Pool, code string, iv string) (error) {
 
 
-	email, err := GetAESDecrypted(code)
+	email, err := GetAESDecrypted(code, iv)
 	if err != nil {
 		log.Printf("Error happened when decrypting user subscription data. Err: %s", err)
 		return err
@@ -841,9 +840,9 @@ func CancelSubscription(ctx context.Context, storeDB *pgxpool.Pool, code string)
 	return nil
 }
 
-func RenewSubscription(ctx context.Context, storeDB *pgxpool.Pool, code string) (error) {
+func RenewSubscription(ctx context.Context, storeDB *pgxpool.Pool, code string, iv string) (error) {
 
-	email, err := GetAESDecrypted(code) 
+	email, err := GetAESDecrypted(code, iv) 
 	if err != nil {
 		log.Printf("Error happened when decrypting user subscription data. Err: %s", err)
 		return err
@@ -858,4 +857,25 @@ func RenewSubscription(ctx context.Context, storeDB *pgxpool.Pool, code string) 
 	}
 	
 	return nil
+}
+
+// GetCart function performs the operation of loading awaiting payment projects for user from pgx database with a query.
+func GetCart(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (uint, error) {
+
+	var responseCart models.ResponseCart
+	responseCart.Projects = []models.CartObj{}
+	var countProjects uint
+	var orderID uint
+	err := storeDB.QueryRow(ctx, "SELECT orders_id FROM orders WHERE users_id = ($1) and status = ($2);", userID, "AWAITING_PAYMENT").Scan(&orderID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				log.Printf("Error happened when retrieving unpaid order info from pgx table. Err: %s", err)
+				return countProjects, err
+	}
+	log.Println(orderID)
+	err = storeDB.QueryRow(ctx, "SELECT COUNT(projects_id) FROM orders_has_projects WHERE orders_id = ($1);", orderID).Scan(&countProjects)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		log.Printf("Error happened when retrieving order projects from pgx table. Err: %s", err)
+		return countProjects, err
+	}
+	return countProjects, nil
 }

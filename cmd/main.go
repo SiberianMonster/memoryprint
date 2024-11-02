@@ -42,7 +42,7 @@ import (
 )
 
 var err error
-var host, connStr, accrualStr, adminEmail, yandexKey, timewebToken, balaToken, imageHost, bankDomain, bankuserName, bankPassword, deliveryDomain, deliveryClientID, deliverySecret *string
+var host, connStr, accrualStr, adminEmail, yandexKey, timewebToken, balaToken, imageHost, bankDomain, bankuserName, bankPassword, deliveryDomain, deliveryClientID, deliverySecret, encryptionString *string
 var db *pgxpool.Pool
 
 func init() {
@@ -67,6 +67,7 @@ func init() {
 	deliveryDomain = config.GetEnv("DELIVERY_DOMAIN", flag.String("deliveryDomain", section.Key("deliverydomain").String(), "DELIVERY_DOMAIN"))
 	deliveryClientID = config.GetEnv("DELIVERY_CLIENTID", flag.String("deliveryClientID", section.Key("deliveryclientid").String(), "DELIVERY_CLIENTID"))
 	deliverySecret = config.GetEnv("DELIVERY_SECRET", flag.String("deliverySecret", section.Key("deliverysecret").String(), "DELIVERY_SECRET"))
+	encryptionString = config.GetEnv("ENCRYPTION_STRING", flag.String("encryptionString", section.Key("encryptionstring").String(), "ENCRYPTION_STRING"))
 
 }
 
@@ -100,10 +101,6 @@ func main() {
 
 	config.DB, _ = initstorage.SetUpDBConnection(ctx, connStr)
 	defer config.DB.Close()
-	go orderhandlers.SentOrdersToPrint(ctx, config.DB)
-	go userhandlers.SentGiftCertificateMail(ctx, config.DB)
-	go delivery.RoutineUpdateDeliveryStatus(ctx, config.DB)
-	// go update transaction status
 
 	config.AdminEmail = *adminEmail
 	config.YandexApiKey = *yandexKey
@@ -116,6 +113,12 @@ func main() {
 	config.DeliveryDomain = *deliveryDomain
 	config.DeliveryClientID = *deliveryClientID
 	config.DeliverySecret = *deliverySecret
+	config.EncryptionString = *encryptionString
+
+	go orderhandlers.SentOrdersToPrint(ctx, config.DB)
+	//go userhandlers.SentGiftCertificateMail(ctx, config.DB)
+	go delivery.RoutineUpdateDeliveryStatus(ctx, config.DB)
+	// go update transaction status
 
 
 	router := mux.NewRouter()
@@ -147,7 +150,7 @@ func main() {
 	noAuthRouter.HandleFunc("/api/v1/create-certificate", userhandlers.CreateCertificate).Methods("POST","OPTIONS")
 	noAuthRouter.HandleFunc("/api/v1/cancel-subscription/{code}", userhandlers.CancelSubscription).Methods("POST","OPTIONS")
 	noAuthRouter.HandleFunc("/api/v1/renew-subscription/{code}", userhandlers.RenewSubscription).Methods("POST","OPTIONS")
-	noAuthRouter.HandleFunc("/api/v1/renew-fixtures", userhandlers.RenewFixtures).Methods("POST","OPTIONS")
+	//noAuthRouter.HandleFunc("/api/v1/renew-fixtures", userhandlers.RenewFixtures).Methods("POST","OPTIONS")
 
 
 	authRouter.Use(middleware.MiddlewareValidateAccessToken)
@@ -228,6 +231,7 @@ func main() {
 	authRouter.HandleFunc("/api/v1/share-pdf-link/{id}", projecthandlers.ShareLink).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/delete-project/{id}", projecthandlers.DeleteProject).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/publish-project", orderhandlers.CreateOrder).Methods("POST","OPTIONS")
+	authRouter.HandleFunc("/api/v1/unpublish-project/{id}", projecthandlers.UnpublishProject).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/load-cart", orderhandlers.LoadCart).Methods("GET","OPTIONS")
 	authRouter.HandleFunc("/api/v1/change-project-cover/{id}", projecthandlers.UpdateCover).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/change-project-surface/{id}", projecthandlers.UpdateSurface).Methods("POST","OPTIONS")

@@ -48,6 +48,7 @@ type AdminBool struct {
 	IsAdmin bool `json:"is_admin"`
 	Name string `json:"name"`
 	Email string `json:"email"`
+	CountPublished *uint `json:"count_published"`
 }
 
 func Register(rw http.ResponseWriter, r *http.Request) {
@@ -388,12 +389,18 @@ func CheckUserCategory(rw http.ResponseWriter, r *http.Request) {
 	resp := make(map[string]UserRespBody)
 	var uBody UserRespBody
 	var isAdmin AdminBool
-	var name string
+	var projects uint
 	userID := handlersfunc.UserIDContextReader(r)
 
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
 	userCategory, name, email, err := userstorage.CheckUserCategory(ctx, config.DB, userID)
+		
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
+	projects, err = userstorage.GetCart(ctx, config.DB, userID)
 		
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
@@ -407,6 +414,10 @@ func CheckUserCategory(rw http.ResponseWriter, r *http.Request) {
 	}
 	isAdmin.Name = name
 	isAdmin.Email = email
+	if projects > 0 {
+		isAdmin.CountPublished = &projects
+	}
+	
 
 	uBody.User = isAdmin
 	rw.WriteHeader(http.StatusOK)
@@ -425,7 +436,7 @@ func CancelSubscription(rw http.ResponseWriter, r *http.Request) {
 	
 		ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 		defer cancel()
-		err := userstorage.CancelSubscription(ctx, config.DB, code)
+		err := userstorage.CancelSubscription(ctx, config.DB, code, config.EncryptionString)
 			
 		if err != nil {
 			handlersfunc.HandleDatabaseServerError(rw)
@@ -449,7 +460,7 @@ func RenewSubscription(rw http.ResponseWriter, r *http.Request) {
 
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
-	err := userstorage.RenewSubscription(ctx, config.DB, code)
+	err := userstorage.RenewSubscription(ctx, config.DB, code, config.EncryptionString)
 		
 	if err != nil {
 		handlersfunc.HandleFailedRenewSubscription(rw)

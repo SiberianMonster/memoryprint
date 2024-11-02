@@ -352,6 +352,48 @@ func UnpublishTemplate(rw http.ResponseWriter, r *http.Request) {
 	rw.Write(jsonResp)
 }
 
+func UnpublishProject(rw http.ResponseWriter, r *http.Request) {
+
+	resp := make(map[string]uint)
+	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
+	projectID := uint(aByteToInt)
+	
+	defer r.Body.Close()
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	defer cancel()
+
+	userID := handlersfunc.UserIDContextReader(r)
+	log.Printf("Unpublish project %d for user %d",projectID, userID)
+	checkExists := orderstorage.CheckProject(ctx, config.DB, projectID)
+	if !checkExists {
+			handlersfunc.HandleMissingProjectError(rw)
+			return
+	}
+
+	userCheck := userstorage.CheckUserHasProject(ctx, config.DB, userID, projectID)
+
+	if !userCheck {
+		handlersfunc.HandlePermissionError(rw)
+		return
+	}
+
+	
+	err = projectstorage.UnpublishProject(ctx, config.DB, projectID)
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
+
+	rw.WriteHeader(http.StatusOK)
+	resp["response"] = 1
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("Error happened in JSON marshal. Err: %s", err)
+		return
+	}
+	rw.Write(jsonResp)
+}
+
 func LoadProject(rw http.ResponseWriter, r *http.Request) {
 
 	resp := make(map[string]models.ResponseProjectObj)
