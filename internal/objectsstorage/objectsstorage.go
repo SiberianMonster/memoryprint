@@ -62,7 +62,6 @@ func AddPhoto(ctx context.Context, storeDB *pgxpool.Pool, photoLink string, smal
 		photoLink,
 		smallImage,
 		t,
-		false,
 		userID,
 	).Scan(&photoID)
 	if err != nil {
