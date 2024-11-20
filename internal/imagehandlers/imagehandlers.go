@@ -362,7 +362,7 @@ func LoadImage(rw http.ResponseWriter, r *http.Request) {
 			rw.Write(jsonResp)
 			return
 	}
-	imageObj.Extention = r.PostFormValue("extension")
+	imageObj.Extention = r.PostFormValue("extention")
 	log.Println(imageObj.Extention)
 	_, found := imageContentTypes[imageObj.Extention]
     if !found {
