@@ -1079,15 +1079,20 @@ func SavePage(ctx context.Context, storeDB *pgxpool.Pool, page models.SavePage) 
 
 	strdata := string(page.Data)
 	var oldImage string
+	var imageHolder *string
 	err := storeDB.QueryRow(ctx, "SELECT creating_image_link FROM pages WHERE pages_id = ($1);", page.PageID).Scan(&oldImage)
 	if err != nil && err != pgx.ErrNoRows{
 		log.Printf("Error happened when retrieving old image from pgx table. Err: %s", err)
 		return err
 	}
-	err = DeleteImage(oldImage) 
-	if err != nil {
-		log.Printf("Error happened when deleting image from bucket. Err: %s", err)
+	if imageHolder != nil {
+		oldImage = *imageHolder
+		err = DeleteImage(oldImage) 
+		if err != nil {
+			log.Printf("Error happened when deleting image from bucket. Err: %s", err)
+		}
 	}
+	
 	
 	_, err = storeDB.Exec(ctx, "UPDATE pages SET preview_link = ($1), creating_image_link = ($2), data = ($3) WHERE pages_id = ($4);",
 	page.PreviewImageLink,
