@@ -1080,7 +1080,7 @@ func SavePage(ctx context.Context, storeDB *pgxpool.Pool, page models.SavePage) 
 	strdata := string(page.Data)
 	var oldImage string
 	var imageHolder *string
-	err := storeDB.QueryRow(ctx, "SELECT creating_image_link FROM pages WHERE pages_id = ($1);", page.PageID).Scan(&oldImage)
+	err := storeDB.QueryRow(ctx, "SELECT creating_image_link FROM pages WHERE pages_id = ($1);", page.PageID).Scan(&imageHolder)
 	if err != nil && err != pgx.ErrNoRows{
 		log.Printf("Error happened when retrieving old image from pgx table. Err: %s", err)
 		return err
