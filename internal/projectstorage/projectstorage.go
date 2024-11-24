@@ -815,7 +815,7 @@ func LoadProject(ctx context.Context, storeDB *pgxpool.Pool, pID uint) (models.R
 }
 
 // RetrieveTemplateData function performs the operation of retrieving template category by id from pgx database with a query.
-func RetrieveTemplateData(ctx context.Context, storeDB *pgxpool.Pool, pID uint) (string, string, string, error) {
+func RetrieveTemplateData(ctx context.Context, storeDB *pgxpool.Pool, pID uint) (string, *string, *string, error) {
 
 	var category string
 	var spinelink *string
