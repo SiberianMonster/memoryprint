@@ -205,8 +205,8 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, proj
 	var pID uint
 	var email string
 	var templateCategory string
-	var projectSpine string
-	var creatingLinkSpine string
+	var projectSpine *string
+	var creatingLinkSpine *string
 	if projectObj.TemplateID != 0 {
 
 		templateCategory, projectSpine, creatingLinkSpine, err = RetrieveTemplateData(ctx, storeDB, projectObj.TemplateID)
@@ -818,8 +818,8 @@ func LoadProject(ctx context.Context, storeDB *pgxpool.Pool, pID uint) (models.R
 func RetrieveTemplateData(ctx context.Context, storeDB *pgxpool.Pool, pID uint) (string, string, string, error) {
 
 	var category string
-	var spinelink string
-	var creatingspinelink string
+	var spinelink *string
+	var creatingspinelink *string
 	err := storeDB.QueryRow(ctx, "SELECT category, preview_spine_link, creating_spine_link FROM templates WHERE templates_id = ($1);", pID).Scan(&category, &spinelink, &creatingspinelink)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		log.Printf("Error happened when retrieving category from pgx table. Err: %s", err)
