@@ -820,7 +820,7 @@ func RetrieveTemplateData(ctx context.Context, storeDB *pgxpool.Pool, pID uint) 
 	var category string
 	var spinelink string
 	var creatingspinelink string
-	err := storeDB.QueryRow(ctx, "SELECT category, preview_spine_link, creating_spine_link FROM templates WHERE projects_id = ($1);", pID).Scan(&category, &spinelink, &creatingspinelink)
+	err := storeDB.QueryRow(ctx, "SELECT category, preview_spine_link, creating_spine_link FROM templates WHERE templates_id = ($1);", pID).Scan(&category, &spinelink, &creatingspinelink)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		log.Printf("Error happened when retrieving category from pgx table. Err: %s", err)
 		return category, spinelink, creatingspinelink, err
