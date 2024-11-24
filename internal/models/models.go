@@ -76,6 +76,14 @@ type ResponseColour struct {
 	Colors []Colour `json:"colors"`
 }
 
+type Delivery struct {
+	Method string `json:"method" validate:"required,oneof=DOOR PVZ POSTAMAT"`
+	Code string `json:"code",required_unless=Method DOOR,omitempty`
+	PostalCode string `json:"postal_code" validate:"required"`
+	Address string `json:"address" validate:"required"`
+	Amount float64 `json:"amount"`
+}
+
 type GiftCertificate struct {
 	ID uint `json:"id"`
 	Code string `json:"code"`
@@ -322,7 +330,7 @@ type Page struct {
 	Sort uint `json:"sort"`
 	CreatingImageLink *string `json:"creating_image_link"`
 	PreviewImageLink *string `json:"preview_image_link"`
-	Data        *string      `json:"data"`
+	Data        json.RawMessage      `json:"data"`
 	UsedPhotoIDs []uint `json:"used_photo_ids"`
 	
   }
@@ -490,14 +498,6 @@ type Contacts struct {
 	LastName string `json:"last_name" validate:"required,min=1"`
 	Email string `json:"email" validate:"required,email"`
 	Phone string `json:"phone" validate:"required,phone"`
-}
-
-type Delivery struct {
-	Method string `json:"method" validate:"required,oneof=DOOR PVZ POSTAMAT"`
-	Code string `json:"code",required_unless=Method DOOR,omitempty`
-	PostalCode string `json:"postal_code" validate:"required"`
-	Address string `json:"address" validate:"required"`
-	Amount float64 `json:"amount"`
 }
 
 
