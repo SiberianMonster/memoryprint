@@ -994,7 +994,7 @@ func RetrieveProjectPages(ctx context.Context, storeDB *pgxpool.Pool, projectID 
 func RetrieveTemplatePages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint) ([]models.TemplatePage, error) {
 
 	var pageslice []models.TemplatePage
-	rows, err := storeDB.Query(ctx, "SELECT pages_id, type, sort, creating_image_link, preview_link FROM pages WHERE projects_id = ($1) AND is_template = ($2) ORDER BY sort;", projectID, true)
+	rows, err := storeDB.Query(ctx, "SELECT pages_id, type, sort, creating_image_link, preview_link, data FROM pages WHERE projects_id = ($1) AND is_template = ($2) ORDER BY sort;", projectID, true)
 	if err != nil {
 		log.Printf("Error happened when retrieving pages from pgx table. Err: %s", err)
 		return nil, err
@@ -1003,8 +1003,10 @@ func RetrieveTemplatePages(ctx context.Context, storeDB *pgxpool.Pool, projectID
 
 	for rows.Next() {
 		var page models.TemplatePage
+		var strdata *string
+	
 		
-		if err = rows.Scan(&page.PageID, &page.Type, &page.Sort, &page.CreatingImageLink, &page.PreviewImageLink); err != nil {
+		if err = rows.Scan(&page.PageID, &page.Type, &page.Sort, &page.CreatingImageLink, &page.PreviewImageLink, &strdata); err != nil {
 			log.Printf("Error happened when scanning pages. Err: %s", err)
 			return nil, err
 		}
@@ -1012,6 +1014,11 @@ func RetrieveTemplatePages(ctx context.Context, storeDB *pgxpool.Pool, projectID
 		if err != nil {
 			log.Printf("Error happened when setting empty value for creating_image_link. Err: %s", err)
 			return nil, err
+		}
+		if strdata != nil{
+			page.Data = json.RawMessage(*strdata)
+		} else {
+			page.Data = nil
 		}
 		page.UsedPhotoIDs = []uint{}
 		photorows, err := storeDB.Query(ctx, "SELECT photos_id FROM page_has_photos WHERE pages_id = ($1);", page.PageID)
