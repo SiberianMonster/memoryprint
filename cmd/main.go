@@ -183,8 +183,7 @@ func main() {
 	adminRouter.HandleFunc("/api/v1/admin/upload-order-commentary/{id}", orderhandlers.UpdateOrderCommentary).Methods("POST","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/upload-order-video/{id}", orderhandlers.UploadOrderVideo).Methods("POST","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/download-order-video/{id}", orderhandlers.DownloadOrderVideo).Methods("GET","OPTIONS")
-	authRouter.HandleFunc("/api/v1/admin/load-order/{id}", orderhandlers.AdminLoadOrder).Methods("GET","OPTIONS")
-
+	adminRouter.HandleFunc("/api/v1/admin/load-order/{id}", orderhandlers.AdminLoadOrder).Methods("GET","OPTIONS")
 	
 	adminRouter.HandleFunc("/api/v1/admin/create-background", projecthandlers.AdminCreateBackground).Methods("POST","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/create-decoration", projecthandlers.AdminCreateDecoration).Methods("POST","OPTIONS")
@@ -198,6 +197,7 @@ func main() {
 	adminRouter.HandleFunc("/api/v1/admin/delete-prices", projecthandlers.AdminDeletePrices).Methods("POST","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/add-leather-cover", projecthandlers.AdminCreateCover).Methods("POST","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/delete-leather-cover/{id}", projecthandlers.AdminDeleteCover).Methods("POST","OPTIONS")
+	adminRouter.HandleFunc("/api/v1/create-admin-certificate", userhandlers.AdminCreateCertificate).Methods("POST","OPTIONS")
 
 	authRouter.HandleFunc("/api/v1/auth/get-user", userhandlers.CheckUserCategory).Methods("GET","OPTIONS")
 	authRouter.HandleFunc("/api/v1/image/save", imagehandlers.LoadImage).Methods("POST","OPTIONS")
