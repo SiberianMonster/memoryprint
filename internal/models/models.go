@@ -98,6 +98,21 @@ type GiftCertificate struct {
 	TransactionID string `json:"transaction_id"`
 }
 
+type AdminGiftCertificate struct {
+	ID uint `json:"id"`
+	Code string `json:"code"`
+	Deposit      float64    `json:"deposit" validate:"required,min=1000.00,max=50000.00"`
+	Recipientemail string `json:"recipient_email" validate:"required,email"`
+	Recipientname string `json:"recipient_name" validate:"required"`
+	Buyerfirstname string `json:"buyer_first_name" validate:"required"`
+	Buyerlastname string `json:"buyer_last_name" validate:"required"`
+	Buyeremail string `json:"buyer_email" validate:"required,email"`
+	Buyerphone string `json:"buyer_phone" validate:"required,phone"`
+	Status string `json:"status"`
+	MailAt int64 `json:"mail_at"`
+	TransactionID string `json:"transaction_id"`
+}
+
 type NewPromooffer struct {
 	Code string `json:"code"`
 	Discount      float64    `json:"discount"`

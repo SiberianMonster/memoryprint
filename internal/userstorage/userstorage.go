@@ -535,6 +535,34 @@ func CreateCertificate(ctx context.Context, storeDB *pgxpool.Pool, c *models.Gif
 	return cID, nil
 }
 
+func AdminCreateCertificate(ctx context.Context, storeDB *pgxpool.Pool, c *models.AdminGiftCertificate) (uint, error) {
+
+	var cID uint
+	t := time.Now()
+	code := GenerateRandomString(12)
+
+	err = storeDB.QueryRow(ctx, "INSERT INTO giftcertificates (code, initialdeposit, currentdeposit, status, created_at, receipientemail, reciepientname, buyerfirstname, buyerlastname, buyeremail, buyerphone, mail_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING giftcertificates_id;",
+		code,
+		c.Deposit,
+		c.Deposit,
+		c.Status,
+		t,
+		c.Recipientemail,
+		c.Recipientname,
+		c.Buyerfirstname,
+		c.Buyerlastname,
+		c.Buyeremail,
+		c.Buyerphone,
+		c.MailAt,
+	).Scan(&cID)
+	if err != nil {
+		log.Printf("Error happened when inserting a new gift certificate entry into pgx table. Err: %s", err)
+		return cID, err
+	}
+
+	return cID, nil
+}
+
 func PurchaseCertificate(ctx context.Context, storeDB *pgxpool.Pool, cID uint, tID uint) (uint, error) {
 
 	_, err = storeDB.Exec(ctx, "INSERT INTO giftcertificates_has_transactions (giftcertificates_id, transactions_id) VALUES ($1, $2);",

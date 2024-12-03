@@ -559,7 +559,53 @@ func CreateCertificate(rw http.ResponseWriter, r *http.Request) {
 	rw.Write(jsonResp)
 }
 
+// AdminCreateCertificate creates a new gift certificate entry.
+func AdminCreateCertificate(rw http.ResponseWriter, r *http.Request) {
 
+	rw.Header().Set("Content-Type", "application/json")
+	resp := make(map[string]uint)
+
+	var certificate *models.AdminGiftCertificate
+
+	err := json.NewDecoder(r.Body).Decode(&certificate)
+	if err != nil {
+		handlersfunc.HandleDecodeError(rw, err)
+	}
+
+	defer r.Body.Close()
+	// Create a new validator instance
+    validate := validator.New()
+	validate.RegisterValidation("phone", PhoneValidator)
+
+	log.Println(certificate)
+
+    // Validate the User struct
+    err = validate.Struct(certificate)
+    if err != nil {
+        // Validation failed, handle the error
+		handlersfunc.HandleValidationError(rw, err)
+        return
+    }
+
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	// не забываем освободить ресурс
+	defer cancel()
+
+	_, err = userstorage.AdminCreateCertificate(ctx, config.DB, certificate)
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
+
+	rw.WriteHeader(http.StatusOK)
+	resp["response"] = 1
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+			log.Printf("Error happened in JSON marshal. Err: %s", err)
+			return
+	}
+	rw.Write(jsonResp)
+}
 
 
 // CreatePromocode creates a new promocode.
