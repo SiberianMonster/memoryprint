@@ -239,6 +239,14 @@ func LoadCart(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (models.R
 			return responseCart, err
 		}
 
+		if photobook.CountPages == 0 {
+			err := storeDB.QueryRow(ctx, "SELECT COUNT(pages_id) FROM pages WHERE projects_id = ($1) AND is_template = ($2);", pID, false).Scan(&photobook.CountPages)
+			if err != nil {
+				log.Printf("Error happened when counting pages. Err: %s", err)
+				return responseCart, err
+			}
+		}
+
 		photobook.BasePrice, err = CalculateBasePrice(ctx, storeDB, photobook.Size, photobook.Variant, photobook.Cover, photobook.Surface, uint(photobook.CountPages))
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			log.Printf("Error happened when counting baseprice. Err: %s", err)
