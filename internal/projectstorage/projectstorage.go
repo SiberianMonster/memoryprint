@@ -257,8 +257,9 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, proj
 	pagesRange := makeRange(0, 22)
 	if projectObj.TemplateID != 0 {
 		var templatePages []models.Page
-		
 		var leatherID *uint
+		leatherID = &projectObj.LeatherID
+		
 		templatePages, err = RetrieveProjectPages(ctx, storeDB, projectObj.TemplateID, true, leatherID)
 		if err != nil {
 			log.Printf("Error happened when retrieving template pages from db. Err: %s", err)
@@ -272,12 +273,13 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, proj
 					return 0, err
 			}
 			if projectObj.Cover == "LEATHERETTE" && page.Type != "page" {
-				_, err = storeDB.Exec(ctx, "INSERT INTO pages (last_edited_at, sort, type, is_template, data, projects_id) VALUES ($1, $2, $3, $4, $5, $6, $7);",
+				_, err = storeDB.Exec(ctx, "INSERT INTO pages (last_edited_at, sort, type, is_template, creating_image_link, data, projects_id) VALUES ($1, $2, $3, $4, $5, $6, $7);",
 				t,
 				page.Sort,
 				page.Type,
 				false,
-				strdata,
+				page.CreatingImageLink,
+				nil,
 				pID,
 				)
 				if err != nil {
@@ -302,9 +304,18 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, proj
 			
 		}
 	} else {
+		var creatingImageLink string
+		if projectObj.LeatherID != 0 {
+			err := storeDB.QueryRow(ctx, "SELECT colourlink FROM leather WHERE leather_id = ($1);", projectObj.LeatherID).Scan(&creatingImageLink)
+			if err != nil {
+				log.Printf("Error happened when retrieving leather color from pgx table. Err: %s", err)
+				return pID, err
+			}
+		}
 		for _, num := range pagesRange {
 
 			var ptype string
+			var creatingImageLink string
 	
 			if num == 22 {
 				ptype = "back"
@@ -314,15 +325,33 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, proj
 			if num == 0 {
 				ptype = "front"
 			}
-			_, err = storeDB.Exec(ctx, "INSERT INTO pages (last_edited_at, sort, type, is_template, projects_id) VALUES ($1, $2, $3, $4, $5);",
-				t,
-				num,
-				ptype,
-				false,
-				pID,
-			)
+			if projectObj.LeatherID != 0 && ptype != "page" {
+				_, err = storeDB.Exec(ctx, "INSERT INTO pages (last_edited_at, sort, type, creating_image_link, is_template, projects_id) VALUES ($1, $2, $3, $4, $5);",
+					t,
+					num,
+					ptype,
+					creatingImageLink,
+					false,
+					pID,
+				)
+				if err != nil {
+					log.Printf("Error happened when inserting page into pgx table. Err: %s", err)
+					return pID, err
+				}
+			} else {
+				_, err = storeDB.Exec(ctx, "INSERT INTO pages (last_edited_at, sort, type, is_template, projects_id) VALUES ($1, $2, $3, $4, $5);",
+					t,
+					num,
+					ptype,
+					false,
+					pID,
+				)
+				if err != nil {
+					log.Printf("Error happened when inserting page into pgx table. Err: %s", err)
+					return pID, err
+				}
+			}
 		}
-		
 	}
 
 	
