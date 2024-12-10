@@ -554,6 +554,10 @@ type FrontPage struct {
 	CreatingImageLink *string `json:"creating_image_link"`
   }
 
+type TemplateFrontPage struct {
+	CreatingImageLink *string `json:"creating_image_link"`
+	Data        json.RawMessage      `json:"data"`
+  }
 
 type UploadImage struct {
 	Image []byte `json:"image"`
@@ -653,7 +657,7 @@ type Template struct {
 	Name string `json:"name"`
 	Size string `json:"size"`
 	Status string `json:"status"  validate:"required,oneof=PUBLISHED EDITED"`
-	FrontPage FrontPage `json:"front_page"`
+	FrontPage TemplateFrontPage `json:"front_page"`
   }
 
 type Project struct {

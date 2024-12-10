@@ -1116,6 +1116,28 @@ func RetrieveFrontPage(ctx context.Context, storeDB *pgxpool.Pool, projectID uin
 
 }
 
+// RetrieveTemplateFrontPage function performs the operation of retrieving a photobook project front page from pgx database with a query.
+func RetrieveTemplateFrontPage(ctx context.Context, storeDB *pgxpool.Pool, projectID uint, isTemplate bool) (models.TemplateFrontPage, error) {
+
+	var page models.TemplateFrontPage
+	var strdata *string
+		
+	err := storeDB.QueryRow(ctx, "SELECT creating_image_link, data FROM pages WHERE projects_id = ($1) AND is_template = ($2) AND type = ($3);", projectID, isTemplate, "front").Scan(&page.CreatingImageLink, &strdata)
+	if err != nil && err != pgx.ErrNoRows{
+		log.Printf("Error happened when retrieving pages from pgx table. Err: %s", err)
+		return page, err
+	}
+	if strdata != nil{
+		page.Data = json.RawMessage(*strdata)
+	} else {
+		page.Data = nil
+	}
+	
+	
+	return page, nil
+
+}
+
 // SavePage function performs the operation of updating page data in pgx database with a query.
 func SavePage(ctx context.Context, storeDB *pgxpool.Pool, page models.SavePage) (error) {
 
@@ -1420,7 +1442,7 @@ func RetrieveTemplates(ctx context.Context, storeDB *pgxpool.Pool, offset uint, 
 		for rows.Next() {
 
 			var templateObj models.Template
-			var frontPage models.FrontPage
+			var frontPage models.TemplateFrontPage
 			var tID uint
 			if err = rows.Scan(&tID); err != nil {
 				log.Printf("Error happened when scanning projects. Err: %s", err)
@@ -1434,7 +1456,7 @@ func RetrieveTemplates(ctx context.Context, storeDB *pgxpool.Pool, offset uint, 
 			}
 			templateObj.TemplateID = tID
 			
-			frontPage, err = RetrieveFrontPage(ctx, storeDB, tID, true) 
+			frontPage, err = RetrieveTemplateFrontPage(ctx, storeDB, tID, true) 
 			log.Printf("Retrieving templates pages")
 			log.Println(frontPage)
 			if err != nil {
@@ -1538,7 +1560,7 @@ func RetrieveAdminTemplates(ctx context.Context, storeDB *pgxpool.Pool, offset u
 		for rows.Next() {
 
 			var templateObj models.Template
-			var frontPage models.FrontPage
+			var frontPage models.TemplateFrontPage
 			var tID uint
 			if err = rows.Scan(&tID); err != nil {
 				log.Printf("Error happened when scanning projects. Err: %s", err)
@@ -1552,7 +1574,7 @@ func RetrieveAdminTemplates(ctx context.Context, storeDB *pgxpool.Pool, offset u
 			}
 			templateObj.TemplateID = tID
 			
-			frontPage, err = RetrieveFrontPage(ctx, storeDB, tID, true) 
+			frontPage, err = RetrieveTemplateFrontPage(ctx, storeDB, tID, true) 
 			log.Printf("Retrieving templates pages")
 			log.Println(frontPage)
 			if err != nil {
@@ -1608,7 +1630,7 @@ func RetrieveAdminTemplates(ctx context.Context, storeDB *pgxpool.Pool, offset u
 		for rows.Next() {
 
 			var templateObj models.Template
-			var frontPage models.FrontPage
+			var frontPage models.TemplateFrontPage
 			var tID uint
 			if err = rows.Scan(&tID); err != nil {
 				log.Printf("Error happened when scanning projects. Err: %s", err)
@@ -1622,7 +1644,7 @@ func RetrieveAdminTemplates(ctx context.Context, storeDB *pgxpool.Pool, offset u
 			}
 			templateObj.TemplateID = tID
 			
-			frontPage, err = RetrieveFrontPage(ctx, storeDB, tID, true) 
+			frontPage, err = RetrieveTemplateFrontPage(ctx, storeDB, tID, true) 
 			log.Printf("Retrieving templates pages")
 			log.Println(frontPage)
 			if err != nil {
@@ -1854,7 +1876,7 @@ func LoadPromocodeTemplates(ctx context.Context, storeDB *pgxpool.Pool, tcategor
 	for rows.Next() {
 
 			var templateObj models.Template
-			var frontPage models.FrontPage
+			var frontPage models.TemplateFrontPage
 			var tID uint
 			if err = rows.Scan(&tID); err != nil {
 				log.Printf("Error happened when scanning projects. Err: %s", err)
@@ -1868,7 +1890,7 @@ func LoadPromocodeTemplates(ctx context.Context, storeDB *pgxpool.Pool, tcategor
 			}
 			templateObj.TemplateID = tID
 			
-			frontPage, err = RetrieveFrontPage(ctx, storeDB, tID, true) 
+			frontPage, err = RetrieveTemplateFrontPage(ctx, storeDB, tID, true) 
 			log.Printf("Retrieving templates pages")
 			log.Println(frontPage)
 			if err != nil {
