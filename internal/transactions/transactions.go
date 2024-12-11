@@ -11,7 +11,21 @@ import (
 	"net/url"
 	"strconv"
 	"errors"
+    "math/rand"
+    "time"
 )
+
+func randomString(l int) string {
+    bytes := make([]byte, l)
+    for i := 0; i < l; i++ {
+        bytes[i] = byte(randInt(65, 90))
+    }
+    return string(bytes)
+}
+
+func randInt(min int, max int) int {
+    return min + rand.Intn(max-min)
+}
 
 func CreateTransaction(orderID uint, finalPrice float64, goodType string) (string, error) {
 	var paymentLink string
@@ -24,7 +38,8 @@ func CreateTransaction(orderID uint, finalPrice float64, goodType string) (strin
         Host:   config.BankDomain,
 		Path:   "/payment/rest/registerPreAuth.do",
     }
-	uniqueNumber := goodType + strconv.Itoa(int(orderID))
+	rand.Seed(time.Now().UnixNano())
+	uniqueNumber := goodType + strconv.Itoa(int(orderID)) + "attempt" + randomString(100)
 	returnURL := "https://memoriprint.ru/paymentresults/" + uniqueNumber
     queryValues := url.Values{}
     queryValues.Add("userName", config.BankUsername)
