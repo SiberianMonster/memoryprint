@@ -39,7 +39,7 @@ func CreateTransaction(orderID uint, finalPrice float64, goodType string) (strin
 		Path:   "/payment/rest/registerPreAuth.do",
     }
 	rand.Seed(time.Now().UnixNano())
-	uniqueNumber := goodType + strconv.Itoa(int(orderID)) + "attempt" + randomString(100)
+	uniqueNumber := goodType + strconv.Itoa(int(orderID)) + "attempt" + randomString(8)
 	returnURL := "https://memoriprint.ru/paymentresults/" + uniqueNumber
     queryValues := url.Values{}
     queryValues.Add("userName", config.BankUsername)
@@ -84,6 +84,10 @@ func CreateTransaction(orderID uint, finalPrice float64, goodType string) (strin
 		err = orderstorage.UpdateTransaction(ctx, config.DB, orderID, transaction, finalPrice, goodType)
 		if err != nil {
 			log.Printf("Unable to update transaction entry for the order %s", strconv.Itoa(int(orderID)))
+		}
+		if transaction.FormURL == "" {
+			log.Printf("Internal server error happened when getting payment url %s order ", strconv.Itoa(int(orderID)))
+			return paymentLink, errors.New("failed response from bank")
 		}
 		return transaction.FormURL, nil
 
