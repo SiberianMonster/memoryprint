@@ -46,7 +46,7 @@ func CreateTransaction(orderID uint, finalPrice float64, goodType string) (strin
     queryValues.Add("userName", config.BankUsername)
     queryValues.Add("password", config.BankPassword)
 	queryValues.Add("returnUrl", successURL)
-	queryValues.Add("failUrl", failURL)
+	queryValues.Add("failUrl", failureURL)
 	queryValues.Add("orderNumber", uniqueNumber)
 	priceInCents := finalPrice * 100.0
 	queryValues.Add("amount", strconv.Itoa(int(priceInCents)))
