@@ -1376,7 +1376,7 @@ func UpdateUnSuccessfulTransaction(ctx context.Context, storeDB *pgxpool.Pool, o
 	var tID uint
 	var userID uint
 	var awaitedOrderID uint
-	t := time.Now()
+	t := time.Now().UTC()
 	err := storeDB.QueryRow(ctx, "SELECT transactions_id FROM orders_has_transactions WHERE orders_id = ($1) ORDER BY transactions_id DESC LIMIT 1;", orderID).Scan(&tID)
 	if err != nil {
 		log.Printf("Error happened when retrieving transaction info from pgx table. Err: %s", err)
