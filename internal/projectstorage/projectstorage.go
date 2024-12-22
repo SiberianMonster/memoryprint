@@ -1961,6 +1961,8 @@ func GenerateImages(ctx context.Context, storeDB *pgxpool.Pool, orderObj models.
 		return err
 	}
 	if slices.Contains(images, "") {
+		log.Println("Need to generate images")
+		log.Println(orderObj.OrdersID)
 		url :=  "https://front.memoryprint.dev.startup-it.ru/preview/generate/" + strconv.Itoa(int(orderObj.OrdersID))
 		err = driver.Get(url)
 		if err != nil {
