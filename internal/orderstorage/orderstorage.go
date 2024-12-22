@@ -1489,8 +1489,13 @@ func LoadPaidOrders(ctx context.Context, storeDB *pgxpool.Pool) ([]models.PaidOr
 func OrdersToPrint(ctx context.Context, storeDB *pgxpool.Pool, order models.PaidOrderObj) (error) {
 
 	now:=time.Now()
-	tdifference := now.Sub(order.LastEditedAt).Hours()
-	if tdifference > 0.5 || tdifference == 0.5 {
+	log.Println(order.LastEditedAt)
+	log.Println(now)
+
+	if now > order.LastEditedAt.Add(time.Minute * 30) || now == order.LastEditedAt.Add(time.Minute * 30) {
+		log.Println("sending order to print")
+		log.Println(order.LastEditedAt)
+		log.Println(order.OrdersID)
 
 		//orderObj, err := RetrieveSingleOrder(ctx , storeDB, order.OrdersID) 
 
