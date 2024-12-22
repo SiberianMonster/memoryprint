@@ -119,6 +119,10 @@ func FindTransactionStatus(order models.PaidOrderObj) (string, error) {
 		log.Printf("Error happened when updating transaction status into pgx table. Err: %s", terr)
 		return statusTransaction, terr
 	}
+	if transactionNumber == "" {
+		log.Println(order.OrdersID)
+		return statusTransaction, errors.New("empty transaction")
+	}
 	statusURL := &url.URL{
         Scheme: "https",
         Host:   config.BankDomain,
