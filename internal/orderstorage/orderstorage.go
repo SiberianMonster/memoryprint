@@ -1490,9 +1490,9 @@ func OrdersToPrint(ctx context.Context, storeDB *pgxpool.Pool, order models.Paid
 
 	now:=time.Now()
 	log.Println(order.LastEditedAt)
-	log.Println(now)
+	log.Println(now.Unix())
 
-	if now.After(order.LastEditedAt.Add(time.Minute * 30)) {
+	if now.Unix() > order.LastEditedAt.Add(time.Minute * 30).Unix() {
 		log.Println("sending order to print")
 		log.Println(order.LastEditedAt)
 		log.Println(order.OrdersID)
