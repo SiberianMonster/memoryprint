@@ -1322,33 +1322,33 @@ func UpdateSuccessfulTransaction(ctx context.Context, storeDB *pgxpool.Pool, ord
 	var deposit float64
 	var currentdeposit float64
 	var oneTime bool
-	err = storeDB.QueryRow(ctx, "SELECT promocodes_id, giftcertificates_id, giftcertificates_deposit FROM orders WHERE orders_id = ($1);", orderID).Scan(&promocodeID, &giftcertificateID, &deposit)
+	err = storeDB.QueryRow(ctx, "SELECT promooffers_id, giftcertificates_id, giftcertificates_deposit FROM orders WHERE orders_id = ($1);", orderID).Scan(&promocodeID, &giftcertificateID, &deposit)
 	if err != nil {
 		log.Printf("Error happened when searching for promocode for order into pgx table. Err: %s", err)
 		return err
 	}
 	if promocodeID != 0 {
-		err = storeDB.QueryRow(ctx, "SELECT is_onetime FROM promocodes WHERE promocodes_id = ($1);", promocodeID).Scan(&oneTime)
+		err = storeDB.QueryRow(ctx, "SELECT is_onetime FROM promooffers WHERE promooffers_id = ($1);", promocodeID).Scan(&oneTime)
 		if err != nil {
 			log.Printf("Error happened when searching for promocode for order into pgx table. Err: %s", err)
 			return err
 		}
 		
 		if oneTime == true {
-			_, err = storeDB.Exec(ctx, "UPDATE promocodes SET status = ($1), is_used = ($2) WHERE promocodes_id = ($3);",
+			_, err = storeDB.Exec(ctx, "UPDATE promooffers SET status = ($1), is_used = ($2) WHERE promooffers_id = ($3);",
 			"ONETIME_USED",
 			true,
 			promocodeID,
 			)
 			if err != nil {
-				log.Printf("Error happened when updating onetime promocode into pgx table. Err: %s", err)
+				log.Printf("Error happened when updating onetime promooffers into pgx table. Err: %s", err)
 				return err
 			}
 		}
 	}
 
 	if giftcertificateID != 0 && deposit != 0 {
-		err = storeDB.QueryRow(ctx, "SELECT currentdeposit FROM giftcertificates WHERE giftcertificates_id = ($1);", promocodeID).Scan(&currentdeposit)
+		err = storeDB.QueryRow(ctx, "SELECT currentdeposit FROM giftcertificates WHERE giftcertificates_id = ($1);", giftcertificateID).Scan(&currentdeposit)
 		if err != nil {
 			log.Printf("Error happened when searching for gift certificate for order into pgx table. Err: %s", err)
 			return err
