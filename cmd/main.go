@@ -121,7 +121,7 @@ func main() {
 	// go delivery.RoutineUpdateDeliveryStatus(ctx, config.DB)
 	// go update transaction status
 	go transactions.RoutineUpdateTransactionsStatus(ctx, config.DB)
-
+	go projecthandlers.GenerateCreatingImageLinks(ctx, config.DB) 
 
 	router := mux.NewRouter()
 	router.Use(middleware.MiddlewareCORSHeaders)

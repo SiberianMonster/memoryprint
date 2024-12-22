@@ -22,7 +22,11 @@ import (
 	"github.com/SiberianMonster/memoryprint/internal/handlersfunc"
 	"github.com/go-playground/validator/v10"
 	"golang.org/x/exp/slices"
+	"github.com/tebeka/selenium"
+  	"github.com/tebeka/selenium/chrome"
 	"github.com/gorilla/mux"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"time"
 	_ "github.com/lib/pq"
 )
 
@@ -2473,4 +2477,60 @@ func UpdateSurface(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rw.Write(jsonResp)
+}
+
+func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
+
+	ticker := time.NewTicker(config.UpdateInterval*5)
+	var err error
+	var orderList []models.PaidOrderObj
+	
+
+	jobCh := make(chan models.PaidOrderObj)
+	for i := 0; i < config.WorkersCount; i++ {
+		go func() {
+			for job := range jobCh {
+				service, err := selenium.NewChromeDriverService("./chromedriver", 4444)
+				if err != nil {
+					log.Printf("Error happened when creating browser. Err: %s", err)
+					continue
+				}
+				defer service.Stop()
+				caps := selenium.Capabilities{}
+				caps.AddChrome(chrome.Capabilities{Args: []string{
+				"--headless", // comment out this line for testing
+				}})
+
+				// create a new remote client with the specified options
+				driver, err := selenium.NewRemote(caps, "")
+				if err != nil {
+					log.Printf("Error happened when creating driver. Err: %s", err)
+					continue
+				}
+				driver.SetPageLoadTimeout(210*time.Second)
+
+			
+				err = projectstorage.GenerateImages(ctx, storeDB, job, driver)
+				if err != nil {
+					log.Printf("Error happened when updating pending orders. Err: %s", err)
+					continue
+				}
+			}
+		}()
+	}
+
+	for range ticker.C {
+
+		orderList, err = orderstorage.LoadPaidOrders(ctx, storeDB)
+		if err != nil {
+			log.Printf("Error happened when retrieving pending orders. Err: %s", err)
+			continue
+		}
+		
+		for _, order := range orderList {
+			jobCh <- order
+
+		}
+
+	}
 }

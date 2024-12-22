@@ -15,6 +15,8 @@ import (
 	"net/http"
 	"strings"
 	"encoding/json"
+	"golang.org/x/exp/slices"
+	"github.com/tebeka/selenium"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -1917,5 +1919,55 @@ func LoadPromocodeTemplates(ctx context.Context, storeDB *pgxpool.Pool, tcategor
 		
 	
 	return templateset, nil
+
+}
+
+// RetrieveProjectImages function performs the operation of retrieving images of a published photobook project from pgx database with a query.
+func RetrieveProjectImages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint) ([]string, error) {
+
+	var images []string
+	rows, err := storeDB.Query(ctx, "SELECT creating_image_link FROM pages WHERE projects_id = ($1) AND is_template = ($2) ORDER BY sort;", projectID, false)
+	if err != nil {
+		log.Printf("Error happened when retrieving pages from pgx table. Err: %s", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var image string
+		
+		if err = rows.Scan(&image); err != nil {
+			log.Printf("Error happened when scanning pages. Err: %s", err)
+			return nil, err
+		}
+		
+		images = append(images, image)
+	}
+
+	if err = rows.Err(); err != nil {
+		log.Printf("Error happened when retrieving pages from pgx table. Err: %s", err)
+		return nil, err
+	}
+	return images, nil
+
+}
+
+// GenerateImages function checks if a paid project has images for all pages, and if no, triggers their generation
+func GenerateImages(ctx context.Context, storeDB *pgxpool.Pool, orderObj models.PaidOrderObj, driver selenium.WebDriver) (error) {
+
+	images, err := RetrieveProjectImages(ctx, storeDB, orderObj.OrdersID)
+	if err != nil {
+		log.Printf("Error happened when retrieving images from pgx table. Err: %s", err)
+		return err
+	}
+	if slices.Contains(images, "") {
+		url :=  "https://front.memoryprint.dev.startup-it.ru/preview/generate/" + strconv.Itoa(int(orderObj.OrdersID))
+		err = driver.Get(url)
+		if err != nil {
+			log.Printf("Error happened when generating images for paid project. Err: %s", err)
+		}
+	}
+	
+	return nil
 
 }
