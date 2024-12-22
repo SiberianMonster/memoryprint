@@ -113,7 +113,7 @@ func FindTransactionStatus(order models.PaidOrderObj) (string, error) {
 		log.Printf("Error happened when retrieving transaction info from pgx table. Err: %s", terr)
 		return statusTransaction, terr
 	}
-	terr = config.DB.QueryRow(ctx, "SELECT bankorderid FROM transactions WHERE transactions_id = ($q);",
+	terr = config.DB.QueryRow(ctx, "SELECT bankorderid FROM transactions WHERE transactions_id = ($1);",
 			tID).Scan(&transactionNumber)
 	if terr != nil {
 		log.Printf("Error happened when updating transaction status into pgx table. Err: %s", terr)
