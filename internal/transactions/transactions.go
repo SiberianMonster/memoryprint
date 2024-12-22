@@ -13,6 +13,8 @@ import (
 	"errors"
     "math/rand"
     "time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func randomString(l int) string {
@@ -97,8 +99,26 @@ func CreateTransaction(orderID uint, finalPrice float64, goodType string) (strin
 	return paymentLink, errors.New("failed request to bank")
 }
 
-func FindTransactionStatus(orderID uint) (string, error) {
+func FindTransactionStatus(order models.PaidOrderObj) (string, error) {
 
+	
+	var tID uint
+	var transactionNumber string
+	statusTransaction := "PENDING"
+	ctx, cancel := context.WithTimeout(context.Background(), config.ContextDBTimeout)
+	// не забываем освободить ресурс
+	defer cancel()
+	terr := config.DB.QueryRow(ctx, "SELECT LAST(transactions_id) FROM orders_has_transactions WHERE orders_id = ($1);", order.OrdersID).Scan(&tID)
+	if terr != nil {
+		log.Printf("Error happened when retrieving transaction info from pgx table. Err: %s", terr)
+		return statusTransaction, terr
+	}
+	terr = config.DB.QueryRow(ctx, "SELECT bankorderid FROM transactions WHERE transactions_id = ($q);",
+			tID).Scan(&transactionNumber)
+	if terr != nil {
+		log.Printf("Error happened when updating transaction status into pgx table. Err: %s", terr)
+		return statusTransaction, terr
+	}
 	statusURL := &url.URL{
         Scheme: "https",
         Host:   config.BankDomain,
@@ -107,18 +127,17 @@ func FindTransactionStatus(orderID uint) (string, error) {
     queryValues := url.Values{}
     queryValues.Add("userName", config.BankUsername)
     queryValues.Add("password", config.BankPassword)
-	queryValues.Add("orderNumber", strconv.Itoa(int(orderID)))
+	queryValues.Add("orderId", transactionNumber)
     statusURL.RawQuery = queryValues.Encode()
 
-	ctx, cancel := context.WithTimeout(context.Background(), config.ContextDBTimeout)
-	// не забываем освободить ресурс
-	defer cancel()
-	statusTransaction := "PENDING"
+	
+	
+	log.Println(statusURL.String())
 
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, statusURL.String(), nil)
 	if err != nil {
-		log.Printf("Error in checking transaction status for the order %s", strconv.Itoa(int(orderID)))
+		log.Printf("Error in checking transaction status for the order %s", strconv.Itoa(int(order.OrdersID)))
 		return statusTransaction, errors.New("failed response from bank")
 	}
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -127,12 +146,12 @@ func FindTransactionStatus(orderID uint) (string, error) {
 	response, err := client.Do(request)
 
 	if err != nil {
-		log.Printf("Error in getting payment data for the order %s", strconv.Itoa(int(orderID)))
+		log.Printf("Error in getting payment data for the order %s", strconv.Itoa(int(order.OrdersID)))
 		return statusTransaction, errors.New("failed response from bank")
 	}
 
 	if response.StatusCode == http.StatusInternalServerError {
-		log.Printf("Internal server error happened when getting payment data %s order ", strconv.Itoa(int(orderID)))
+		log.Printf("Internal server error happened when getting payment data %s order ", strconv.Itoa(int(order.OrdersID)))
 		return statusTransaction, errors.New("failed response from bank")
 	}
 
@@ -141,22 +160,25 @@ func FindTransactionStatus(orderID uint) (string, error) {
 		err := json.NewDecoder(response.Body).Decode(&transaction)
 		defer response.Body.Close()
 		if err != nil {
-			log.Printf("Unable to decode bank response for the order %s",  strconv.Itoa(int(orderID)))
+			log.Printf("Unable to decode bank response for the order %s",  strconv.Itoa(int(order.OrdersID)))
 			return statusTransaction, errors.New("failed reading response from bank")
 		}
-		if transaction.ActionCode != 0 {
-			err = orderstorage.UpdateUnSuccessfulTransaction(ctx, config.DB, orderID)
+		if transaction.OrderStatus == 1 {
+			err = orderstorage.UpdateSuccessfulTransaction(ctx, config.DB, order.OrdersID)
 			if err != nil {
-				log.Printf("Unable to update transaction entry for the order %s", strconv.Itoa(int(orderID)))
+				log.Printf("Unable to update transaction entry for the order %s", strconv.Itoa(int(order.OrdersID)))
 			}
-			log.Printf("Unsuccessful transaction for the order %s",  strconv.Itoa(int(orderID)))
-			return "UNSUCCESSFUL", errors.New("failed reading response from bank")
+			log.Printf("Successful transaction for the order %s",  strconv.Itoa(int(order.OrdersID)))
+			return "SUCCESSFUL", errors.New("failed reading response from bank")
 		}
-		err = orderstorage.UpdateSuccessfulTransaction(ctx, config.DB, orderID)
-		if err != nil {
-			log.Printf("Unable to update transaction entry for the order %s", strconv.Itoa(int(orderID)))
+		if transaction.OrderStatus != 0 {
+			err = orderstorage.UpdateUnSuccessfulTransaction(ctx, config.DB, order.OrdersID)
+			if err != nil {
+				log.Printf("Unable to update unsuccessfull transaction entry for the order %s", strconv.Itoa(int(order.OrdersID)))
+			}
+			return "UNSUCCESSFUL", nil
 		}
-		return "SUCCESSFUL", nil
+		return "PENDING", nil
 
 	}
 	return statusTransaction, errors.New("failed response from bank")
@@ -176,7 +198,7 @@ func CancelTransaction(orderID uint) error {
 	queryValues := url.Values{}
     queryValues.Add("userName", config.BankUsername)
     queryValues.Add("password", config.BankPassword)
-	queryValues.Add("orderNumber", banktransactionID)
+	queryValues.Add("orderId", banktransactionID)
     cancellationURL.RawQuery = queryValues.Encode()
 
 	
@@ -213,7 +235,7 @@ func CancelTransaction(orderID uint) error {
 			return errors.New("failed reading response from bank")
 		}
 		// need to be fixed
-		if transaction.ErrorCode != "7" && transaction.ErrorCode != "6"{
+		if transaction.ErrorCode != "0"{
 
 			return errors.New("failed reading response from bank")
 		}
@@ -222,4 +244,40 @@ func CancelTransaction(orderID uint) error {
 
 	}
 	return errors.New("failed response from bank")
+}
+
+func RoutineUpdateTransactionsStatus(ctx context.Context, storeDB *pgxpool.Pool) {
+
+	ticker := time.NewTicker(config.UpdateInterval)
+	var err error
+	var orderList []models.PaidOrderObj
+
+	jobCh := make(chan models.PaidOrderObj)
+	for i := 0; i < config.WorkersCount; i++ {
+		go func() {
+			for job := range jobCh {
+	
+				_, err = FindTransactionStatus(job)
+				if err != nil {
+					log.Printf("Error happened when updating pending orders. Err: %s", err)
+					continue
+				}
+			}
+		}()
+	}
+
+	for range ticker.C {
+
+		orderList, err = orderstorage.LoadPaymentInProgressOrders(ctx, storeDB)
+		if err != nil {
+			log.Printf("Error happened when retrieving pending orders. Err: %s", err)
+			continue
+		}
+
+		for _, order := range orderList {
+			jobCh <- order
+
+		}
+
+	}
 }

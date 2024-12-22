@@ -524,7 +524,7 @@ func CancelPayment(ctx context.Context, storeDB *pgxpool.Pool, orderID uint, use
 		return err
 	}
 
-	rows, err := storeDB.Query(ctx, "SELECT projects_id FROM orders_has_projects WHERE orders_id = ($1);", awaitedOrderID)
+	rows, err := storeDB.Query(ctx, "SELECT projects_id FROM orders_has_projects WHERE orders_id = ($1);", orderID)
 	if err != nil {
 		log.Printf("Error happened when retrieving projects for cancelled order from pgx table. Err: %s", err)
 		return err
@@ -1374,6 +1374,9 @@ func UpdateSuccessfulTransaction(ctx context.Context, storeDB *pgxpool.Pool, ord
 func UpdateUnSuccessfulTransaction(ctx context.Context, storeDB *pgxpool.Pool, orderID uint) (error) {
 
 	var tID uint
+	var userID uint
+	var awaitedOrderID uint
+	t := time.Now()
 	err := storeDB.QueryRow(ctx, "SELECT LAST(transactions_id) FROM orders_has_transactions WHERE orders_id = ($1);", orderID).Scan(&tID)
 	if err != nil {
 		log.Printf("Error happened when retrieving transaction info from pgx table. Err: %s", err)
@@ -1387,6 +1390,48 @@ func UpdateUnSuccessfulTransaction(ctx context.Context, storeDB *pgxpool.Pool, o
 		log.Printf("Error happened when updating transaction status into pgx table. Err: %s", err)
 		return err
 	}
+	err = storeDB.QueryRow(ctx, "SELECT users_id FROM orders WHERE orders_id = ($1);", orderID).Scan(&userID)
+	if err != nil {
+		log.Printf("Error happened when searching for draft order into pgx table. Err: %s", err)
+		return err
+	}
+	_, err = storeDB.Exec(ctx, "UPDATE orders SET last_updated_at = ($1), status = ($2) WHERE orders_id = ($3);",
+			t,
+			"CANCELLED",
+			orderID,
+	)
+	if err != nil {
+		log.Printf("Error happened when cancelling order into pgx table. Err: %s", err)
+		return err
+	}
+	
+	err = storeDB.QueryRow(ctx, "SELECT orders_id FROM orders WHERE users_id = ($1) and status = ($2) ORDER BY created_at;", userID, "AWAITING_PAYMENT").Scan(&awaitedOrderID)
+	if err != nil {
+		log.Printf("Error happened when searching for draft order into pgx table. Err: %s", err)
+		return err
+	}
+
+	rows, err := storeDB.Query(ctx, "SELECT projects_id FROM orders_has_projects WHERE orders_id = ($1);", orderID)
+	if err != nil {
+		log.Printf("Error happened when retrieving projects for cancelled order from pgx table. Err: %s", err)
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var projectID uint
+		if err = rows.Scan(&projectID); err != nil {
+			log.Printf("Error happened when scanning project ID. Err: %s", err)
+			return err
+		}
+		_, err = storeDB.Exec(ctx, "INSERT INTO orders_has_projects (orders_id, projects_id) VALUES ($1, $2);",
+			awaitedOrderID,
+			projectID) 
+		if err != nil {
+				log.Printf("Error happened when rolling back project to draft order into pgx table. Err: %s", err)
+				return err
+		}
+	}
 	
 	return nil
 
@@ -1397,7 +1442,7 @@ func GetBankTransactionID(ctx context.Context, storeDB *pgxpool.Pool, orderID ui
 
 	var tID uint
 	var bankID string 
-	err := storeDB.QueryRow(ctx, "SELECT transactions_id FROM orders_has_transactions WHERE orders_id = ($1) ORDER BY transactions_id DESC LIMIT 1;", orderID).Scan(&tID)
+	err := storeDB.QueryRow(ctx, "SELECT LAST(transactions_id) FROM orders_has_transactions WHERE orders_id = ($1);", orderID).Scan(&tID)
 	if err != nil {
 		log.Printf("Error happened when retrieving transaction info from pgx table. Err: %s", err)
 		return bankID, err
@@ -1452,7 +1497,7 @@ func OrdersToPrint(ctx context.Context, storeDB *pgxpool.Pool, order models.Paid
 		// Send paid order email
 		from := "support@memoryprint.ru"
 		to := []string{order.Email}
-		subject := "Ваш заказ оплачен!"
+		subject := "Ваш заказ передан в печать!"
 		mailType := emailutils.MailPaidOrder
 		mailData := &emailutils.MailData{
 			Username: order.Username,
@@ -1482,6 +1527,31 @@ func OrdersToPrint(ctx context.Context, storeDB *pgxpool.Pool, order models.Paid
 }
 
 
+// LoadPaymentInProgressOrders function performs the operation of retrieving order in PAYMENT_IN_PROGRESS status from pgx database with a query.
+func LoadPaymentInProgressOrders(ctx context.Context, storeDB *pgxpool.Pool) ([]models.PaidOrderObj, error) {
 
+	var orders []models.PaidOrderObj
+
+	rows, err := storeDB.Query(ctx, "SELECT orders_id, last_updated_at, firstname, email FROM orders WHERE status = ($1);", "PAYMENT_IN_PROGRESS")
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				log.Printf("Error happened when retrieving paid orders info from pgx table. Err: %s", err)
+				return orders, err
+	}
+
+	
+	for rows.Next() {
+		var paidOrder models.PaidOrderObj
+		var updateTimeStorage time.Time
+		if err = rows.Scan(&paidOrder.OrdersID, &updateTimeStorage, &paidOrder.Username, &paidOrder.Email); err != nil {
+			log.Printf("Error happened when scanning projects. Err: %s", err)
+			return orders, err
+		}
+		paidOrder.LastEditedAt = updateTimeStorage
+
+		orders = append(orders, paidOrder)
+	}
+	return orders, nil
+
+}
 
 

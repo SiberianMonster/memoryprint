@@ -28,7 +28,8 @@ import (
 	"github.com/SiberianMonster/memoryprint/internal/projecthandlers"
 	"github.com/SiberianMonster/memoryprint/internal/orderhandlers"
 	"github.com/SiberianMonster/memoryprint/internal/middleware"
-	"github.com/SiberianMonster/memoryprint/internal/delivery"
+	//"github.com/SiberianMonster/memoryprint/internal/delivery"
+	"github.com/SiberianMonster/memoryprint/internal/transactions"
 	"github.com/gorilla/mux"
 	// "github.com/rs/cors"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -117,8 +118,9 @@ func main() {
 
 	go orderhandlers.SentOrdersToPrint(ctx, config.DB)
 	//go userhandlers.SentGiftCertificateMail(ctx, config.DB)
-	go delivery.RoutineUpdateDeliveryStatus(ctx, config.DB)
+	// go delivery.RoutineUpdateDeliveryStatus(ctx, config.DB)
 	// go update transaction status
+	go transactions.RoutineUpdateTransactionsStatus(ctx, config.DB)
 
 
 	router := mux.NewRouter()
@@ -138,7 +140,7 @@ func main() {
 	noAuthRouter.HandleFunc("/api/v1/auth/signup", userhandlers.Register).Methods("POST","OPTIONS")
 	noAuthRouter.HandleFunc("/api/v1/auth/login", userhandlers.Login).Methods("POST","OPTIONS")
 	noAuthRouter.HandleFunc("/api/v1/load-templates", projecthandlers.LoadTemplates).Methods("GET","OPTIONS")
-	noAuthRouter.HandleFunc("/api/v1/load-template/{id}", projecthandlers.LoadTemplate).Methods("GET","OPTIONS")
+	//noAuthRouter.HandleFunc("/api/v1/load-template/{id}", projecthandlers.LoadTemplate).Methods("GET","OPTIONS")
 	noAuthRouter.HandleFunc("/api/v1/load-prices", projecthandlers.LoadPrices).Methods("GET","OPTIONS")
 	noAuthRouter.HandleFunc("/api/v1/load-colors", projecthandlers.LoadColours).Methods("GET","OPTIONS")
 	noAuthRouter.HandleFunc("/api/v1/load-promocodes", userhandlers.LoadPromocodes).Methods("GET","OPTIONS")
@@ -226,7 +228,7 @@ func main() {
 	authRouter.HandleFunc("/api/v1/change-favourite-background/{id}", projecthandlers.FavourBackground).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/change-favourite-decoration/{id}", projecthandlers.FavourDecoration).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/change-favourite-layout/{id}", projecthandlers.FavourLayout).Methods("POST","OPTIONS")
-	authRouter.HandleFunc("/api/v1/check-promocode", userhandlers.CheckPromocode).Methods("GET","OPTIONS")
+	authRouter.HandleFunc("/api/v1/check-promocode", userhandlers.CheckPromocode).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/duplicate-project/{id}", projecthandlers.DuplicateProject).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/share-pdf-link/{id}", projecthandlers.ShareLink).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/delete-project/{id}", projecthandlers.DeleteProject).Methods("POST","OPTIONS")

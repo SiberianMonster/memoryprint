@@ -18,7 +18,7 @@ const (
 	Key               = "encoding124"
 	SendGridApiKey    = "encoding124"
 	SubscriptionKey               = "10111992060419912905199187345690"
-	UpdateInterval    = time.Minute * 15
+	UpdateInterval    = time.Minute * 2
 	SleepTime         = time.Second *60
 	WorkersCount                    = 60
 	UserIDKey         contextKey    = "userid"

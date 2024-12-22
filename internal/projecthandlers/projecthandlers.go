@@ -1114,12 +1114,21 @@ func LoadLayouts(rw http.ResponseWriter, r *http.Request) {
 	requestL.Offset = uint(rOffset)
 	requestL.Limit = uint(rLimit)
 	
-	var lo models.LimitOffset
+	var lo models.LimitOffsetVariant
 	if _, ok := params["offset"]; ok {
 		lo.Offset = &requestL.Offset
 	}
 	if requestL.Limit != 0 {
 		lo.Limit = &requestL.Limit
+	}
+	requestL.Size = strings.ToUpper(r.URL.Query().Get("size"))
+	if requestL.Size != "" {
+		lo.Size = &requestL.Size
+	}
+	var variant string
+	variant = strings.ToUpper(r.URL.Query().Get("variant"))
+	if variant != "" {
+		lo.Variant = &variant
 	}
 	validate := validator.New()
 
@@ -1131,7 +1140,6 @@ func LoadLayouts(rw http.ResponseWriter, r *http.Request) {
         return
     }
 	requestL.CountImages = uint(rCountImages)
-	requestL.Size = strings.ToUpper(r.URL.Query().Get("size"))
 	requestL.IsFavourite, _ = strconv.ParseBool(r.URL.Query().Get("isfavourite"))
 
 	defer r.Body.Close()
@@ -1142,7 +1150,7 @@ func LoadLayouts(rw http.ResponseWriter, r *http.Request) {
 	
 	
 	
-	layoutSet, err := objectsstorage.LoadLayouts(ctx, config.DB, userID, requestL.Offset, requestL.Limit, requestL.Size, requestL.CountImages, requestL.IsFavourite)
+	layoutSet, err := objectsstorage.LoadLayouts(ctx, config.DB, userID, requestL.Offset, requestL.Limit, requestL.Size, variant, requestL.CountImages, requestL.IsFavourite)
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
@@ -1811,6 +1819,10 @@ func LoadTemplates(rw http.ResponseWriter, r *http.Request) {
 		requestT.Category = strings.ToUpper(r.URL.Query().Get("category"))
 		lo.Category = &requestT.Category
 	}
+	variant := r.URL.Query().Get("variant")
+	if variant != "" {
+		lo.Variant = &variant
+	}
 
 	requestT.Offset = uint(tOffset)
 	requestT.Limit = uint(tLimit)
@@ -1838,7 +1850,7 @@ func LoadTemplates(rw http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	log.Printf("Retrieving templates")
 
-	templates, err := projectstorage.RetrieveTemplates(ctx, config.DB, requestT.Offset, requestT.Limit, requestT.Category, requestT.Size, "PUBLISHED")
+	templates, err := projectstorage.RetrieveTemplates(ctx, config.DB, requestT.Offset, requestT.Limit, requestT.Category, requestT.Size, variant, "PUBLISHED")
 
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
@@ -1952,7 +1964,7 @@ func CreateTemplate(rw http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
 	
-	tID, err = projectstorage.CreateTemplate(ctx, config.DB, TemplateObj.Name, TemplateObj.Size, TemplateObj.Category)
+	tID, err = projectstorage.CreateTemplate(ctx, config.DB, TemplateObj.Name, TemplateObj.Size, TemplateObj.Category, TemplateObj.Variant)
 
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)

@@ -284,6 +284,8 @@ type Layout struct {
 	Link    string `json:"link" validate:"required"`
 	Data        json.RawMessage      `json:"data" validate:"required"`
 	IsFavourite bool `json:"is_favourite"`
+	Variant    string `json:"variant"  validate:"required,oneof=STANDARD PREMIUM"`
+	IsCover    bool `json:"is_cover" validate:"required"`
 }
 
 type Background struct {
@@ -374,6 +376,7 @@ type SavedTemplateObj struct {
 	CreatedAt int64 `json:"created_at"`
 	CreatingSpineLink *string `json:"creating_spine_link"`
 	PreviewSpineLink *string `json:"preview_spine_link"`
+	Variant *string `json:"variant"`
 	Pages []TemplatePage `json:"pages"`
   }
 
@@ -657,6 +660,7 @@ type Template struct {
 	Name string `json:"name"`
 	Size string `json:"size"`
 	Status string `json:"status"  validate:"required,oneof=PUBLISHED EDITED"`
+	Variant string `json:"variant"  validate:"required,oneof=STANDARD PREMIUM"`
 	FrontPage TemplateFrontPage `json:"front_page"`
   }
 
@@ -675,6 +679,7 @@ type NewTemplateObj struct {
 	Category string `json:"category" validate:"required,oneof=VACATION WEDDING HOLIDAYS CHILDREN ANIMALS UNIVERSAL"`
 	Name string `json:"name" validate:"required,min=2,max=40"`
 	Size string `json:"size"`
+	Variant string `json:"variant"  validate:"required,oneof=STANDARD PREMIUM"`
 }
 
 type RequestPhotos struct {
@@ -834,13 +839,45 @@ type ResponseTransactionCancel struct {
 }
 
 type ResponseTransactionStatus struct {
-	OrderNumber int64 `json:"orderNumber" validate:"required"`
-	ActionCode int64 `json:"actionCode" validate:"required"`
-	ActionCodeDescription string `json:"actionCodeDescription" validate:"required"`
-	Amount float64 `json:"amount"`
-	Date int64 `json:"date"`
-	IP string `json:"ip"`
-	PaymentWay int64 `json:"paymentWay" validate:"required"`
+	ErrorCode             string        `json:"errorCode"`
+	ErrorMessage          string        `json:"errorMessage"`
+	OrderNumber           string        `json:"orderNumber"`
+	OrderStatus           int           `json:"orderStatus"`
+	ActionCode            int           `json:"actionCode"`
+	ActionCodeDescription string        `json:"actionCodeDescription"`
+	Amount                int           `json:"amount"`
+	Currency              string        `json:"currency"`
+	Date                  int64         `json:"date"`
+	OrderDescription      string        `json:"orderDescription"`
+	IP                    string        `json:"ip"`
+	MerchantOrderParams   []interface{} `json:"merchantOrderParams"`
+	TransactionAttributes []interface{} `json:"transactionAttributes"`
+	Attributes            []struct {
+		Name  string `json:"name"`
+		Value string `json:"value"`
+	} `json:"attributes"`
+	CardAuthInfo struct {
+		MaskedPan      string `json:"maskedPan"`
+		Expiration     string `json:"expiration"`
+		CardholderName string `json:"cardholderName"`
+		ApprovalCode   string `json:"approvalCode"`
+		Pan            string `json:"pan"`
+	} `json:"cardAuthInfo"`
+	AuthDateTime      int64  `json:"authDateTime"`
+	TerminalID        string `json:"terminalId"`
+	AuthRefNum        string `json:"authRefNum"`
+	PaymentAmountInfo struct {
+		PaymentState    string `json:"paymentState"`
+		ApprovedAmount  int    `json:"approvedAmount"`
+		DepositedAmount int    `json:"depositedAmount"`
+		RefundedAmount  int    `json:"refundedAmount"`
+	} `json:"paymentAmountInfo"`
+	BankInfo struct {
+		BankName        string `json:"bankName"`
+		BankCountryCode string `json:"bankCountryCode"`
+		BankCountryName string `json:"bankCountryName"`
+	} `json:"bankInfo"`
+
 }
 
 type ResponsePaymentStatus struct {
@@ -925,6 +962,7 @@ type LimitOffsetSize struct {
 	Offset *uint `json:"offset" validate:"required"`
 	Size *string `json:"size" validate:"required,oneof=SMALL_SQUARE SQUARE VERTICAL HORIZONTAL"`
 	Category *string `json:"category" validate:"omitempty,oneof=VACATION WEDDING HOLIDAYS CHILDREN ANIMALS UNIVERSAL"`
+	Variant *string `json:"variant" validate:"required,oneof=STANDARD PREMIUM"`
 
 }
 type LimitOffsetSizeAdmin struct {
@@ -950,4 +988,13 @@ type LimitOffsetIsActiveStatus struct {
 	Offset *uint `json:"offset" validate:"required"`
 	IsActive *bool `json:"is_active" validate:"required"`
 	Status *string `json:"status" validate:"omitempty,oneof=AWAITING_PAYMENT PAYMENT_IN_PROGRESS PAID IN_PRINT READY_FOR_DELIVERY IN_DELIVERY COMPLETED CANCELLED"`
+}
+type LimitOffsetVariant struct {
+
+	Limit *uint `json:"limit" validate:"required"`
+	Offset *uint `json:"offset" validate:"required"`
+	Size *string `json:"size" validate:"required,oneof=SMALL_SQUARE SQUARE VERTICAL HORIZONTAL"`
+	Variant *string `json:"variant" validate:"required,oneof=STANDARD PREMIUM"`
+	IsCover *bool `json:"is_cover" validate:"required"`
+
 }
