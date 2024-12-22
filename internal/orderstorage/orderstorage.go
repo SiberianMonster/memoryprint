@@ -551,7 +551,7 @@ func CancelPayment(ctx context.Context, storeDB *pgxpool.Pool, orderID uint, use
 		return err
 	}
 
-	err = storeDB.QueryRow(ctx, "SELECT LAST(transaction_id) FROM orders_has_transactions WHERE orders_id = ($1);", orderID).Scan(&transactionID)
+	err = storeDB.QueryRow(ctx, "SELECT transaction_id FROM orders_has_transactions WHERE orders_id = ($1) ORDER BY transactions_id DESC LIMIT 1;", orderID).Scan(&transactionID)
 	if err = rows.Err(); err != nil {
 		log.Printf("Error happened when retrieving transaction info from pgx table. Err: %s", err)
 		return err
@@ -1293,7 +1293,7 @@ func UpdateSuccessfulTransaction(ctx context.Context, storeDB *pgxpool.Pool, ord
 
 	t := time.Now()
 	var tID uint
-	err := storeDB.QueryRow(ctx, "SELECT LAST(transactions_id) FROM orders_has_transactions WHERE orders_id = ($1);", orderID).Scan(&tID)
+	err := storeDB.QueryRow(ctx, "SELECT transactions_id FROM orders_has_transactions WHERE orders_id = ($1) ORDER BY transactions_id DESC LIMIT 1;", orderID).Scan(&tID)
 	if err != nil {
 		log.Printf("Error happened when retrieving transaction info from pgx table. Err: %s", err)
 		return err
@@ -1377,7 +1377,7 @@ func UpdateUnSuccessfulTransaction(ctx context.Context, storeDB *pgxpool.Pool, o
 	var userID uint
 	var awaitedOrderID uint
 	t := time.Now()
-	err := storeDB.QueryRow(ctx, "SELECT LAST(transactions_id) FROM orders_has_transactions WHERE orders_id = ($1);", orderID).Scan(&tID)
+	err := storeDB.QueryRow(ctx, "SELECT transactions_id FROM orders_has_transactions WHERE orders_id = ($1) ORDER BY transactions_id DESC LIMIT 1;", orderID).Scan(&tID)
 	if err != nil {
 		log.Printf("Error happened when retrieving transaction info from pgx table. Err: %s", err)
 		return err
@@ -1442,7 +1442,7 @@ func GetBankTransactionID(ctx context.Context, storeDB *pgxpool.Pool, orderID ui
 
 	var tID uint
 	var bankID string 
-	err := storeDB.QueryRow(ctx, "SELECT LAST(transactions_id) FROM orders_has_transactions WHERE orders_id = ($1);", orderID).Scan(&tID)
+	err := storeDB.QueryRow(ctx, "SELECT transactions_id FROM orders_has_transactions WHERE orders_id = ($1) ORDER BY transactions_id DESC LIMIT 1;", orderID).Scan(&tID)
 	if err != nil {
 		log.Printf("Error happened when retrieving transaction info from pgx table. Err: %s", err)
 		return bankID, err

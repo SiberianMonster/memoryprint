@@ -108,7 +108,7 @@ func FindTransactionStatus(order models.PaidOrderObj) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), config.ContextDBTimeout)
 	// не забываем освободить ресурс
 	defer cancel()
-	terr := config.DB.QueryRow(ctx, "SELECT LAST(transactions_id) FROM orders_has_transactions WHERE orders_id = ($1);", order.OrdersID).Scan(&tID)
+	terr := config.DB.QueryRow(ctx, "SELECT transactions_id FROM orders_has_transactions WHERE orders_id = ($1) ORDER BY transactions_id DESC LIMIT 1;", order.OrdersID).Scan(&tID)
 	if terr != nil {
 		log.Printf("Error happened when retrieving transaction info from pgx table. Err: %s", terr)
 		return statusTransaction, terr
