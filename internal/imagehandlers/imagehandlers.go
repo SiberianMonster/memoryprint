@@ -1,6 +1,6 @@
 // Handlers package contains endpoints handlers for the Photo Book Editor module.
 //
-// https://github.com/SiberianMonster/memoryprint/tree/development/internal/projecthandlers
+// https://github.com/SiberianMonster/memoryprint/tree/development/internal/imagehandlers
 package imagehandlers
 
 import (
@@ -74,6 +74,23 @@ type balaResponse struct {
 
 type ImageRespBody struct {
 	Link string `json:"link"`
+}
+
+	
+type FolderContent struct {
+	Meta struct {
+		Total int `json:"total"`
+	} `json:"meta"`
+	Files []any `json:"files"`
+}
+
+type NewDirectory struct {
+    DirName    string `json:"dir_name"`
+}
+
+type CopyPasteImage struct {
+    Destination string   `json:"destination"`
+	Source      []string `json:"source"`
 }
 
 
@@ -517,4 +534,101 @@ func CreatePDFVisualization(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rw.Write(jsonResp)
+}
+
+func CreateProjectFolder(images []string, orderID uint) {
+
+	folderName := "photobook_" + strconv.Itoa(int(orderID))
+	var folderContent FolderContent
+
+	//check if folder exists
+	urlCheck := "https://api.timeweb.cloud/api/v1/storages/buckets/225285/object-manager/list?prefix=" + folderName + "/"
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", urlCheck, nil)
+	if err != nil {
+		log.Printf("Failed to create a request to bucket %s", err)
+	}
+	req.Header.Set("Authorization", "Bearer " + config.TimewebToken)
+	req.Header.Set("Content-Type","application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+			log.Printf("Failed to make a request to bucket %s", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+            log.Println(resp.StatusCode)
+			log.Printf("Failed to make a request to bucket %s", err)
+    } else {
+		err = json.NewDecoder(resp.Body).Decode(&folderContent)
+		if err != nil {
+			log.Printf("Failed to decode folder content %s", err)
+		}
+		if folderContent.Meta.Total == len(images){
+			log.Println("all pages already copied")
+		} else {
+			//copy paste images
+			log.Println("missing pages, start to copy")
+
+			//create folder
+			body := &NewDirectory{
+				DirName:    folderName,
+			}
+			
+			urlCreateFolder := "https://api.timeweb.cloud/api/v1/storages/buckets/225285/object-manager/mkdir"
+			payloadBuf := new(bytes.Buffer)
+			json.NewEncoder(payloadBuf).Encode(body)
+			req, err = http.NewRequest("POST", urlCreateFolder, payloadBuf)
+			if err != nil {
+				log.Printf("Failed to create a request to create new folder %s", err)
+			}
+			req.Header.Set("Authorization", "Bearer " + config.TimewebToken)
+			req.Header.Set("Content-Type","application/json")
+			resp, err = client.Do(req)
+			if err != nil {
+					log.Printf("Failed to make a request to create new folder %s", err)
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != 201 {
+					log.Println(resp.StatusCode)
+					log.Printf("Failed to make a request to create new folder %s", err)
+			} else {
+				var pathToCopy string
+				urlCopyPasteImage := "https://api.timeweb.cloud/api/v1/storages/buckets/225285/object-manager/copy"
+				for _, image := range images {
+					// copy each page
+					body := &CopyPasteImage{
+						Destination:    folderName,
+					}
+					pathToCopy = "photo/" + image
+					body.Source = append(body.Source, pathToCopy)
+
+					payloadBuf = new(bytes.Buffer)
+					json.NewEncoder(payloadBuf).Encode(body)
+					req, err = http.NewRequest("POST", urlCopyPasteImage, payloadBuf)
+					if err != nil {
+						log.Printf("Failed to create a request to copy page %s", err)
+					}
+					req.Header.Set("Authorization", "Bearer " + config.TimewebToken)
+					req.Header.Set("Content-Type","application/json")
+					resp, err = client.Do(req)
+					if err != nil {
+							log.Printf("Failed to make a request to copy page %s", err)
+					}
+					defer resp.Body.Close()
+					if resp.StatusCode != 204 {
+							log.Println(resp.StatusCode)
+							log.Printf("Failed to make a request to copy page %s", err)
+							break
+					}
+				}
+
+			log.Println("finished copying pages")
+
+			}
+			
+		}
+		
+    }
+	
+	
 }

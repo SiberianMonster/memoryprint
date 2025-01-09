@@ -1468,7 +1468,7 @@ func LoadPaidOrders(ctx context.Context, storeDB *pgxpool.Pool) ([]models.PaidOr
 				log.Printf("Error happened when retrieving paid orders info from pgx table. Err: %s", err)
 				return orders, err
 	}
-
+	defer rows.Close()
 	
 	for rows.Next() {
 		var paidOrder models.PaidOrderObj

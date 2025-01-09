@@ -5,7 +5,8 @@ import (
 	"crypto/tls"
 	"fmt"
 	"log"
-	"math/rand"
+	"crypto/rand"
+	"math/big"
 	"html/template"
 	"net/smtp"
 	"strings"
@@ -13,18 +14,19 @@ import (
 	"github.com/SiberianMonster/memoryprint/internal/config"
 )
 
-const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+"
 
 
 // GenerateRandomString generate a string of random characters of given length
 func GenerateRandomString(n int) string {
-	sb := strings.Builder{}
-	sb.Grow(n)
-	for i := 0; i < n; i++ {
-		idx := rand.Int63() % int64(len(letterBytes))
-		sb.WriteByte(letterBytes[idx])
-	}
-	return sb.String()
+	password := make([]byte, n)
+    charsetLength := big.NewInt(int64(len(charset)))
+    for i := range password {
+        index, _ := rand.Int(rand.Reader, charsetLength)
+        password[i] = charset[index.Int64()]
+    }
+
+    return string(password)
 }
 
 // MailService represents the interface for our mail service.

@@ -661,27 +661,15 @@ func CheckPromocode(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
 	resp := make(map[string]models.CheckPromocode)
 
-	var promooffer *models.CheckPromooffer
 	var checkP models.CheckPromocode
 	var status string
+	var err error
 
-	err := json.NewDecoder(r.Body).Decode(&promooffer)
-	if err != nil {
-		handlersfunc.HandleDecodeError(rw, err)
-	}
+	code := mux.Vars(r)["code"]
 
 	defer r.Body.Close()
 	// Create a new validator instance
-    validate := validator.New()
-	log.Println(promooffer)
-
-    // Validate the User struct
-    err = validate.Struct(promooffer)
-    if err != nil {
-        // Validation failed, handle the error
-		handlersfunc.HandleValidationError(rw, err)
-        return
-    }
+	log.Println(code)
 
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	// не забываем освободить ресурс
@@ -689,7 +677,7 @@ func CheckPromocode(rw http.ResponseWriter, r *http.Request) {
 
 	userID := handlersfunc.UserIDContextReader(r)
 	
-	checkP, status, err = userstorage.CheckPromocode(ctx, config.DB, promooffer.Code, userID)
+	checkP, status, err = userstorage.CheckPromocode(ctx, config.DB, code, userID)
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return

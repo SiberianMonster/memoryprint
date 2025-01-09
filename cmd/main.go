@@ -30,6 +30,9 @@ import (
 	"github.com/SiberianMonster/memoryprint/internal/middleware"
 	//"github.com/SiberianMonster/memoryprint/internal/delivery"
 	"github.com/SiberianMonster/memoryprint/internal/transactions"
+	rotatelogs "github.com/lestrrat/go-file-rotatelogs"
+	"fmt"
+
 	"github.com/gorilla/mux"
 	// "github.com/rs/cors"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -81,17 +84,28 @@ func main() {
 	defer cancel()
 
 	// log to custom file
-    LOG_FILE := "memoryprint_log.log"
-    // open log file
-    logFile, err := os.OpenFile(LOG_FILE, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0644)
+	OLD_LOG_FILE := "memoryprint_log_old.log"
+
+    writer, err := rotatelogs.New(
+        fmt.Sprintf("%s.%s", OLD_LOG_FILE, "%Y-%m-%d.%H:%M:%S"),
+        rotatelogs.WithLinkName("memoryprint_log_current.log"),
+        //rotatelogs.WithMaxAge(time.Hour*),
+        rotatelogs.WithRotationTime(time.Hour*24),
+    )
     if err != nil {
-		log.Println("log panic")
-        log.Panic(err)
+        log.Fatalf("Failed to Initialize Log File %s", err)
     }
-    defer logFile.Close()
+    //log.SetOutput(writer)
+    // open log file
+    //logFile, err := os.OpenFile(LOG_FILE, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0644)
+    //if err != nil {
+	//	log.Println("log panic")
+    //    log.Panic(err)
+    //}
+    //defer logFile.Close()
 
     // Set log out put and enjoy :)
-    log.SetOutput(logFile)
+    log.SetOutput(writer)
 
     // optional: log date-time, filename, and line number
     log.SetFlags(log.Lshortfile | log.LstdFlags)
@@ -228,7 +242,7 @@ func main() {
 	authRouter.HandleFunc("/api/v1/change-favourite-background/{id}", projecthandlers.FavourBackground).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/change-favourite-decoration/{id}", projecthandlers.FavourDecoration).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/change-favourite-layout/{id}", projecthandlers.FavourLayout).Methods("POST","OPTIONS")
-	authRouter.HandleFunc("/api/v1/check-promocode", userhandlers.CheckPromocode).Methods("POST","OPTIONS")
+	authRouter.HandleFunc("/api/v1/check-promocode/{code}", userhandlers.CheckPromocode).Methods("GET","OPTIONS")
 	authRouter.HandleFunc("/api/v1/duplicate-project/{id}", projecthandlers.DuplicateProject).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/share-pdf-link/{id}", projecthandlers.ShareLink).Methods("POST","OPTIONS")
 	authRouter.HandleFunc("/api/v1/delete-project/{id}", projecthandlers.DeleteProject).Methods("POST","OPTIONS")

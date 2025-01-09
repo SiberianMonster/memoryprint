@@ -20,6 +20,7 @@ import (
 	"github.com/SiberianMonster/memoryprint/internal/orderstorage"
 	"github.com/SiberianMonster/memoryprint/internal/emailutils"
 	"github.com/SiberianMonster/memoryprint/internal/handlersfunc"
+	"github.com/SiberianMonster/memoryprint/internal/imagehandlers"
 	"github.com/go-playground/validator/v10"
 	"golang.org/x/exp/slices"
 	"github.com/tebeka/selenium"
@@ -2484,6 +2485,7 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 	ticker := time.NewTicker(config.UpdateInterval*5)
 	var err error
 	var orderList []models.PaidOrderObj
+	var images []string
 	
 
 	jobCh := make(chan models.PaidOrderObj)
@@ -2510,10 +2512,13 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 				driver.SetPageLoadTimeout(210*time.Second)
 
 			
-				err = projectstorage.GenerateImages(ctx, storeDB, job, driver)
+				images, err = projectstorage.GenerateImages(ctx, storeDB, job, driver)
 				if err != nil {
 					log.Printf("Error happened when updating pending orders. Err: %s", err)
 					continue
+				}
+				if !slices.Contains(images, "") {
+					imagehandlers.CreateProjectFolder(images, job.OrdersID)
 				}
 			}
 		}()

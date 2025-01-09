@@ -1953,12 +1953,12 @@ func RetrieveProjectImages(ctx context.Context, storeDB *pgxpool.Pool, projectID
 }
 
 // GenerateImages function checks if a paid project has images for all pages, and if no, triggers their generation
-func GenerateImages(ctx context.Context, storeDB *pgxpool.Pool, orderObj models.PaidOrderObj, driver selenium.WebDriver) (error) {
+func GenerateImages(ctx context.Context, storeDB *pgxpool.Pool, orderObj models.PaidOrderObj, driver selenium.WebDriver) ([]string, error) {
 
 	images, err := RetrieveProjectImages(ctx, storeDB, orderObj.OrdersID)
 	if err != nil {
 		log.Printf("Error happened when retrieving images from pgx table. Err: %s", err)
-		return err
+		return images, err
 	}
 	if slices.Contains(images, "") {
 		log.Println("Need to generate images")
@@ -1970,6 +1970,6 @@ func GenerateImages(ctx context.Context, storeDB *pgxpool.Pool, orderObj models.
 		}
 	}
 	
-	return nil
+	return images, nil
 
 }
