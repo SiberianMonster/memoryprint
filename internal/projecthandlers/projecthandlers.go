@@ -1135,6 +1135,8 @@ func LoadLayouts(rw http.ResponseWriter, r *http.Request) {
 	if variant != "" {
 		lo.Variant = &variant
 	}
+	lo.IsCover, _ = strconv.ParseBool(r.URL.Query().Get("is_cover"))
+
 	validate := validator.New()
 
     // Validate the User struct
