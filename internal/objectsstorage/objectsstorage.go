@@ -1045,15 +1045,15 @@ func LoadLayouts(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset
 	} 
 
 	var countFavouriteString string
-	err = storeDB.QueryRow(ctx, "SELECT COUNT(layouts_id) FROM users_has_layouts WHERE is_favourite = ($1) AND users_id=($2) AND variant=($3);", true, userID, variant).Scan(&countFavouriteString)
+	err = storeDB.QueryRow(ctx, "SELECT COUNT(layouts_id) FROM users_has_layouts WHERE is_favourite = ($1) AND users_id=($2);", true, userID).Scan(&countFavouriteString)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 				log.Printf("Error happened when counting layouts. Err: %s", err)
 				return responseLayout, err
 	}
 	responseLayout.CountFavourite, _ = strconv.Atoi(countFavouriteString)
-	if size != "" || countimages != 0 {
+	if size != "" || countimages != 0 || variant != "" {
 		counter := 0
-		rows, err := storeDB.Query(ctx, "SELECT layouts_id FROM users_has_layouts WHERE users_id = ($1) AND is_favourite = ($2) AND variant=($3) ORDER BY layouts_id;", userID, true, variant)
+		rows, err := storeDB.Query(ctx, "SELECT layouts_id FROM users_has_layouts WHERE users_id = ($1) AND is_favourite = ($2) ORDER BY layouts_id;", userID, true)
 				if err != nil {
 					log.Printf("Error happened when retrieving users_has_layouts from pgx table. Err: %s", err)
 					return responseLayout, err
@@ -1063,27 +1063,28 @@ func LoadLayouts(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset
 			var lId uint
 			var cImages uint
 			var lSize string
+			var lVariant string
 			if err = rows.Scan(&lId); err != nil {
 				log.Printf("Error happened when scanning layouts. Err: %s", err)
 				return responseLayout, err
 			}
-			err := storeDB.QueryRow(ctx, "SELECT size, count_images FROM layouts WHERE layouts_id = ($1);", lId).Scan(&lSize, &cImages)
+			err := storeDB.QueryRow(ctx, "SELECT size, count_images, variant FROM layouts WHERE layouts_id = ($1);", lId).Scan(&lSize, &cImages, &lVariant)
 			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 				log.Printf("Error happened when retrieving layouts from layouts table. Err: %s", err)
 				return responseLayout, err
 			}
 			if size != "" {
 				if countimages != 0 {
-					if size==lSize && countimages == cImages {
+					if size==lSize && countimages == cImages && variant == lVariant {
 						counter = counter + 1
 					}
 				} else {
-					if size==lSize {
+					if size==lSize  && variant == lVariant {
 						counter = counter + 1
 					}
 				}
 			} else if countimages != 0{
-				if countimages == cImages {
+				if countimages == cImages && variant == lVariant {
 					counter = counter + 1
 				}
 			}
