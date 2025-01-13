@@ -328,7 +328,7 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, proj
 				ptype = "front"
 			}
 			if projectObj.LeatherID != 0 && ptype != "page" {
-				_, err = storeDB.Exec(ctx, "INSERT INTO pages (last_edited_at, sort, type, creating_image_link, is_template, projects_id) VALUES ($1, $2, $3, $4, $5);",
+				_, err = storeDB.Exec(ctx, "INSERT INTO pages (last_edited_at, sort, type, creating_image_link, is_template, projects_id) VALUES ($1, $2, $3, $4, $5, $6);",
 					t,
 					num,
 					ptype,

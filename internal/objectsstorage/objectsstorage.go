@@ -1068,7 +1068,7 @@ func LoadLayouts(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset
 				log.Printf("Error happened when scanning layouts. Err: %s", err)
 				return responseLayout, err
 			}
-			err := storeDB.QueryRow(ctx, "SELECT size, count_images, variant FROM layouts WHERE layouts_id = ($1);", lId).Scan(&lSize, &cImages, &lVariant)
+			err := storeDB.QueryRow(ctx, "SELECT size, count_images, variant FROM layouts WHERE layouts_id = ($1) AND variant IS NOT NULL;", lId).Scan(&lSize, &cImages, &lVariant)
 			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 				log.Printf("Error happened when retrieving layouts from layouts table. Err: %s", err)
 				return responseLayout, err
