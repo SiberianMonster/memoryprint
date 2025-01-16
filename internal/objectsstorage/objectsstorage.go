@@ -998,7 +998,7 @@ func LoadLayouts(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset
 			responseLayout.Layouts = append(responseLayout.Layouts, layout)
 		}
 	} else if isfavourite == true {
-		rows, err := storeDB.Query(ctx, "SELECT users_has_layouts.layouts_id, users_has_layouts.is_favourite FROM users_has_layouts RIGHT JOIN layouts ON users_has_layouts.layouts_id = layouts.id WHERE users_has_layouts.users_id = ($1) AND users_has_layouts.is_favourite = ($2) AND layouts.variant = ($3) ORDER BY users_has_layouts.layouts_id DESC LIMIT ($4) OFFSET ($5);", userID, true, variant, limit, offset)
+		rows, err := storeDB.Query(ctx, "SELECT users_has_layouts.layouts_id, users_has_layouts.is_favourite FROM users_has_layouts RIGHT JOIN layouts ON users_has_layouts.layouts_id = layouts.layouts_id WHERE users_has_layouts.users_id = ($1) AND users_has_layouts.is_favourite = ($2) AND layouts.variant = ($3) ORDER BY users_has_layouts.layouts_id DESC LIMIT ($4) OFFSET ($5);", userID, true, variant, limit, offset)
 				if err != nil {
 					log.Printf("Error happened when retrieving users_has_layouts from pgx table. Err: %s", err)
 					return responseLayout, err
