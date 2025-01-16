@@ -224,7 +224,7 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, proj
 		"EDITED",
 		projectObj.Size,
 		projectObj.Variant,
-		projectObj.CountPages,
+		23,
 		userID,
 		userID,
 		templateCategory,
