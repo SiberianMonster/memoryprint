@@ -1532,9 +1532,12 @@ func AddProjectPages(rw http.ResponseWriter, r *http.Request) {
 	for _, page := range newPages.Pages {
 
 		var addedPage models.OrderPage
-		if !projectstorage.CheckPagesRange(ctx, config.DB, page.Sort, projectID, false) {
-			handlersfunc.HandleMissingPageError(rw)
-			return
+		if page.CloneID {
+			if !projectstorage.CheckPagesRange(ctx, config.DB, page.CloneID, projectID, false) {
+				handlersfunc.HandleMissingPageError(rw)
+				return
+		}
+		
 		}
 		addedPage, err = projectstorage.AddProjectPage(ctx, config.DB, projectID, page.Sort, false)
 		if err != nil {
@@ -1585,9 +1588,11 @@ func AddTemplatePages(rw http.ResponseWriter, r *http.Request) {
 	for _, page := range newPages.Pages {
 
 		var addedPage models.OrderPage
-		if !projectstorage.CheckPagesRange(ctx, config.DB, page.Sort, projectID, true) {
-			handlersfunc.HandleMissingPageError(rw)
-			return
+		if page.CloneID {
+			if !projectstorage.CheckPagesRange(ctx, config.DB, page.CloneID, projectID, true) {
+				handlersfunc.HandleMissingPageError(rw)
+				return
+			}
 		}
 		addedPage, err = projectstorage.AddProjectPage(ctx, config.DB, projectID, page.Sort, true)
 		if err != nil {
