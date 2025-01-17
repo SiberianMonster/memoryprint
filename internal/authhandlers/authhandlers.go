@@ -9,7 +9,6 @@ import (
 	"github.com/SiberianMonster/memoryprint/internal/handlersfunc"
 	"github.com/SiberianMonster/memoryprint/internal/emailutils"
 	"github.com/go-playground/validator/v10"
-	"fmt"
 	"log"
 	"net/http"
 )
@@ -104,13 +103,7 @@ func GenerateTempPass(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	dbUser.Password, err = userstorage.Hash(fmt.Sprintf("%s:password", tempPass), config.Key)
-	if err != nil {
-		handlersfunc.HandleDatabaseServerError(rw)
-		return
-	}
-	log.Println(dbUser)
-	err = userstorage.UpdateUser(ctx, config.DB, dbUser.Password, dbUser.ID)
+	err = userstorage.UpdateUser(ctx, config.DB, tempPass, dbUser.ID)
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return

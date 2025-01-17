@@ -2122,7 +2122,7 @@ func ShareLink(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
 	}
-
+	previewLink := "https://front.memoryprint.dev.startup-it.ru/preview/" + mux.Vars(r)["id"]
 	// Send email with the link
 	from := "support@memoryprint.ru"
 	to := []string{ViewerObj.Email}
@@ -2132,6 +2132,7 @@ func ShareLink(rw http.ResponseWriter, r *http.Request) {
 		Username: ViewerObj.Name,
 		OwnerName: OwnerObj.Name,
 		OwnerEmail: OwnerObj.Email,
+		ShareLink: previewLink,
 	}
 
 	ms := &emailutils.SGMailService{config.YandexApiKey}

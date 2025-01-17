@@ -96,7 +96,11 @@ func CheckHardCover(ctx context.Context, storeDB *pgxpool.Pool, projectID uint) 
 			return false
 	}
 	if imageLink != nil {
-		return true
+		strimageLink := *imageLink
+		if strimageLink != ""{
+			return true
+		}
+		
 	}
 	return false
 }
@@ -209,6 +213,19 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, proj
 	var templateCategory string
 	var projectSpine *string
 	var creatingLinkSpine *string
+	if projectObj.Name == "" {
+		var countAllProjects string
+		err = storeDB.QueryRow(ctx, "SELECT COUNT(projects_id) FROM projects;").Scan(&countAllProjects)
+		if err != nil && err != pgx.ErrNoRows{
+					log.Printf("Error happened when counting projects in pgx table. Err: %s", err)
+					return 0, err
+		}
+		CountAll, _ := strconv.Atoi(countAllProjects)
+		newCount := CountAll + 1
+		newCountString := strconv.Itoa(newCount)
+		projectName := "Проект_" + newCountString
+		projectObj.Name = projectName
+	}
 	if projectObj.TemplateID != 0 {
 
 		templateCategory, projectSpine, creatingLinkSpine, err = RetrieveTemplateData(ctx, storeDB, projectObj.TemplateID)
@@ -280,8 +297,8 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, proj
 				page.Sort,
 				page.Type,
 				false,
-				page.CreatingImageLink,
-				nil,
+				"",
+				strdata,
 				pID,
 				)
 				if err != nil {
@@ -306,18 +323,9 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, proj
 			
 		}
 	} else {
-		var creatingImageLink string
-		if projectObj.LeatherID != 0 {
-			err := storeDB.QueryRow(ctx, "SELECT colourlink FROM leather WHERE leather_id = ($1);", projectObj.LeatherID).Scan(&creatingImageLink)
-			if err != nil {
-				log.Printf("Error happened when retrieving leather color from pgx table. Err: %s", err)
-				return pID, err
-			}
-		}
 		for _, num := range pagesRange {
 
 			var ptype string
-			var creatingImageLink string
 	
 			if num == 22 {
 				ptype = "back"
@@ -332,7 +340,7 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, proj
 					t,
 					num,
 					ptype,
-					creatingImageLink,
+					"",
 					false,
 					pID,
 				)

@@ -57,6 +57,7 @@ type MailData struct {
 	Ordernum uint
 	Trackingnum string
 	SubscriptionLink string
+	ShareLink string
 }
 
 // Mail represents a email request
