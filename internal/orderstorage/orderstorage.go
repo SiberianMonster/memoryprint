@@ -97,7 +97,7 @@ func CalculateBasePrice(ctx context.Context, storeDB *pgxpool.Pool, size string,
 	
 	log.Println(extraPriceperpage)
 	log.Println(basePrice)
-	extraPrice := extraPriceperpage*float64((countPages-23))
+	extraPrice := extraPriceperpage*float64((countPages-23)/2)
 	totalBaseprice = basePrice + extraPrice
 
 
@@ -143,7 +143,7 @@ func CalculateAlternativePrice(ctx context.Context, storeDB *pgxpool.Pool, size 
 	}
 	log.Println(altPagePrice)
 	log.Println(extraPriceperpage)
-	extraPrice := extraPriceperpage*float64(countPages-23)
+	extraPrice := extraPriceperpage*float64((countPages-23)/2)
 	totalPageprice = altPagePrice + extraPrice
 	log.Println(countPages)
 	log.Println(extraPrice)
@@ -159,7 +159,7 @@ func CalculateAlternativePrice(ctx context.Context, storeDB *pgxpool.Pool, size 
 		return 0.0, 0.0, err
 	}
 	
-	extraPrice = extraPriceperpage*float64(countPages-23)
+	extraPrice = extraPriceperpage*float64((countPages-23)/2)
 	totalCoverprice = altCoverPrice + extraPrice
 	log.Println(extraPrice)
 	log.Println(totalPageprice)
@@ -195,7 +195,7 @@ func CalculateBasePriceByID(ctx context.Context, storeDB *pgxpool.Pool, pID uint
 		countPages = 23
 	}
 	
-	extraPrice := extraPriceperpage*float64((countPages-23))
+	extraPrice := extraPriceperpage*float64((countPages-23)/2)
 	totalBaseprice = basePrice + extraPrice
 	log.Println(extraPrice)
 	log.Println(totalBaseprice)
@@ -262,10 +262,19 @@ func LoadCart(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (models.R
 		}
 		photobook.ProjectID = pID
 		photobook.FrontPage, err = projectstorage.RetrieveFrontPage(ctx, storeDB, pID, false)
-		err = storeDB.QueryRow(ctx, "SELECT CASE WHEN EXISTS (SELECT * FROM pages WHERE projects_id = ($1) AND is_template = ($2) AND type = ($3)) THEN TRUE ELSE FALSE END;", pID, "false", "front").Scan(&photobook.CoverBool)
-		if err != nil {
-			log.Printf("Error happened when retrieving front page from pgx table. Err: %s", err)
-			photobook.CoverBool = false
+		var imageLink *string
+		err = storeDB.QueryRow(ctx, "SELECT creating_image_link FROM pages WHERE projects_id = ($1) AND is_template = ($2) AND type = ($3);", pID, "false", "front").Scan(&imageLink)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				log.Printf("Error happened when retrieving front page from pgx table. Err: %s", err)
+				return responseCart, err
+		}
+		photobook.CoverBool = false
+		if imageLink != nil {
+			strimageLink := *imageLink
+			if strimageLink != ""{
+				photobook.CoverBool = true
+			}
+			
 		}
 		if photobook.Cover == "LEATHERETTE" {
 			photobook.LeatherID = &leatherID
