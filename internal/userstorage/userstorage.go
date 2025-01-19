@@ -18,9 +18,9 @@ import (
 	"encoding/base64"
 	"fmt"
 	"time"
-	"strings"
 	"errors"
-	"math/rand"
+	"crypto/rand"
+	"math/big"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5"
 )
@@ -28,15 +28,18 @@ import (
 var err error
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+"
+
 // GenerateRandomString generate a string of random characters of given length
 func GenerateRandomString(n int) string {
-	sb := strings.Builder{}
-	sb.Grow(n)
-	for i := 0; i < n; i++ {
-		idx := rand.Int63() % int64(len(letterBytes))
-		sb.WriteByte(letterBytes[idx])
-	}
-	return sb.String()
+	password := make([]byte, n)
+    charsetLength := big.NewInt(int64(len(charset)))
+    for i := range password {
+        index, _ := rand.Int(rand.Reader, charsetLength)
+        password[i] = charset[index.Int64()]
+    }
+
+    return string(password)
 }
 
 
@@ -609,6 +612,7 @@ func CheckPromocode(ctx context.Context, storeDB *pgxpool.Pool, code string, use
 	var userID uint
 	var isUsed bool
 	var isOnetime bool
+	var checkWelcome bool
 	var status string
 	now:=time.Now()
 		
@@ -639,6 +643,17 @@ func CheckPromocode(ctx context.Context, storeDB *pgxpool.Pool, code string, use
 	if now.After(tm) || now.Equal(tm) {
 		status = "EXPIRED"
 		return promooffer, status, nil
+	}
+	if code == "WELCOME10" {
+		err := storeDB.QueryRow(ctx, "SELECT EXISTS (SELECT * FROM orders WHERE users_id = ($1) AND status IN ('AWAITING_PAYMENT', 'PAYMENT_IN_PROGRESS', 'PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY', 'COMPLETED));", usersID).Scan(&checkWelcome)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			log.Printf("Error happened when retrieving welcome promooffer data from the db. Err: %s", err)
+			return promooffer, status, err
+		}
+		if checkWelcome {
+			status = "ALREADY USED"
+			return promooffer, status, nil
+		}
 	}
 	status = "VALID"
 	promooffer.Promocode = responseP

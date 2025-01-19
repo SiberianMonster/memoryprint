@@ -370,7 +370,7 @@ func OrderPayment(ctx context.Context, storeDB *pgxpool.Pool, orderObj models.Re
 	if deliveryObj.Method == "DOOR" {
 		rApiCost.TariffCode = 139
 	} else if deliveryObj.Method == "POSTAMAT" {
-		rApiCost.TariffCode = 138
+		rApiCost.TariffCode = 139
 	} else if deliveryObj.Method == "PVZ" {
 		rApiCost.TariffCode = 138
 	}
@@ -419,14 +419,13 @@ func OrderPayment(ctx context.Context, storeDB *pgxpool.Pool, orderObj models.Re
 	requestP.Projects = orderObj.Projects
 	requestP.Code = orderObj.Promocode
 	var PromoffersID uint
-	if requestP.Code != "" {
-		responseP, err = userstorage.UsePromocode(ctx, storeDB, requestP)
-		err = storeDB.QueryRow(ctx, "SELECT promooffers_id FROM promooffers WHERE code = ($1);", orderObj.Promocode).Scan(&PromoffersID)
-		if err != nil {
+	responseP, err = userstorage.UsePromocode(ctx, storeDB, requestP)
+	err = storeDB.QueryRow(ctx, "SELECT promooffers_id FROM promooffers WHERE code = ($1);", orderObj.Promocode).Scan(&PromoffersID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			log.Printf("Failed to retrieve promooffers id. Err: %s", err)
 			return depositPrice, orderID, err
-		}
 	}
+	
 	if orderObj.Giftcertificate != "" {
 		deposit, _, err = userstorage.UseCertificate(ctx, storeDB, orderObj.Giftcertificate, userID)
 		if err != nil {

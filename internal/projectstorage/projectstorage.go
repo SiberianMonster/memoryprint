@@ -662,6 +662,11 @@ func UnpublishProject(ctx context.Context, storeDB *pgxpool.Pool, projectID uint
 		log.Printf("Error happened when unpublishing project. Err: %s", err)
 		return err
 	}
+	_, err = storeDB.Exec(ctx, "DELETE FROM orders_has_projects WHERE projects_id = ($1);", projectID)
+	if err != nil {
+				log.Printf("Error happened when unpublishing project. Err: %s", err)
+				return err
+	}
 	return nil
 
 }
