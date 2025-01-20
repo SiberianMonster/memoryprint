@@ -97,13 +97,14 @@ func Register(rw http.ResponseWriter, r *http.Request) {
 
 	var userID uint
 	var subLink string 
-	subLink, err = userstorage.GetAESEncrypted(user.Email)
+	subLink, err = userstorage.GetAESEncrypted(user.Email, config.EncryptionString)
 	log.Println(user.Email)
 	if err != nil {
 		log.Println(err)
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
 	}
+	fullLink := "https://front.memoryprint.dev.startup-it.ru/unsubscription?code=" + subLink
 
 	// Send welcome email
 	from := "support@memoryprint.ru"
@@ -112,7 +113,7 @@ func Register(rw http.ResponseWriter, r *http.Request) {
 	mailType := emailutils.MailWelcome
 	mailData := &emailutils.MailData{
 		Username: user.Name,
-		SubscriptionLink: subLink,
+		SubscriptionLink: fullLink,
 	}
 
 	ms := &emailutils.SGMailService{config.YandexApiKey}

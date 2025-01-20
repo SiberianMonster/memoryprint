@@ -370,7 +370,7 @@ func OrderPayment(ctx context.Context, storeDB *pgxpool.Pool, orderObj models.Re
 	if deliveryObj.Method == "DOOR" {
 		rApiCost.TariffCode = 139
 	} else if deliveryObj.Method == "POSTAMAT" {
-		rApiCost.TariffCode = 139
+		rApiCost.TariffCode = 138
 	} else if deliveryObj.Method == "PVZ" {
 		rApiCost.TariffCode = 138
 	}
@@ -386,9 +386,9 @@ func OrderPayment(ctx context.Context, storeDB *pgxpool.Pool, orderObj models.Re
 	s.Parameter = strconv.Itoa(len(orderObj.Projects))
 	rApiCost.Packages = append(rApiCost.Packages, p)
 	rApiCost.Services = append(rApiCost.Services, s)
-	fromLoc.PostalCode = "129323"
-	fromLoc.City = "Москва"
-	fromLoc.Address = "проезд Серебрякова, 7"
+	fromLoc.PostalCode = "141016"
+	fromLoc.City = "Мытищи"
+	fromLoc.Address = "Тенистый бульвар, 11"
 	rApiCost.FromLocation = fromLoc
 
 	

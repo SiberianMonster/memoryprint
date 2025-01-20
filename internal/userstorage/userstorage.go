@@ -84,8 +84,7 @@ func PKCS5UnPadding(src []byte) []byte {
 }
 
 // GetAESEncrypted encrypts given text in AES 256 CBC
-func GetAESEncrypted(plaintext string) (string, error) {
-	iv := "2410196226071937"
+func GetAESEncrypted(plaintext string, iv string) (string, error) {
 
 	var plainTextBlock []byte
 	length := len(plaintext)
