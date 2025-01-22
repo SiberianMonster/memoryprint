@@ -934,13 +934,13 @@ func FavourDecoration(ctx context.Context, storeDB *pgxpool.Pool, newDecor model
 }
 
 // LoadLayouts function performs the operation of retrieving all layouts from the db for project editing.
-func LoadLayouts(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset uint, limit uint, size string, variant string, countimages uint, isfavourite bool) (models.ResponseLayout, error) {
+func LoadLayouts(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset uint, limit uint, size string, variant string, countimages uint, isfavourite bool, iscover bool) (models.ResponseLayout, error) {
 
 	var responseLayout models.ResponseLayout
 	responseLayout.Layouts = []models.Layout{}
 
 	if isfavourite != true {
-		rows, err := storeDB.Query(ctx, "SELECT * FROM (SELECT layouts_id, link, data, size, count_images, variant FROM layouts) AS selectedL WHERE variant = ($1) ORDER BY selectedL.layouts_id DESC LIMIT ($2) OFFSET ($3);", variant, limit, offset)
+		rows, err := storeDB.Query(ctx, "SELECT * FROM (SELECT layouts_id, link, data, size, count_images, variant FROM layouts) AS selectedL WHERE variant = ($1) AND is_cover = ($2) ORDER BY selectedL.layouts_id DESC LIMIT ($3) OFFSET ($4);", variant, iscover, limit, offset)
 				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 					log.Printf("Error happened when retrieving layouts from pgx table. Err: %s", err)
 					return responseLayout, err
@@ -949,14 +949,14 @@ func LoadLayouts(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset
 		
 		if size != "" {
 			if countimages != 0 {
-				rows, err = storeDB.Query(ctx, "SELECT layouts_id, link, data, size, count_images FROM layouts WHERE variant = ($1) AND size = ($2) AND count_images = ($3) ORDER BY layouts_id DESC LIMIT ($4) OFFSET ($5);", variant, size, countimages, limit, offset)
+				rows, err = storeDB.Query(ctx, "SELECT layouts_id, link, data, size, count_images FROM layouts WHERE variant = ($1) AND is_cover = ($2) AND size = ($3) AND count_images = ($4) ORDER BY layouts_id DESC LIMIT ($5) OFFSET ($6);", variant, iscover, size, countimages, limit, offset)
 				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 					log.Printf("Error happened when retrieving layouts from pgx table. Err: %s", err)
 					return responseLayout, err
 				}
 				defer rows.Close()
 			} else {
-				rows, err = storeDB.Query(ctx, "SELECT layouts_id, link, data, size, count_images FROM layouts WHERE size = ($1) AND variant = ($2) ORDER BY layouts_id DESC LIMIT ($3) OFFSET ($4);",  size, variant, limit, offset)
+				rows, err = storeDB.Query(ctx, "SELECT layouts_id, link, data, size, count_images FROM layouts WHERE size = ($1) AND is_cover = ($2) AND variant = ($3) ORDER BY layouts_id DESC LIMIT ($4) OFFSET ($5);",  size, iscover, variant, limit, offset)
 				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 					log.Printf("Error happened when retrieving layouts from pgx table. Err: %s", err)
 					return responseLayout, err
@@ -965,7 +965,7 @@ func LoadLayouts(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset
 			}
 		} else {
 			if countimages != 0 {
-				rows, err = storeDB.Query(ctx, "SELECT layouts_id, link, data, size, count_images FROM layouts WHERE count_images = ($1) AND variant = ($2) ORDER BY layouts_id DESC LIMIT ($3) OFFSET ($4);", countimages, variant, limit, offset)
+				rows, err = storeDB.Query(ctx, "SELECT layouts_id, link, data, size, count_images FROM layouts WHERE count_images = ($1) AND is_cover = ($2) AND variant = ($3) ORDER BY layouts_id DESC LIMIT ($4) OFFSET ($5);", countimages, iscover, variant, limit, offset)
 				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 					log.Printf("Error happened when retrieving layouts from pgx table. Err: %s", err)
 					return responseLayout, err
@@ -998,7 +998,7 @@ func LoadLayouts(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset
 			responseLayout.Layouts = append(responseLayout.Layouts, layout)
 		}
 	} else if isfavourite == true {
-		rows, err := storeDB.Query(ctx, "SELECT users_has_layouts.layouts_id, users_has_layouts.is_favourite FROM users_has_layouts RIGHT JOIN layouts ON users_has_layouts.layouts_id = layouts.layouts_id WHERE users_has_layouts.users_id = ($1) AND users_has_layouts.is_favourite = ($2) AND layouts.variant = ($3) ORDER BY users_has_layouts.layouts_id DESC LIMIT ($4) OFFSET ($5);", userID, true, variant, limit, offset)
+		rows, err := storeDB.Query(ctx, "SELECT users_has_layouts.layouts_id, users_has_layouts.is_favourite FROM users_has_layouts RIGHT JOIN layouts ON users_has_layouts.layouts_id = layouts.layouts_id WHERE users_has_layouts.users_id = ($1) AND users_has_layouts.is_favourite = ($2) AND layouts.variant = ($3) AND layouts.is_cover = ($4) ORDER BY users_has_layouts.layouts_id DESC LIMIT ($5) OFFSET ($6);", userID, true, variant, iscover, limit, offset)
 				if err != nil {
 					log.Printf("Error happened when retrieving users_has_layouts from pgx table. Err: %s", err)
 					return responseLayout, err
@@ -1045,7 +1045,7 @@ func LoadLayouts(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset
 	} 
 
 	var countFavouriteString string
-	err = storeDB.QueryRow(ctx, "SELECT COUNT(layouts_id) FROM users_has_layouts WHERE is_favourite = ($1) AND users_id=($2);", true, userID).Scan(&countFavouriteString)
+	err = storeDB.QueryRow(ctx, "SELECT COUNT(users_has_layouts.layouts_id) FROM users_has_layouts RIGHT JOIN layouts ON users_has_layouts.layouts_id = layouts.layouts_id  WHERE users_has_layouts.is_favourite = ($1) AND users_has_layouts.users_id=($2) AND layouts.variant = ($3) AND layouts.is_cover = ($4);", true, userID, variant, iscover).Scan(&countFavouriteString)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 				log.Printf("Error happened when counting layouts. Err: %s", err)
 				return responseLayout, err
@@ -1096,20 +1096,20 @@ func LoadLayouts(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset
 	if isfavourite == true {
 		responseLayout.CountAll = responseLayout.CountFavourite
 	}  else {
-		err = storeDB.QueryRow(ctx, "SELECT COUNT(layouts_id) FROM layouts WHERE variant=($1);", variant).Scan(&countAllString)
+		err = storeDB.QueryRow(ctx, "SELECT COUNT(layouts_id) FROM layouts WHERE variant=($1) AND is_cover = ($2);", variant, iscover).Scan(&countAllString)
 		if err != nil {
 					log.Printf("Error happened when counting layouts from pgx table. Err: %s", err)
 					return responseLayout, err
 		}
 		if size != "" {
 			if countimages != 0 {
-				err = storeDB.QueryRow(ctx, "SELECT COUNT(layouts_id) FROM layouts WHERE size = ($1) AND count_images = ($2) AND variant=($3);", size, countimages, variant).Scan(&countAllString)
+				err = storeDB.QueryRow(ctx, "SELECT COUNT(layouts_id) FROM layouts WHERE size = ($1) AND count_images = ($2) AND variant=($3) AND is_cover = ($4);", size, countimages, variant, iscover).Scan(&countAllString)
 				if err != nil {
 					log.Printf("Error happened when counting layouts from pgx table. Err: %s", err)
 					return responseLayout, err
 				}
 			} else {
-				err = storeDB.QueryRow(ctx, "SELECT COUNT(layouts_id) FROM layouts WHERE size = ($1) AND variant=($2);", size, variant).Scan(&countAllString)
+				err = storeDB.QueryRow(ctx, "SELECT COUNT(layouts_id) FROM layouts WHERE size = ($1) AND variant=($2) AND is_cover = ($3);", size, variant, iscover).Scan(&countAllString)
 				if err != nil {
 					log.Printf("Error happened when counting layouts from pgx table. Err: %s", err)
 					return responseLayout, err
@@ -1117,7 +1117,7 @@ func LoadLayouts(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset
 			}
 		} else {
 			if countimages != 0 {
-				err = storeDB.QueryRow(ctx, "SELECT COUNT(layouts_id) FROM layouts WHERE count_images = ($1) AND variant=($2);", countimages, variant).Scan(&countAllString)
+				err = storeDB.QueryRow(ctx, "SELECT COUNT(layouts_id) FROM layouts WHERE count_images = ($1) AND variant=($2) AND is_cover = ($3);", countimages, variant, iscover).Scan(&countAllString)
 				if err != nil {
 					log.Printf("Error happened when counting layouts from pgx table. Err: %s", err)
 					return responseLayout, err

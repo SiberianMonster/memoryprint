@@ -1160,7 +1160,7 @@ func LoadLayouts(rw http.ResponseWriter, r *http.Request) {
 	
 	
 	
-	layoutSet, err := objectsstorage.LoadLayouts(ctx, config.DB, userID, requestL.Offset, requestL.Limit, requestL.Size, variant, requestL.CountImages, requestL.IsFavourite)
+	layoutSet, err := objectsstorage.LoadLayouts(ctx, config.DB, userID, requestL.Offset, requestL.Limit, requestL.Size, variant, requestL.CountImages, requestL.IsFavourite, isCover)
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
@@ -1532,13 +1532,12 @@ func AddProjectPages(rw http.ResponseWriter, r *http.Request) {
 	for _, page := range newPages.Pages {
 
 		var addedPage models.OrderPage
-		if page.CloneID != 0 {
-			if !projectstorage.CheckPagesRange(ctx, config.DB, page.CloneID, projectID, false) {
+		if !projectstorage.CheckPagesRange(ctx, config.DB, page.CloneID, projectID, false) {
 				handlersfunc.HandleMissingPageError(rw)
 				return
 		}
 		
-		}
+		
 		addedPage, err = projectstorage.AddProjectPage(ctx, config.DB, projectID, page.Sort, false)
 		if err != nil {
 			handlersfunc.HandleDatabaseServerError(rw)
@@ -1550,12 +1549,17 @@ func AddProjectPages(rw http.ResponseWriter, r *http.Request) {
 					handlersfunc.HandleMissingPageError(rw)
 					return
 			}
+			if projectstorage.CheckCoverPage(ctx, config.DB, page.CloneID){
+				handlersfunc.HandleCoverPageError(rw)
+				return
+			}
 			err = projectstorage.DuplicatePage(ctx, config.DB, page.CloneID, addedPage.PageID)
 			if err != nil {
 				handlersfunc.HandleDatabaseServerError(rw)
 				return
 			}
 		}
+		
 		addedPages = append(addedPages, addedPage)
 	}
 	rw.WriteHeader(http.StatusOK)

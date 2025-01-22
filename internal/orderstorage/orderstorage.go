@@ -760,10 +760,9 @@ func RetrieveOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint, isA
 		}
 		defer prows.Close()
 		log.Println(orderObj)
-		orderSlice = append(orderSlice, orderObj)
-		
-
-				
+		if len(orderObj.Projects) > 0{
+			orderSlice = append(orderSlice, orderObj)
+		}
 		
 	}
 

@@ -196,7 +196,7 @@ func CheckPagesRange(ctx context.Context, storeDB *pgxpool.Pool, sort uint, proj
 		log.Printf("Error happened when counting pages. Err: %s", err)
 		return false
 	}
-	if sort >= countPage - 1 || sort == 0 {
+	if sort > countPage - 1 || sort == 0 {
 		log.Printf("Attempt to change cover or non-existing page. Err: %s", err)
 		return false
 	}
