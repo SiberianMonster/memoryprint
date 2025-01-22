@@ -940,7 +940,7 @@ func LoadLayouts(ctx context.Context, storeDB *pgxpool.Pool, userID uint, offset
 	responseLayout.Layouts = []models.Layout{}
 
 	if isfavourite != true {
-		rows, err := storeDB.Query(ctx, "SELECT * FROM (SELECT layouts_id, link, data, size, count_images, variant FROM layouts) AS selectedL WHERE variant = ($1) AND is_cover = ($2) ORDER BY selectedL.layouts_id DESC LIMIT ($3) OFFSET ($4);", variant, iscover, limit, offset)
+		rows, err := storeDB.Query(ctx, "SELECT * FROM (SELECT layouts_id, link, data, size, count_images, variant, is_cover FROM layouts) AS selectedL WHERE variant = ($1) AND is_cover = ($2) ORDER BY selectedL.layouts_id DESC LIMIT ($3) OFFSET ($4);", variant, iscover, limit, offset)
 				if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 					log.Printf("Error happened when retrieving layouts from pgx table. Err: %s", err)
 					return responseLayout, err
