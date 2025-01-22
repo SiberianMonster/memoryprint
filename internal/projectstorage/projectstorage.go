@@ -213,6 +213,7 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, proj
 	var templateCategory string
 	var projectSpine *string
 	var creatingLinkSpine *string
+	log.Println(projectObj)
 	if projectObj.Name == "" {
 		var countAllProjects string
 		err = storeDB.QueryRow(ctx, "SELECT COUNT(projects_id) FROM projects;").Scan(&countAllProjects)
@@ -366,6 +367,7 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, proj
 
 	
 	log.Printf("added new project to DB")
+	log.Println(pID)
 	return pID, nil
 }
 
