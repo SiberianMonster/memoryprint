@@ -229,7 +229,7 @@ func LoadCart(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (models.R
 		var photobook models.CartObj
 		var pID uint
 		var leatherID uint
-		var category string
+		var category *string
 		if err = rows.Scan(&pID); err != nil {
 			log.Printf("Error happened when scanning projects. Err: %s", err)
 			return responseCart, err
@@ -279,8 +279,8 @@ func LoadCart(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (models.R
 		if photobook.Cover == "LEATHERETTE" {
 			photobook.LeatherID = &leatherID
 		}
-		if category != "" {
-			photobook.Category = &category
+		if category != nil {
+			photobook.Category = category
 		}
 		
 		responseCart.Projects = append(responseCart.Projects, photobook)
