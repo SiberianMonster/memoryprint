@@ -412,6 +412,7 @@ func LoadImage(rw http.ResponseWriter, r *http.Request) {
 	log.Println(filename)
 	
 	if imageObj.RemoveBackground && imageObj.Extention != "svg" {
+		filename = "./temp_photo/"+code+"_img.png"
 
 		imageObj.Image, err = removeBackground(imageObj.Image, filename, config.BalaToken)
 		if err != nil {
