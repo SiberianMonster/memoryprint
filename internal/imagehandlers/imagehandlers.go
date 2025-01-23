@@ -297,7 +297,7 @@ func removeBackground(imgByte []byte, filename string, balaToken string) ([]byte
 	mf := &MyFile{
 		Reader: bytes.NewReader(imgByte),
 		mif: myFileInfo{
-			name: "file.png",
+			name: filename,
 			data: imgByte,
 		},
 	}
@@ -310,7 +310,7 @@ func removeBackground(imgByte []byte, filename string, balaToken string) ([]byte
 
 	form := new(bytes.Buffer)
 	writer := multipart.NewWriter(form)
-	fw, err := writer.CreateFormFile("mediaFile", "file.png")
+	fw, err := writer.CreateFormFile("mediaFile", filename)
 	if err != nil {
 		log.Printf("Failed to create form file %s", err)
 	}
