@@ -420,11 +420,14 @@ func OrderPayment(ctx context.Context, storeDB *pgxpool.Pool, orderObj models.Re
 	requestP.Code = orderObj.Promocode
 	var PromoffersID uint
 	responseP, err = userstorage.UsePromocode(ctx, storeDB, requestP)
-	err = storeDB.QueryRow(ctx, "SELECT promooffers_id FROM promooffers WHERE code = ($1);", orderObj.Promocode).Scan(&PromoffersID)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			log.Printf("Failed to retrieve promooffers id. Err: %s", err)
-			return depositPrice, orderID, err
+	if responseP.DiscountedPrice < responseP.BasePrice {
+		err = storeDB.QueryRow(ctx, "SELECT promooffers_id FROM promooffers WHERE code = ($1);", orderObj.Promocode).Scan(&PromoffersID)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				log.Printf("Failed to retrieve promooffers id. Err: %s", err)
+				return depositPrice, orderID, err
+		}
 	}
+	
 	
 	if orderObj.Giftcertificate != "" {
 		deposit, _, err = userstorage.UseCertificate(ctx, storeDB, orderObj.Giftcertificate, userID)
@@ -677,13 +680,16 @@ func RetrieveOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint, isA
 		}
 
 		var deliveryAmount float64
-		if orderObj.Status == "IN_DELIVERY" {
-			err = storeDB.QueryRow(ctx, "SELECT trackingnumber, amount FROM delivery WHERE delivery_id = ($1);", deliveryID).Scan(&orderObj.TrackingNumber, &deliveryAmount)
+		err = storeDB.QueryRow(ctx, "SELECT amount FROM delivery WHERE delivery_id = ($1);", deliveryID).Scan(&deliveryAmount)
 			if err != nil && err != pgx.ErrNoRows {
 				log.Printf("Error happened when retrieving project data from db. Err: %s", err)
 				return orderset, err
-			}
 		}
+		err = storeDB.QueryRow(ctx, "SELECT trackingnumber FROM delivery WHERE delivery_id = ($1);", deliveryID).Scan(&orderObj.TrackingNumber)
+			if err != nil && err != pgx.ErrNoRows {
+				log.Printf("Error happened when retrieving tracking number data from db. Err: %s", err)
+		}
+		
 		
 		orderObj.OrderID = oID
 		orderObj.CreatedAt = createTimeStorage.Unix()
@@ -693,14 +699,7 @@ func RetrieveOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint, isA
 			} 
 			
 		}
-		var certValue float64
-		if orderObj.CertificateDeposit != nil {
-			certValue = *orderObj.CertificateDeposit
-		}
-		var finalValue float64
-		if orderObj.FinalPrice != nil {
-			finalValue = *orderObj.FinalPrice
-		}
+		
 		var baseValue float64
 		if orderObj.BasePrice != nil {
 			baseValue = *orderObj.BasePrice
@@ -715,7 +714,7 @@ func RetrieveOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint, isA
 		if pdCategory != ""{
 			orderObj.PromocodeCategory = &pdCategory
 			orderObj.PromocodeDiscountPercent = &pdPercent
-			pDiscount := -(finalValue - baseValue - certValue + deliveryAmount)
+			pDiscount := -(baseValue * pdPercent)
 			orderObj.PromocodeDiscount = &pDiscount
 		}
 

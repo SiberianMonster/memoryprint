@@ -135,7 +135,7 @@ func CalculateBasePriceByID(ctx context.Context, storeDB *pgxpool.Pool, pID uint
 		return totalBaseprice, err
 	}
 	
-	extraPrice := extraPriceperpage*float64((countPages-23))
+	extraPrice := extraPriceperpage*float64((countPages-23)/2)
 	totalBaseprice = basePrice + extraPrice
 
 
@@ -613,9 +613,10 @@ func CheckPromocode(ctx context.Context, storeDB *pgxpool.Pool, code string, use
 	var isOnetime bool
 	var checkWelcome bool
 	var status string
+	var category string
 	now:=time.Now()
 		
-	err = storeDB.QueryRow(ctx, "SELECT discount, category, is_onetime, is_used, expires_at, users_id FROM promooffers WHERE code=($1);", code).Scan(&responseP.Discount, &responseP.Category, &isOnetime, &isUsed, &responseP.ExpiresAt, &userID)
+	err = storeDB.QueryRow(ctx, "SELECT discount, category, is_onetime, is_used, expires_at, users_id FROM promooffers WHERE code=($1);", code).Scan(&responseP.Discount, &category, &isOnetime, &isUsed, &responseP.ExpiresAt, &userID)
 	tm := time.Unix(responseP.ExpiresAt, 0)
 	log.Println(tm)
 
@@ -653,6 +654,9 @@ func CheckPromocode(ctx context.Context, storeDB *pgxpool.Pool, code string, use
 			status = "ALREADY USED"
 			return promooffer, status, nil
 		}
+	}
+	if len(category) > 3 {
+		responseP.Category = &category
 	}
 	status = "VALID"
 	promooffer.Promocode = responseP
@@ -777,16 +781,27 @@ func LoadPromocodes(ctx context.Context, storeDB *pgxpool.Pool) ([]models.Promoo
 	for rows.Next() {
 
 			var pObj models.Promooffer
-			if err = rows.Scan(&pObj.Code, &pObj.Discount, &pObj.Category, &pObj.ExpiresAt); err != nil {
+			var category string
+			if err = rows.Scan(&pObj.Code, &pObj.Discount, &category, &pObj.ExpiresAt); err != nil {
 				log.Printf("Error happened when scanning promooffers. Err: %s", err)
 				return promocodes, err
 			}
 			var templateSet models.ResponseTemplates
-			templateSet, err  = projectstorage.LoadPromocodeTemplates(ctx, storeDB, pObj.Category)
-			if err != nil {
-				log.Printf("Error happened when retrieving promocode templates from pgx table. Err: %s", err)
-				return promocodes, err
+			if len(category) >3 {
+				pObj.Category = &category
+				templateSet, err  = projectstorage.LoadPromocodeTemplates(ctx, storeDB, category)
+				if err != nil {
+					log.Printf("Error happened when retrieving promocode templates from pgx table. Err: %s", err)
+					return promocodes, err
+				}
+			} else {
+				templateSet, err  = projectstorage.LoadPromocodeTemplates(ctx, storeDB, "")
+				if err != nil {
+					log.Printf("Error happened when retrieving promocode templates from pgx table. Err: %s", err)
+					return promocodes, err
+				}
 			}
+			
 			pObj.Templates = templateSet.Templates
 			tm := time.Unix(pObj.ExpiresAt, 0)
 			if now.Before(tm) {

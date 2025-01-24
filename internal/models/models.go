@@ -125,7 +125,7 @@ type NewPromooffer struct {
 type Promooffer struct {
 	Code string `json:"code"`
 	Discount      float64    `json:"discount"`
-	Category string `json:"category"`
+	Category *string `json:"category"`
 	ExpiresAt int64 `json:"expires_at"`
 	Templates []Template `json:"templates"`
 }
@@ -158,7 +158,7 @@ type CheckPromocode struct {
 type ResponsePromocode struct {
 
 	Discount    float64 `json:"discount"`
-	Category string `json:"category"`
+	Category *string `json:"category"`
 	ExpiresAt int64 `json:"expires_at"`
 	
 }
