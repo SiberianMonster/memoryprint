@@ -285,7 +285,7 @@ type Layout struct {
 	Data        json.RawMessage      `json:"data" validate:"required"`
 	IsFavourite bool `json:"is_favourite"`
 	Variant    string `json:"variant"  validate:"required,oneof=STANDARD PREMIUM"`
-	IsCover    bool `json:"is_cover" validate:"required"`
+	IsCover    bool `json:"is_cover"`
 }
 
 type Background struct {
@@ -452,7 +452,7 @@ type RequestOrderPayment struct {
 	Projects    []uint     `json:"projects" validate:"required,min=1,dive,min=1"`
 	ContactData Contacts `json:"contact_data" validate:"required"`
 	DeliveryData Delivery `json:"delivery_data" validate:"required"`
-	PackageBox bool `json:"package_box" validate:"required"`
+	PackageBox bool `json:"package_box"`
 	Giftcertificate string `json:"giftcertificate"`
 	Promocode string `json:"promocode"`
   }
@@ -979,14 +979,14 @@ type LimitOffsetIsActive struct {
 
 	Limit *uint `json:"limit" validate:"required"`
 	Offset *uint `json:"offset" validate:"required"`
-	IsActive *bool `json:"is_active" validate:"required"`
+	IsActive *bool `json:"is_active"`
 }
 
 type LimitOffsetIsActiveStatus struct {
 
 	Limit *uint `json:"limit" validate:"required"`
 	Offset *uint `json:"offset" validate:"required"`
-	IsActive *bool `json:"is_active" validate:"required"`
+	IsActive *bool `json:"is_active"`
 	Status *string `json:"status" validate:"omitempty,oneof=AWAITING_PAYMENT PAYMENT_IN_PROGRESS PAID IN_PRINT READY_FOR_DELIVERY IN_DELIVERY COMPLETED CANCELLED"`
 }
 type LimitOffsetVariant struct {
@@ -995,6 +995,6 @@ type LimitOffsetVariant struct {
 	Offset *uint `json:"offset" validate:"required"`
 	Size *string `json:"size" validate:"required,oneof=SMALL_SQUARE SQUARE VERTICAL HORIZONTAL"`
 	Variant *string `json:"variant" validate:"required,oneof=STANDARD PREMIUM"`
-	IsCover *bool `json:"is_cover" validate:"required"`
+	IsCover *bool `json:"is_cover"`
 
 }
