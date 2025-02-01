@@ -680,7 +680,8 @@ func UsePromocode(ctx context.Context, storeDB *pgxpool.Pool, requestP models.Re
 	
 	for _, projectID := range requestP.Projects {
 		var projectP float64
-		var categoryP string
+		var categoryP *string
+		var strcategoryP string
 		projectP, err = CalculateBasePriceByID(ctx, storeDB, projectID)
         err = storeDB.QueryRow(ctx, "SELECT category FROM projects WHERE projects_id=($1);", projectID).Scan(&categoryP)
 		if err != nil && err != pgx.ErrNoRows { 
@@ -688,9 +689,12 @@ func UsePromocode(ctx context.Context, storeDB *pgxpool.Pool, requestP models.Re
 			return responseP, err
 		}
 		totalBasePrice = totalBasePrice + projectP
+		if categoryP != nil {
+			strcategoryP = *categoryP
+		}
 		if categoryPC != "" {
 			responseP.Category = categoryPC
-			if categoryPC == categoryP {
+			if categoryPC == strcategoryP {
 				responseP.Discount = discount
 				projectP = projectP*(1-discount)
 			}
