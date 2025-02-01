@@ -127,6 +127,10 @@ func CalculateBasePriceByID(ctx context.Context, storeDB *pgxpool.Pool, pID uint
 		log.Printf("Error happened when retrieving project data from pgx table. Err: %s", err)
 		return totalBaseprice, err
 	}
+	log.Println("Base Price Parameters")
+	log.Println(size)
+	log.Println(variant)
+	log.Println(cover)
 
 	err = storeDB.QueryRow(ctx, "SELECT baseprice, extrapage FROM prices WHERE size = ($1) AND variant = ($2) AND cover = ($3);", size, variant, cover).Scan(&basePrice, &extraPriceperpage)
 	
