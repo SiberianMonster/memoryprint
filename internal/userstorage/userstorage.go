@@ -118,10 +118,10 @@ func CalculateBasePriceByID(ctx context.Context, storeDB *pgxpool.Pool, pID uint
 	var totalBaseprice float64
 	var basePrice float64
 	var extraPriceperpage float64
-	var size, variant, cover string
+	var size, variant, cover, surface string
 	var countPages int
 
-	err := storeDB.QueryRow(ctx, "SELECT size, variant, cover, count_pages FROM projects WHERE projects_id = ($1);", pID).Scan(&size, &variant, &cover, &countPages)
+	err := storeDB.QueryRow(ctx, "SELECT size, variant, cover, paper, count_pages FROM projects WHERE projects_id = ($1);", pID).Scan(&size, &variant, &cover, &surface, &countPages)
 	
 	if err != nil {
 		log.Printf("Error happened when retrieving project data from pgx table. Err: %s", err)
@@ -131,8 +131,9 @@ func CalculateBasePriceByID(ctx context.Context, storeDB *pgxpool.Pool, pID uint
 	log.Println(size)
 	log.Println(variant)
 	log.Println(cover)
+	log.Println(surface)
 
-	err = storeDB.QueryRow(ctx, "SELECT baseprice, extrapage FROM prices WHERE size = ($1) AND variant = ($2) AND cover = ($3);", size, variant, cover).Scan(&basePrice, &extraPriceperpage)
+	err = storeDB.QueryRow(ctx, "SELECT baseprice, extrapage FROM prices WHERE size = ($1) AND variant = ($2) AND cover = ($3) AND surface = ($4);", size, variant, cover, surface).Scan(&basePrice, &extraPriceperpage)
 	
 	if err != nil {
 		log.Printf("Error happened when retrieving base price from pgx table. Err: %s", err)
