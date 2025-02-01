@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"math"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -271,7 +272,8 @@ func LoadCart(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (models.R
 		photobook.CoverBool = false
 		if imageLink != nil {
 			strimageLink := *imageLink
-			if strimageLink != ""{
+			if !strings.Contains(strimageLink, "Colour") {
+
 				photobook.CoverBool = true
 			}
 			
