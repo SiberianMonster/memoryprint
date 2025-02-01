@@ -138,7 +138,7 @@ func CheckProjectNotCompleted(ctx context.Context, storeDB *pgxpool.Pool, projec
 			return false
 	}
 
-	err = storeDB.QueryRow(ctx, "SELECT CASE WHEN EXISTS (SELECT * FROM orders WHERE status = ($1) AND orders_id = ($2)) THEN TRUE ELSE FALSE END;", "AWAITING_PAYMENT", orderID).Scan(&statusActive)
+	err = storeDB.QueryRow(ctx, "SELECT CASE WHEN EXISTS (SELECT * FROM orders WHERE status IN ('AWAITING_PAYMENT', 'CANCELLED') AND orders_id = ($1)) THEN TRUE ELSE FALSE END;", orderID).Scan(&statusActive)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		log.Printf("Error happened when checking if order is awaiting payment. Err: %s", err)
 		return false
