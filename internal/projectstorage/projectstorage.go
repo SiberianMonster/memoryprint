@@ -914,6 +914,13 @@ func DeleteProject(ctx context.Context, storeDB *pgxpool.Pool, pID uint) (error)
 		log.Printf("Error happened when deleting project from users_edit_projects pgx table. Err: %s", err)
 		return err
 	}
+	_, err = storeDB.Exec(ctx, "DELETE FROM orders_has_projects WHERE projects_id=($1);",
+	pID,
+	)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		log.Printf("Error happened when deleting project from users_edit_projects pgx table. Err: %s", err)
+		return err
+	}
 
 	_, err = storeDB.Exec(ctx, "DELETE FROM projects WHERE projects_id=($1);",
 	pID,

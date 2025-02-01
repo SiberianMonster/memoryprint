@@ -292,8 +292,10 @@ func LoadCart(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (models.R
 		if category != nil {
 			photobook.Category = category
 		}
+		if count_pages != 0 {
+			responseCart.Projects = append(responseCart.Projects, photobook)
+		}
 		
-		responseCart.Projects = append(responseCart.Projects, photobook)
 
 	}
 
