@@ -269,12 +269,12 @@ func LoadCart(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (models.R
 				log.Printf("Error happened when retrieving front page from pgx table. Err: %s", err)
 				return responseCart, err
 		}
-		photobook.CoverBool = false
+		photobook.CoverBool = true
 		if imageLink != nil {
 			strimageLink := *imageLink
 			if !strings.Contains(strimageLink, "Colour") {
 
-				photobook.CoverBool = true
+				photobook.CoverBool = false
 			}
 			
 		}
