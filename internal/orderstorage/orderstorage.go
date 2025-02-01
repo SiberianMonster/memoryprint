@@ -277,6 +277,7 @@ func LoadCart(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (models.R
 			
 		}
 		if photobook.Cover == "LEATHERETTE" {
+			log.Println(leatherID)
 			photobook.LeatherID = leatherID
 			err = storeDB.QueryRow(ctx, "SELECT colourlink FROM leather WHERE leather_id = ($1);", leatherID).Scan(&photobook.FrontPage.CreatingImageLink)
 					
