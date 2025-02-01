@@ -392,7 +392,7 @@ func DuplicateProject(ctx context.Context, storeDB *pgxpool.Pool, projectID uint
 	//		return pID, err
 	//}
 
-	err = storeDB.QueryRow(ctx, "INSERT INTO projects (name, created_at, last_edited_at, status, size, variant, count_pages, cover, paper, creating_spine_link, preview_spine_link, users_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING projects_id;",
+	err = storeDB.QueryRow(ctx, "INSERT INTO projects (name, created_at, last_edited_at, status, size, variant, count_pages, cover, paper, creating_spine_link, preview_spine_link, users_id, leather_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING projects_id;",
 		projectObj.Name,
 		t,
 		t,
@@ -405,6 +405,7 @@ func DuplicateProject(ctx context.Context, storeDB *pgxpool.Pool, projectID uint
 		projectObj.CreatingSpineLink,
 		projectObj.PreviewSpineLink,
 		userID,
+		leatherID,
 	).Scan(&pID)
 	if err != nil {
 		log.Printf("Error happened when inserting a new project into pgx table. Err: %s", err)
