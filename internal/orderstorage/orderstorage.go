@@ -278,6 +278,15 @@ func LoadCart(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (models.R
 		}
 		if photobook.Cover == "LEATHERETTE" {
 			photobook.LeatherID = leatherID
+			err = storeDB.QueryRow(ctx, "SELECT colourlink FROM leather WHERE leather_id = ($1);", leatherID).Scan(&photobook.FrontPage.CreatingImageLink)
+					
+			if err != nil {
+						log.Printf("Error happened when retrieving colour image for leather cover from pgx table. Err: %s", err)
+						return responseCart, err
+			}
+					
+				
+			
 		}
 		if category != nil {
 			photobook.Category = category
