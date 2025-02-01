@@ -137,6 +137,9 @@ func CalculateBasePriceByID(ctx context.Context, storeDB *pgxpool.Pool, pID uint
 	
 	extraPrice := extraPriceperpage*float64((countPages-23)/2)
 	totalBaseprice = basePrice + extraPrice
+	log.Println("Base Price")
+	log.Println(extraPrice)
+	log.Println(totalBaseprice)
 
 
 	return totalBaseprice, nil
