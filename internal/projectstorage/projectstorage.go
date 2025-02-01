@@ -380,6 +380,7 @@ func DuplicateProject(ctx context.Context, storeDB *pgxpool.Pool, projectID uint
 	var countPages uint
 	var email string
 	var leatherID *uint
+	var strleatherID uint
 	err := storeDB.QueryRow(ctx, "SELECT name, size, variant, count_pages, cover, paper, creating_spine_link, preview_spine_link, leather_id FROM projects WHERE projects_id = ($1);", projectID).Scan(&projectObj.Name, &projectObj.Size, &projectObj.Variant, &countPages, &projectObj.Cover, &projectObj.Surface, &projectObj.CreatingSpineLink, &projectObj.PreviewSpineLink, &leatherID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		log.Printf("Error happened when retrieving project from pgx table. Err: %s", err)
@@ -391,6 +392,9 @@ func DuplicateProject(ctx context.Context, storeDB *pgxpool.Pool, projectID uint
 	//		log.Printf("Error happened when nulling id sequence. Err: %s", err)
 	//		return pID, err
 	//}
+	if leatherID != nil {
+		strleatherID = *leatherID
+	}
 
 	err = storeDB.QueryRow(ctx, "INSERT INTO projects (name, created_at, last_edited_at, status, size, variant, count_pages, cover, paper, creating_spine_link, preview_spine_link, users_id, leather_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING projects_id;",
 		projectObj.Name,
@@ -405,7 +409,7 @@ func DuplicateProject(ctx context.Context, storeDB *pgxpool.Pool, projectID uint
 		projectObj.CreatingSpineLink,
 		projectObj.PreviewSpineLink,
 		userID,
-		leatherID,
+		strleatherID,
 	).Scan(&pID)
 	if err != nil {
 		log.Printf("Error happened when inserting a new project into pgx table. Err: %s", err)
