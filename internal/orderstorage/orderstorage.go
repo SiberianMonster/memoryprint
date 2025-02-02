@@ -500,10 +500,16 @@ func OrderPayment(ctx context.Context, storeDB *pgxpool.Pool, orderObj models.Re
 			return depositPrice, orderID, err
 	}
 	
-
+	var awaitedOrderID uint
+	err = storeDB.QueryRow(ctx, "SELECT orders_id FROM orders WHERE users_id = ($1) and status = ($2) ORDER BY created_at;", userID, "AWAITING_PAYMENT").Scan(&awaitedOrderID)
+	if err != nil {
+		log.Printf("Error happened when searching for draft order into pgx table. Err: %s", err)
+		return depositPrice, orderID, err
+	}
 	for _, project := range orderObj.Projects {
-		_, err = storeDB.Exec(ctx, "DELETE FROM orders_has_projects WHERE projects_id=($1);",
+		_, err = storeDB.Exec(ctx, "DELETE FROM orders_has_projects WHERE projects_id=($1) AND orders_id=($2);",
 		project,
+		awaitedOrderID,
 		)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			log.Printf("Error happened when deleting project from orders_has_projects pgx table. Err: %s", err)
