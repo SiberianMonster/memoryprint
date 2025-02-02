@@ -2513,7 +2513,7 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 	for i := 0; i < config.WorkersCount; i++ {
 		go func() {
 			for job := range jobCh {
-				service, err := selenium.NewChromeDriverService("./chromedriver", 4444)
+				service, err := selenium.NewChromeDriverService("chromedriver", 4444)
 				if err != nil {
 					log.Printf("Error happened when creating browser. Err: %s", err)
 					continue
