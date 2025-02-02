@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"os"
 
 	"github.com/SiberianMonster/memoryprint/internal/config"
 	"github.com/SiberianMonster/memoryprint/internal/models"
@@ -2513,6 +2514,13 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 	for i := 0; i < config.WorkersCount; i++ {
 		go func() {
 			for job := range jobCh {
+				ex, err := os.Executable()
+				if err != nil {
+					panic(err)
+				}
+				log.Println(ex)
+				exPath := filepath.Dir(ex)
+				log.Println(exPath)
 				service, err := selenium.NewChromeDriverService("chromedriver", 4444)
 				if err != nil {
 					log.Printf("Error happened when creating browser. Err: %s", err)
