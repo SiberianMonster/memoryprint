@@ -659,11 +659,11 @@ func RetrieveOrders(ctx context.Context, storeDB *pgxpool.Pool, userID uint, isA
 
 	orderSlice := []models.ResponseOrder{}
 	orderset := models.ResponseOrders{}
-	BASE_QUERY_STRING := "SELECT orders_id, status, created_at, baseprice, finalprice, delivery_id, promooffers_id, giftcertificates_id, giftcertificates_deposit FROM orders WHERE users_id = ($1) AND status IN ('COMPLETED', 'CANCELLED')"
+	BASE_QUERY_STRING := "SELECT orders_id, status, last_updated_at, baseprice, finalprice, delivery_id, promooffers_id, giftcertificates_id, giftcertificates_deposit FROM orders WHERE users_id = ($1) AND status IN ('COMPLETED', 'CANCELLED')"
 	COUNT_QUERY_STRING := "SELECT COUNT(orders_id) FROM orders WHERE users_id = ($1) AND status IN ('COMPLETED', 'CANCELLED')"
 
 	if isActive == true { 
-		BASE_QUERY_STRING = "SELECT orders_id, status, created_at, baseprice, finalprice, delivery_id, promooffers_id, giftcertificates_id, giftcertificates_deposit FROM orders WHERE users_id = ($1) AND status IN ('AWAITING_PAYMENT', 'PAYMENT_IN_PROGRESS', 'PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY')"
+		BASE_QUERY_STRING = "SELECT orders_id, status, last_updated_at, baseprice, finalprice, delivery_id, promooffers_id, giftcertificates_id, giftcertificates_deposit FROM orders WHERE users_id = ($1) AND status IN ('AWAITING_PAYMENT', 'PAYMENT_IN_PROGRESS', 'PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY')"
 		COUNT_QUERY_STRING = "SELECT COUNT(orders_id) FROM orders WHERE users_id = ($1) AND status IN ('AWAITING_PAYMENT', 'PAYMENT_IN_PROGRESS', 'PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY')"
 
 	}
@@ -1519,10 +1519,10 @@ func LoadPaidOrders(ctx context.Context, storeDB *pgxpool.Pool) ([]models.PaidOr
 func OrdersToPrint(ctx context.Context, storeDB *pgxpool.Pool, order models.PaidOrderObj) (error) {
 
 	now:=time.Now()
-	log.Println(order.LastEditedAt.Add(time.Minute * -150).Unix())
+	log.Println(order.LastEditedAt.Add(time.Minute * 30).Unix())
 	log.Println(now.Unix())
 
-	if now.Unix() > order.LastEditedAt.Add(time.Minute * -150).Unix() {
+	if now.Unix() > order.LastEditedAt.Add(time.Minute * 30).Unix() {
 		log.Println("sending order to print")
 		log.Println(order.LastEditedAt)
 		log.Println(order.OrdersID)
