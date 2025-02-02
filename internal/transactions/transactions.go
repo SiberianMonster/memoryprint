@@ -53,6 +53,7 @@ func CreateTransaction(orderID uint, finalPrice float64, goodType string) (strin
 	priceInCents := finalPrice * 100.0
 	queryValues.Add("amount", strconv.Itoa(int(priceInCents)))
     registrationURL.RawQuery = queryValues.Encode()
+	log.Printf("Creating payment link for the order %s", strconv.Itoa(int(orderID)) )
 	log.Println(registrationURL.String())
     
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, registrationURL.String(), nil)
@@ -105,6 +106,8 @@ func FindTransactionStatus(order models.PaidOrderObj) (string, error) {
 	var tID uint
 	var transactionNumber string
 	statusTransaction := "PENDING"
+	log.Printf("Finding transaction status for the order %s", strconv.Itoa(int(order.OrdersID)) )
+
 	ctx, cancel := context.WithTimeout(context.Background(), config.ContextDBTimeout)
 	// не забываем освободить ресурс
 	defer cancel()
@@ -173,7 +176,7 @@ func FindTransactionStatus(order models.PaidOrderObj) (string, error) {
 				log.Printf("Unable to update transaction entry for the order %s", strconv.Itoa(int(order.OrdersID)))
 			}
 			log.Printf("Successful transaction for the order %s",  strconv.Itoa(int(order.OrdersID)))
-			return "SUCCESSFUL", errors.New("failed reading response from bank")
+			return "SUCCESSFUL", nil
 		}
 		if transaction.OrderStatus != 0 {
 			err = orderstorage.UpdateUnSuccessfulTransaction(ctx, config.DB, order.OrdersID)
@@ -192,7 +195,8 @@ func CancelTransaction(orderID uint) error {
 	ctx, cancel := context.WithTimeout(context.Background(), config.ContextDBTimeout)
 	// не забываем освободить ресурс
 	defer cancel()
-	log.Println(orderID)
+	log.Printf("Cancel transaction for the order %s", strconv.Itoa(int(orderID)) )
+
 	banktransactionID, _ := orderstorage.GetBankTransactionID(ctx, config.DB, orderID)
 	cancellationURL := &url.URL{
         Scheme: "https",

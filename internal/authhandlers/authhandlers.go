@@ -24,7 +24,7 @@ func Greet(rw http.ResponseWriter, r *http.Request) {
 	resp["status"] = "successfully greeted user"
 	jsonResp, err := json.Marshal(resp)
 	if err != nil {
-			log.Printf("Error happened in JSON marshal. Err: %s", err)
+			log.Printf("Error happened in JSON marshal in greet. Err: %s", err)
 			return
 	}
 	rw.Write(jsonResp)
@@ -48,6 +48,7 @@ func GenerateTempPass(rw http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	// Create a new validator instance
     validate := validator.New()
+	log.Println("Generating temp pass")
 	log.Println(user)
 
     // Validate the User struct
@@ -66,19 +67,20 @@ func GenerateTempPass(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleUnregisteredUserError(rw)
 		return
 	}
+	log.Println("Checked registration")
 	log.Println(user)
 	dbUser.ID, err = userstorage.GetUserID(ctx, config.DB, user.Email) 
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
 	}
+	log.Println("Matched email")
 	log.Println(dbUser)
 	dbUser, err = userstorage.GetUserData(ctx, config.DB, dbUser.ID)
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
 	}
-	log.Println(dbUser)
 	tempPass := emailutils.GenerateRandomString(8)
 	log.Println(tempPass)
 
@@ -93,12 +95,11 @@ func GenerateTempPass(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	ms := &emailutils.SGMailService{config.YandexApiKey}
-	print("created ms")
+	print("created temp pass email")
 	mailReq := emailutils.NewMail(from, to, subject, mailType, mailData)
-	print("created mail")
 	err = emailutils.SendMail(mailReq, ms)
 	if err != nil {
-		log.Printf("unable to send mail", "error", err)
+		log.Printf("unable to send temp pass mail", "error", err)
 		handlersfunc.HandleMailSendError(rw)
 		return
 	}
@@ -113,7 +114,7 @@ func GenerateTempPass(rw http.ResponseWriter, r *http.Request) {
 	resp["response"] = 1
 	jsonResp, err := json.Marshal(resp)
 	if err != nil {
-			log.Printf("Error happened in JSON marshal. Err: %s", err)
+			log.Printf("Error happened in JSON marshal for temp pass. Err: %s", err)
 			return
 	}
 	rw.Write(jsonResp)

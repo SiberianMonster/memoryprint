@@ -532,6 +532,7 @@ func LoadOrder(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
 	}
+	log.Printf("Loading order %d", orderID)
 	log.Println(retrievedOrder)
 	
 	rw.WriteHeader(http.StatusOK)
@@ -559,6 +560,7 @@ func AdminLoadOrder(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
 	}
+	log.Printf("Loading order for admin user %d", orderID)
 	log.Println(retrievedOrder)
 	
 	rw.WriteHeader(http.StatusOK)
@@ -592,6 +594,7 @@ func LoadDelivery(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
 	}
+	log.Printf("Loading delivery for order %d", orderID)
 	log.Println(retrievedOrder)
 	
 	rw.WriteHeader(http.StatusOK)
@@ -658,6 +661,7 @@ func UpdateOrderStatus(rw http.ResponseWriter, r *http.Request) {
 			handlersfunc.HandleDatabaseServerError(rw)
 			return
 		}
+		log.Printf("Sending email to inform that order is in delivery %d", orderID)
 		log.Println(retrievedOrder)
 		contactData = retrievedOrder.ContactData
 
@@ -912,6 +916,8 @@ func CalculateDelivery(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 	PaymentObj.Amount = ApiPaymentObj.TotalSum
+	log.Println("Calculating delivery")
+	log.Println(rCost)
 	log.Println(ApiPaymentObj.PeriodMin)
 	log.Println(ApiPaymentObj.PeriodMax)
 	daysFrom := 4 + ApiPaymentObj.PeriodMin

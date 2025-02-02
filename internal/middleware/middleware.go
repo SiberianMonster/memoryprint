@@ -72,6 +72,7 @@ func MiddlewareValidateAccessToken(h http.Handler) http.Handler {
 		userID, err := userstorage.GetUserID(context.Background(), config.DB, userEmail)
 		if err != nil {
 			log.Printf("Error happened when getting user ID by email. Err: %s", err)
+			log.Println(userEmail)
 			handlersfunc.HandleDatabaseServerError(w)
 			return
 		}
@@ -108,6 +109,7 @@ func MiddlewareValidateRefreshToken(h http.Handler) http.Handler {
 		userID, err := userstorage.GetUserID(context.Background(), config.DB, userEmail)
 		if err != nil {
 			log.Printf("Error happened when getting user ID by email. Err: %s", err)
+			log.Println(userEmail)
 			handlersfunc.HandleDatabaseServerError(w)
 			return
 		}
@@ -123,6 +125,7 @@ func MiddlewareValidateRefreshToken(h http.Handler) http.Handler {
 		log.Println(customKey)
 		if customKey != actualCustomKey {
 			log.Printf("wrong token: authetincation failed")
+			log.Println(userEmail)
 			handlersfunc.HandleJWTError(w)
 			return
 		}
@@ -145,6 +148,7 @@ func AdminHandler(h http.Handler) http.Handler {
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			log.Print("Failed to check user category")
+			log.Println(userID)
 			jsonResp, err := json.Marshal(resp)
 			if err != nil {
 				log.Printf("Error happened in JSON marshal. Err: %s", err)

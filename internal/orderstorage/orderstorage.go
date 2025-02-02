@@ -1321,7 +1321,7 @@ func UpdateTransaction(ctx context.Context, storeDB *pgxpool.Pool, orderID uint,
 // UpdateSuccessfulTransaction function performs the operation of updating transaction and order in pgx database with a query.
 func UpdateSuccessfulTransaction(ctx context.Context, storeDB *pgxpool.Pool, orderID uint) (error) {
 
-	t := time.Now()
+	t := time.Now().UTC()
 	var tID uint
 	err := storeDB.QueryRow(ctx, "SELECT transactions_id FROM orders_has_transactions WHERE orders_id = ($1) ORDER BY transactions_id DESC LIMIT 1;", orderID).Scan(&tID)
 	if err != nil {
@@ -1504,7 +1504,7 @@ func LoadPaidOrders(ctx context.Context, storeDB *pgxpool.Pool) ([]models.PaidOr
 		var paidOrder models.PaidOrderObj
 		var updateTimeStorage time.Time
 		if err = rows.Scan(&paidOrder.OrdersID, &updateTimeStorage, &paidOrder.Username, &paidOrder.Email); err != nil {
-			log.Printf("Error happened when scanning projects. Err: %s", err)
+			log.Printf("Error happened when scanning paid projects. Err: %s", err)
 			return orders, err
 		}
 		paidOrder.LastEditedAt = updateTimeStorage

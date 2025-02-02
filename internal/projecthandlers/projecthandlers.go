@@ -1324,6 +1324,7 @@ func LoadProjects(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
 	}
+	log.Println(projects)
 
 	rw.WriteHeader(http.StatusOK)
 	resp["response"] = projects
@@ -1395,12 +1396,13 @@ func SavePage(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleDecodeError(rw, err)
 		return
 	}
-	log.Println(savedPages)
+	
 	aByteToInt, _ := strconv.Atoi(mux.Vars(r)["id"])
 	projectID := uint(aByteToInt)
 	defer r.Body.Close()
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	defer cancel()
+	log.Printf("Saving page for project user %d",projectID)
 	for _, page := range savedPages.Pages {
 		// add check for missing page
 		if !projectstorage.CheckPage(ctx, config.DB, page.PageID, projectID) {
@@ -1461,6 +1463,7 @@ func UpdateProjectSpine(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandlePermissionError(rw)
 		return
 	}
+	log.Printf("Saving spine for project %d",projectID)
 	err = projectstorage.SaveSpine(ctx, config.DB, savedSpine, projectID)
 	if err != nil {
 				handlersfunc.HandleDatabaseServerError(rw)
@@ -1709,6 +1712,7 @@ func ReorderPages(rw http.ResponseWriter, r *http.Request) {
 	projectID := uint(aByteToInt)
 	defer r.Body.Close()
 	var sortNumbers []uint
+	log.Printf("Reorder pages for project %d",projectID)
 
 	for _, page := range reorderPages.Pages {
 		sortNumbers = append(sortNumbers, page.Sort)
@@ -2126,6 +2130,8 @@ func ShareLink(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return
 	}
+	log.Printf("Sharing preview link for project %d",pID)
+
 	previewLink := "https://front.memoryprint.dev.startup-it.ru/preview/" + mux.Vars(r)["id"]
 	// Send email with the link
 	from := "support@memoryprint.ru"
@@ -2143,7 +2149,7 @@ func ShareLink(rw http.ResponseWriter, r *http.Request) {
 	mailReq := emailutils.NewMail(from, to, subject, mailType, mailData)
 	err = emailutils.SendMail(mailReq, ms)
 	if err != nil {
-		log.Printf("unable to send mail", "error", err)
+		log.Printf("unable to send shared project mail", "error", err)
 		handlersfunc.HandleMailSendError(rw)
 		return
 	}
@@ -2408,7 +2414,7 @@ func UpdateCover(rw http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	log.Printf("Update project cover for user")
+	log.Printf("Update project cover for project %d",projectID)
 	err = projectstorage.UpdateCover(ctx, config.DB, projectID, CoverObj)
 
 	if err != nil {
@@ -2476,7 +2482,7 @@ func UpdateSurface(rw http.ResponseWriter, r *http.Request) {
 		handlersfunc.HandleOrderCompleted(rw)
 		return
 	}
-	log.Printf("Update project surface for user")
+	log.Printf("Update project surface for project %d",projectID)
 	err = projectstorage.UpdateSurface(ctx, config.DB, projectID, SurfaceObj)
 
 	if err != nil {
@@ -2529,7 +2535,7 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 			
 				images, err = projectstorage.GenerateImages(ctx, storeDB, job, driver)
 				if err != nil {
-					log.Printf("Error happened when updating pending orders. Err: %s", err)
+					log.Printf("Error happened when updating paid orders. Err: %s", err)
 					continue
 				}
 				if !slices.Contains(images, "") {
@@ -2543,7 +2549,7 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 
 		orderList, err = orderstorage.LoadPaidOrders(ctx, storeDB)
 		if err != nil {
-			log.Printf("Error happened when retrieving pending orders. Err: %s", err)
+			log.Printf("Error happened when retrieving paid orders. Err: %s", err)
 			continue
 		}
 		

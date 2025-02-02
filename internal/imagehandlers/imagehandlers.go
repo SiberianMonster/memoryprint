@@ -548,27 +548,33 @@ func CreateProjectFolder(images []string, orderID uint) {
 	req, err := http.NewRequest("GET", urlCheck, nil)
 	if err != nil {
 		log.Printf("Failed to create a request to bucket %s", err)
+		log.Println(orderID)
 	}
 	req.Header.Set("Authorization", "Bearer " + config.TimewebToken)
 	req.Header.Set("Content-Type","application/json")
 	resp, err := client.Do(req)
 	if err != nil {
 			log.Printf("Failed to make a request to bucket %s", err)
+			log.Println(orderID)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
             log.Println(resp.StatusCode)
 			log.Printf("Failed to make a request to bucket %s", err)
+			log.Println(orderID)
     } else {
 		err = json.NewDecoder(resp.Body).Decode(&folderContent)
 		if err != nil {
 			log.Printf("Failed to decode folder content %s", err)
+			log.Println(orderID)
 		}
 		if folderContent.Meta.Total == len(images){
 			log.Println("all pages already copied")
+			log.Println(orderID)
 		} else {
 			//copy paste images
 			log.Println("missing pages, start to copy")
+			log.Println(orderID)
 
 			//create folder
 			body := &NewDirectory{
@@ -581,17 +587,20 @@ func CreateProjectFolder(images []string, orderID uint) {
 			req, err = http.NewRequest("POST", urlCreateFolder, payloadBuf)
 			if err != nil {
 				log.Printf("Failed to create a request to create new folder %s", err)
+				log.Println(orderID)
 			}
 			req.Header.Set("Authorization", "Bearer " + config.TimewebToken)
 			req.Header.Set("Content-Type","application/json")
 			resp, err = client.Do(req)
 			if err != nil {
 					log.Printf("Failed to make a request to create new folder %s", err)
+					log.Println(orderID)
 			}
 			defer resp.Body.Close()
 			if resp.StatusCode != 201 {
 					log.Println(resp.StatusCode)
 					log.Printf("Failed to make a request to create new folder %s", err)
+					log.Println(orderID)
 			} else {
 				var pathToCopy string
 				urlCopyPasteImage := "https://api.timeweb.cloud/api/v1/storages/buckets/225285/object-manager/copy"
@@ -608,22 +617,26 @@ func CreateProjectFolder(images []string, orderID uint) {
 					req, err = http.NewRequest("POST", urlCopyPasteImage, payloadBuf)
 					if err != nil {
 						log.Printf("Failed to create a request to copy page %s", err)
+						log.Println(orderID)
 					}
 					req.Header.Set("Authorization", "Bearer " + config.TimewebToken)
 					req.Header.Set("Content-Type","application/json")
 					resp, err = client.Do(req)
 					if err != nil {
 							log.Printf("Failed to make a request to copy page %s", err)
+							log.Println(orderID)
 					}
 					defer resp.Body.Close()
 					if resp.StatusCode != 204 {
 							log.Println(resp.StatusCode)
 							log.Printf("Failed to make a request to copy page %s", err)
+							log.Println(orderID)
 							break
 					}
 				}
 
 			log.Println("finished copying pages")
+			log.Println(orderID)
 
 			}
 			

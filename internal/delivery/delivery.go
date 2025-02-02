@@ -524,17 +524,20 @@ func LoadApiDelivery(ctx context.Context, storeDB *pgxpool.Pool, orderID uint) (
 	err := storeDB.QueryRow(ctx, "SELECT delivery_id, firstname, lastname, email, phone FROM orders WHERE orders_id = ($1);", orderID).Scan(&deliveryID, &contactData.FirstName, &contactData.LastName, &contactData.Email, &contactData.Phone)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 				log.Printf("Error happened when retrieving delivery id info from pgx table. Err: %s", err)
+				log.Println(orderID)
 				return orderObj, err
 	}
 	orderObj.ContactData = contactData
 	err = storeDB.QueryRow(ctx, "SELECT method, address, code, postal_code, deliverystatus, amount, deliveryid, trackingnumber FROM delivery WHERE delivery_id = ($1);", deliveryID).Scan(&orderObj.Method, &orderObj.Address, &orderObj.Code, &orderObj.PostalCode, &orderObj.DeliveryStatus, &orderObj.Amount, &orderObj.DeliveryID, &orderObj.TrackingNumber)
 	if err != nil && err != pgx.ErrNoRows{
 		log.Printf("Error happened when retrieving delivery info from pgx table. Err: %s", err)
+		log.Println(orderID)
 		return orderObj, err
 	}
 	err = storeDB.QueryRow(ctx, "SELECT COUNT(projects_id) FROM orders_has_projects WHERE orders_id = ($1);", orderID).Scan(&orderObj.Projects)
 	if err != nil && err != pgx.ErrNoRows{
 				log.Printf("Error happened when counting projects for order in pgx table. Err: %s", err)
+				log.Println(orderID)
 				return orderObj, err
 	}
 
@@ -551,6 +554,7 @@ func AddDeliveryID(ctx context.Context, storeDB *pgxpool.Pool, orderID uint, uui
 	err := storeDB.QueryRow(ctx, "SELECT delivery_id FROM orders WHERE orders_id = ($1);", orderID).Scan(&deliveryID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 				log.Printf("Error happened when retrieving delivery id info from pgx table. Err: %s", err)
+				log.Println(orderID)
 				return err
 	}
 	_, err = storeDB.Exec(ctx, "UPDATE delivery SET deliveryid = ($1), status = ($2) WHERE delivery_id = ($3);",
@@ -560,6 +564,7 @@ func AddDeliveryID(ctx context.Context, storeDB *pgxpool.Pool, orderID uint, uui
 	)
 	if err != nil {
 		log.Printf("Error happened when updating delivery uuid into pgx table. Err: %s", err)
+		log.Println(orderID)
 		return err
 	}
 

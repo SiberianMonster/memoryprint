@@ -31,6 +31,7 @@ var (
 // Phonevalidator implements validator.Func
 func PhoneValidator(fl validator.FieldLevel) bool {
 	matched, _ := regexp.MatchString(phoneRegex, fl.Field().String())
+	log.Println("checking phone number format")
 	log.Println(matched)
 	
 	return matched
@@ -120,7 +121,7 @@ func Register(rw http.ResponseWriter, r *http.Request) {
 	mailReq := emailutils.NewMail(from, to, subject, mailType, mailData)
 	err = emailutils.SendMail(mailReq, ms)
 	if err != nil {
-		log.Printf("unable to send mail", "error", err)
+		log.Printf("unable to send registration mail", "error", err)
 		handlersfunc.HandleMailSendError(rw)
 		return
 	}
@@ -247,6 +248,7 @@ func GetUserInfo(rw http.ResponseWriter, r *http.Request) {
 	log.Printf("Get user data")
 	
 	userID := handlersfunc.UserIDContextReader(r)
+	log.Println(userID)
 
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
 	// не забываем освободить ресурс
@@ -670,6 +672,7 @@ func CheckPromocode(rw http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 	// Create a new validator instance
+	log.Println("Checking promocode")
 	log.Println(code)
 
 	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
@@ -759,6 +762,7 @@ func UsePromocode(rw http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	// Create a new validator instance
     validate := validator.New()
+	log.Println("Use promocode")
 	log.Println(requestP)
 
     // Validate the User struct

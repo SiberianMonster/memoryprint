@@ -56,7 +56,7 @@ type MailData struct {
 	TempPass	 string
 	Ordernum uint
 	Trackingnum string
-	SubscriptionLink string
+	SubscriptionLink string 
 	ShareLink string
 }
 
