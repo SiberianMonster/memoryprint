@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"os"
+	"path/filepath"
 
 	"github.com/SiberianMonster/memoryprint/internal/config"
 	"github.com/SiberianMonster/memoryprint/internal/models"
