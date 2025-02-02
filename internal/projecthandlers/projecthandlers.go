@@ -2503,7 +2503,7 @@ func UpdateSurface(rw http.ResponseWriter, r *http.Request) {
 
 func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 
-	ticker := time.NewTicker(config.UpdateInterval*5)
+	ticker := time.NewTicker(config.UpdateInterval*2)
 	var err error
 	var orderList []models.PaidOrderObj
 	var images []string
