@@ -13,6 +13,8 @@ import (
 	"strings"
 	"os"
 	"path/filepath"
+	"net"
+	"os/exec"
 
 	"github.com/SiberianMonster/memoryprint/internal/config"
 	"github.com/SiberianMonster/memoryprint/internal/models"
@@ -2503,6 +2505,34 @@ func UpdateSurface(rw http.ResponseWriter, r *http.Request) {
 	rw.Write(jsonResp)
 }
 
+func pickUnusedPort() (int, error) {
+	addr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:0")
+	if err != nil {
+		return 0, err
+	}
+
+	l, err := net.ListenTCP("tcp", addr)
+	if err != nil {
+		return 0, err
+	}
+	port := l.Addr().(*net.TCPAddr).Port
+	if err := l.Close(); err != nil {
+		return 0, err
+	}
+	return port, nil
+}
+
+func GetBrowserPath(browser string) string {
+	if _, err := os.Stat(browser); err != nil {
+		path, err := exec.LookPath(browser)
+		if err != nil {
+			panic("Browser binary path not found")
+		}
+		return path
+	}
+	return browser
+}
+
 func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 
 	ticker := time.NewTicker(config.UpdateInterval*2)
@@ -2519,10 +2549,17 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 				if err != nil {
 					panic(err)
 				}
+				log.Println("Trying to print images..")
 				log.Println(ex)
 				exPath := filepath.Dir(ex)
 				log.Println(exPath)
-				service, err := selenium.NewChromeDriverService("/root/GoProjects/chromedriver", 4444)
+				browserPath := GetBrowserPath("chrome")
+				log.Println(browserPath)
+				port, err := pickUnusedPort()
+
+				var opts selenium.ServiceOption
+
+				service, err := selenium.NewChromeDriverService("./chromedriver", port, opts)
 				if err != nil {
 					log.Printf("Error happened when creating browser. Err: %s", err)
 					continue
