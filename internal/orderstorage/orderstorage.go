@@ -264,7 +264,7 @@ func LoadCart(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (models.R
 		photobook.ProjectID = pID
 		photobook.FrontPage, err = projectstorage.RetrieveFrontPage(ctx, storeDB, pID, false)
 		var imageLink *string
-		err = storeDB.QueryRow(ctx, "SELECT creating_image_link FROM pages WHERE projects_id = ($1) AND is_template = ($2) AND type = ($3);", pID, "false", "front").Scan(&imageLink)
+		err = storeDB.QueryRow(ctx, "SELECT preview_link FROM pages WHERE projects_id = ($1) AND is_template = ($2) AND type = ($3);", pID, "false", "front").Scan(&imageLink)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 				log.Printf("Error happened when retrieving front page from pgx table. Err: %s", err)
 				return responseCart, err
@@ -281,7 +281,7 @@ func LoadCart(ctx context.Context, storeDB *pgxpool.Pool, userID uint) (models.R
 		if photobook.Cover == "LEATHERETTE" {
 			log.Println(leatherID)
 			photobook.LeatherID = leatherID
-			err = storeDB.QueryRow(ctx, "SELECT colourlink FROM leather WHERE leather_id = ($1);", leatherID).Scan(&photobook.FrontPage.CreatingImageLink)
+			err = storeDB.QueryRow(ctx, "SELECT colourlink FROM leather WHERE leather_id = ($1);", leatherID).Scan(&photobook.FrontPage.PreviewImageLink)
 					
 			if err != nil {
 						log.Printf("Error happened when retrieving colour image for leather cover from pgx table. Err: %s", err)

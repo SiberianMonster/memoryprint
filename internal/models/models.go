@@ -345,7 +345,6 @@ type Page struct {
 	PageID uint `json:"page_id"`
 	Type string `json:"type"`
 	Sort uint `json:"sort"`
-	CreatingImageLink *string `json:"creating_image_link"`
 	PreviewImageLink *string `json:"preview_image_link"`
 	Data        json.RawMessage      `json:"data"`
 	UsedPhotoIDs []uint `json:"used_photo_ids"`
@@ -360,7 +359,6 @@ type TemplatePage struct {
 	PageID uint `json:"page_id"`
 	Type string `json:"type"`
 	Sort uint `json:"sort"`
-	CreatingImageLink *string `json:"creating_image_link"`
 	PreviewImageLink *string `json:"preview_image_link"`
 	Data        json.RawMessage      `json:"data"`
 	UsedPhotoIDs []uint `json:"used_photo_ids"`
@@ -554,11 +552,11 @@ type SavePage struct {
 type FrontPage struct {
 	// PageID of the project page. The model is used to save changes made on the page
 	// in: int
-	CreatingImageLink *string `json:"creating_image_link"`
+	PreviewImageLink *string `json:"preview_image_link"`
   }
 
 type TemplateFrontPage struct {
-	CreatingImageLink *string `json:"creating_image_link"`
+	PreviewImageLink *string `json:"preview_image_link"`
 	Data        json.RawMessage      `json:"data"`
   }
 

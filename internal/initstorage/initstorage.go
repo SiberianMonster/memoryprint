@@ -325,21 +325,21 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 	
 
 
-	_, err = db.Exec(ctx, "ALTER TABLE templates ADD COLUMN variant varchar;")
-	if err != nil {
-			log.Printf("Error happened when creating variant column. Err: %s", err)
-			return nil, false
-	}
-	_, err = db.Exec(ctx, "ALTER TABLE layouts ADD COLUMN variant varchar;")
-	if err != nil {
-			log.Printf("Error happened when creating variant column. Err: %s", err)
-			return nil, false
-	}
-	_, err = db.Exec(ctx, "ALTER TABLE layouts ADD COLUMN is_cover boolean;")
-	if err != nil {
-			log.Printf("Error happened when creating is_cover column. Err: %s", err)
-			return nil, false
-	}
+	//_, err = db.Exec(ctx, "ALTER TABLE templates ADD COLUMN variant varchar;")
+	//if err != nil {
+	//		log.Printf("Error happened when creating variant column. Err: %s", err)
+	//		return nil, false
+	//}
+	//_, err = db.Exec(ctx, "ALTER TABLE layouts ADD COLUMN variant varchar;")
+	//if err != nil {
+	//		log.Printf("Error happened when creating variant column. Err: %s", err)
+	//		return nil, false
+	//}
+	//_, err = db.Exec(ctx, "ALTER TABLE layouts ADD COLUMN is_cover boolean;")
+	//if err != nil {
+	//		log.Printf("Error happened when creating is_cover column. Err: %s", err)
+	//		return nil, false
+	//}
 	//pass default settings
 	//_, err = db.Exec(ctx, "ALTER TABLE photos ADD COLUMN small_image varchar;")
 	//if err != nil {

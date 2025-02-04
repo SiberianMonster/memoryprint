@@ -494,7 +494,7 @@ func CreatePDFVisualization(rw http.ResponseWriter, r *http.Request) {
 	//defer os.RemoveAll(dir)
 	for _, page := range pages {
 
-		strCreatingImageLink := *page.CreatingImageLink
+		strCreatingImageLink := *page.PreviewImageLink
 		imageURL := config.ImageHost+strCreatingImageLink
 		localPath := "./temp_pdf/" + strCreatingImageLink
 		log.Println(localPath)
