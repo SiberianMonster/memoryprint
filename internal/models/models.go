@@ -897,7 +897,6 @@ type RequestDeliveryCost struct {
 	FromLocation Location `json:"from_location" validate:"required"`
 	ToLocation Location `json:"to_location" validate:"required"`
 	Packages []Package `json:"packages" validate:"required"`
-	Services []Service `json:"services" validate:"required"`
 }
 
 type Location struct {
@@ -909,11 +908,6 @@ type Location struct {
 
 }
 
-type Service struct {
-	
-	Code string `json:"code" validate:"required"`
-	Parameter string `json:"parameter" validate:"required"`
-}
 
 type Package struct {
 	
@@ -930,7 +924,6 @@ type ApiResponseDeliveryCost struct {
 	WeightCalc float64 `json:"weight_calc" validate:"required"`
 	Currency string `json:"currency" validate:"required"`
 	TotalSum float64 `json:"total_sum" validate:"required"`
-	Services []Service `json:"services" validate:"required"`
 }
 
 type ResponseDeliveryCost struct {

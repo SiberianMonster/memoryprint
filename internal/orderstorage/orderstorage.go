@@ -378,7 +378,6 @@ func OrderPayment(ctx context.Context, storeDB *pgxpool.Pool, orderObj models.Re
 	var fromLoc models.Location
 	var toLoc models.Location
 	var p models.Package
-	var s models.Service
 	var depositPrice float64
 
 	if deliveryObj.Method == "DOOR" {
@@ -396,10 +395,7 @@ func OrderPayment(ctx context.Context, storeDB *pgxpool.Pool, orderObj models.Re
 	p.Height = 3 * len(orderObj.Projects)
 	p.Width = 30 
 	p.Length = 30 
-	s.Code = "CARTON_BOX_500GR"
-	s.Parameter = strconv.Itoa(len(orderObj.Projects))
 	rApiCost.Packages = append(rApiCost.Packages, p)
-	rApiCost.Services = append(rApiCost.Services, s)
 	fromLoc.PostalCode = "141016"
 	fromLoc.City = "Мытищи"
 	fromLoc.Address = "Тенистый бульвар, 11"

@@ -835,7 +835,6 @@ func CalculateDelivery(rw http.ResponseWriter, r *http.Request) {
 	var fromLoc models.Location
 	var toLoc models.Location
 	var p models.Package
-	var s models.Service
 	
 	err := json.NewDecoder(r.Body).Decode(&rCost)
 	if err != nil {
@@ -900,10 +899,7 @@ func CalculateDelivery(rw http.ResponseWriter, r *http.Request) {
 	p.Height = 3 * rCost.CountProjects
 	p.Width = 30 
 	p.Length = 30 
-	s.Code = "CARTON_BOX_500GR"
-	s.Parameter = strconv.Itoa(rCost.CountProjects)
 	rApiCost.Packages = append(rApiCost.Packages, p)
-	rApiCost.Services = append(rApiCost.Services, s)
 	fromLoc.PostalCode = "141016"
 	fromLoc.City = "Мытищи"
 	fromLoc.Address = "Тенистый бульвар, 11"
