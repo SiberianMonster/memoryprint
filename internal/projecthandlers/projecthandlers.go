@@ -2559,7 +2559,7 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 				log.Println(filepath.Dir(browserPath))
 				log.Println(filepath.Dir("chromedriver"))
 
-				service, err := selenium.NewChromeDriverService("chromedriver", port)
+				service, err := selenium.NewChromeDriverService("/usr/local/bin/chromedriver", port)
 				if err != nil {
 					log.Printf("Error happened when creating browser. Err: %s", err)
 					continue
