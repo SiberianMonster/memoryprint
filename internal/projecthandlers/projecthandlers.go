@@ -2571,7 +2571,7 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 				}})
 
 				// create a new remote client with the specified options
-				driver, err := selenium.NewRemote(caps, "")
+				driver, err := selenium.NewRemote(caps, "http://localhost")
 				if err != nil {
 					log.Printf("Error happened when creating driver. Err: %s", err)
 					continue
