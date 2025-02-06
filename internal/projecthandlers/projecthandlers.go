@@ -2535,7 +2535,7 @@ func GetBrowserPath(browser string) string {
 
 func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 
-	ticker := time.NewTicker(config.UpdateInterval*2)
+	ticker := time.NewTicker(config.UpdateInterval*5)
 	var err error
 	var images []string	
 
@@ -2559,7 +2559,10 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 					caps := selenium.Capabilities{}
 					caps.AddChrome(chrome.Capabilities{Args: []string{
 					"--headless", 
-					"--no-sandbox",// comment out this line for testing
+					"--no-sandbox",
+					"--enable-automation",
+					"--enable-javascript", 
+					"--disable-dev-shm-usage", // comment out this line for testing
 					}})
 
 					// create a new remote client with the specified options
