@@ -2537,69 +2537,62 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 
 	ticker := time.NewTicker(config.UpdateInterval*2)
 	var err error
-	var images []string
-	var orderList []models.PaidOrderObj
-	
+	var images []string	
 
 	jobCh := make(chan uint)
 	for i := 0; i < config.WorkersCount; i++ {
 		go func() {
 			for job := range jobCh {
+				checkBool := imagehandlers.CheckProjectFolder(job) 
+				if checkBool {
+					log.Println("Photobook already printed")
+				} else {
+					log.Println("Trying to print images..")
+					port, err := pickUnusedPort()
+
+					service, err := selenium.NewChromeDriverService("/usr/local/bin/chromedriver", port)
+					if err != nil {
+						log.Printf("Error happened when creating browser. Err: %s", err)
+						continue
+					}
+					defer service.Stop()
+					caps := selenium.Capabilities{}
+					caps.AddChrome(chrome.Capabilities{Args: []string{
+					"--headless", 
+					"--no-sandbox",// comment out this line for testing
+					}})
+
+					// create a new remote client with the specified options
+					driver, err := selenium.NewRemote(caps, fmt.Sprintf("http://localhost:%d/wd/hub", port))
+					if err != nil {
+						log.Printf("Error happened when creating driver. Err: %s", err)
+						continue
+					}
+					driver.SetPageLoadTimeout(210*time.Second)
+
 				
-				log.Println("Trying to print images..")
-				port, err := pickUnusedPort()
-
-				service, err := selenium.NewChromeDriverService("/usr/local/bin/chromedriver", port)
-				if err != nil {
-					log.Printf("Error happened when creating browser. Err: %s", err)
-					continue
+					images, err = projectstorage.GenerateImages(ctx, storeDB, job, driver)
+					if err != nil {
+						log.Printf("Error happened when updating paid orders. Err: %s", err)
+						continue
+					}
+					if !slices.Contains(images, "") {
+						imagehandlers.CreateProjectFolder(images, job)
+					}
 				}
-				defer service.Stop()
-				caps := selenium.Capabilities{}
-				caps.AddChrome(chrome.Capabilities{Args: []string{
-				"--headless", 
-				"--no-sandbox",// comment out this line for testing
-				}})
-
-				// create a new remote client with the specified options
-				driver, err := selenium.NewRemote(caps, fmt.Sprintf("http://localhost:%d/wd/hub", port))
-				if err != nil {
-					log.Printf("Error happened when creating driver. Err: %s", err)
-					continue
-				}
-				driver.SetPageLoadTimeout(210*time.Second)
-
-			
-				images, err = projectstorage.GenerateImages(ctx, storeDB, job, driver)
-				if err != nil {
-					log.Printf("Error happened when updating paid orders. Err: %s", err)
-					continue
-				}
-				if !slices.Contains(images, "") {
-					imagehandlers.CreateProjectFolder(images, job)
-				}
+				
 			}
 		}()
 	}
 
 	for range ticker.C {
-
-		orderList, err = orderstorage.LoadPaidOrders(ctx, storeDB)
+		var projectIDs []uint
+		projectIDs, err = projectstorage.LoadPublishedProjects(ctx, storeDB)
 		if err != nil {
-			log.Printf("Error happened when retrieving paid orders. Err: %s", err)
+			log.Printf("Error happened when retrieving published projects. Err: %s", err)
 			continue
 		}
-		var projectIDs [] uint
-		for _, order := range orderList {
-			var projects []uint
-			projects, err = projectstorage.LoadOrderProject(ctx, storeDB, order.OrdersID) 
-			if err != nil {
-				log.Printf("Error happened when retrieving paid orders projects. Err: %s", err)
-				continue
-			}
-			projectIDs = append(projectIDs, projects...)
-
-		}
+		
 		log.Println(projectIDs)
 		
 		for _, project := range projectIDs {

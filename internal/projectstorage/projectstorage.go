@@ -1969,25 +1969,38 @@ func LoadPromocodeTemplates(ctx context.Context, storeDB *pgxpool.Pool, tcategor
 
 }
 
-// LoadOrderProject function performs the operation of retrieving project by id from pgx database with a query.
-func LoadOrderProject(ctx context.Context, storeDB *pgxpool.Pool, oID uint) ([]uint, error) {
+// LoadPublishedProjects function performs the operation of retrieving projects from pgx database with a query.
+func LoadPublishedProjects(ctx context.Context, storeDB *pgxpool.Pool) ([]uint, error) {
 
 	var projectIDs []uint
-	rows, err := storeDB.Query(ctx, "SELECT projects_id FROM orders_has_projects WHERE orders_id = ($1);", oID)
+	rows, err := storeDB.Query(ctx, "SELECT orders_id FROM orders WHERE status IN ('AWAITING_PAYMENT', 'PAID');")
 	if err != nil {
-		log.Printf("Error happened when retrieving pages from pgx table. Err: %s", err)
+		log.Printf("Error happened when retrieving orders from pgx table. Err: %s", err)
 		return projectIDs, err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
-		var pID uint
-		
-		if err := rows.Scan(&pID); err != nil {
-			log.Printf("Failed to retrieve project id. Err: %s", err)
+		var oID uint
+		if err = rows.Scan(&oID); err != nil {
+			log.Printf("Failed to retrieve order number. Err: %s", err)
+		}
+		prows, err := storeDB.Query(ctx, "SELECT projects_id FROM orders_has_projects WHERE orders_id = ($1);", oID)
+		if err != nil {
+			log.Printf("Error happened when retrieving projects from pgx table. Err: %s", err)
+			return projectIDs, err
+		}
+		defer prows.Close()
+
+		for prows.Next() {
+			var pID uint
+			if err = rows.Scan(&pID); err != nil {
+				log.Printf("Failed to retrieve order number. Err: %s", err)
+			}
+
+			projectIDs = append(projectIDs, pID)
 		}
 		
-		projectIDs = append(projectIDs, pID)
 	}
 	return projectIDs, nil
 
