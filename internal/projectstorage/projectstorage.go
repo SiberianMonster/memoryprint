@@ -1969,6 +1969,30 @@ func LoadPromocodeTemplates(ctx context.Context, storeDB *pgxpool.Pool, tcategor
 
 }
 
+// LoadOrderProject function performs the operation of retrieving project by id from pgx database with a query.
+func LoadOrderProject(ctx context.Context, storeDB *pgxpool.Pool, oID uint) ([]uint, error) {
+
+	var projectIDs []uint
+	rows, err := storeDB.Query(ctx, "SELECT projects_id FROM orders_has_projects WHERE orders_id = ($1);", oID)
+	if err != nil {
+		log.Printf("Error happened when retrieving pages from pgx table. Err: %s", err)
+		return projectIDs, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var pID uint
+		
+		if err := rows.Scan(&pID); err != nil {
+			log.Printf("Failed to retrieve project id. Err: %s", err)
+		}
+		
+		projectIDs = append(projectIDs, pID)
+	}
+	return projectIDs, nil
+
+}
+
 // RetrieveProjectImages function performs the operation of retrieving images of a published photobook project from pgx database with a query.
 func RetrieveProjectImages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint) ([]string, error) {
 
@@ -1999,21 +2023,22 @@ func RetrieveProjectImages(ctx context.Context, storeDB *pgxpool.Pool, projectID
 }
 
 // GenerateImages function checks if a paid project has images for all pages, and if no, triggers their generation
-func GenerateImages(ctx context.Context, storeDB *pgxpool.Pool, orderObj models.PaidOrderObj, driver selenium.WebDriver) ([]string, error) {
+func GenerateImages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint, driver selenium.WebDriver) ([]string, error) {
 
-	images, err := RetrieveProjectImages(ctx, storeDB, orderObj.OrdersID)
+	images, err := RetrieveProjectImages(ctx, storeDB, projectID)
 	if err != nil {
 		log.Printf("Error happened when retrieving images from pgx table. Err: %s", err)
 		return images, err
 	}
 	if slices.Contains(images, "") {
 		log.Println("Need to generate images")
-		log.Println(orderObj.OrdersID)
-		url :=  "https://front.memoryprint.dev.startup-it.ru/preview/generate/" + strconv.Itoa(int(orderObj.OrdersID))
+		log.Println(projectID)
+		url :=  "https://front.memoryprint.dev.startup-it.ru/preview/generate/" + strconv.Itoa(int(projectID))
 		err = driver.Get(url)
 		if err != nil {
 			log.Printf("Error happened when generating images for paid project. Err: %s", err)
 		}
+		log.Println("Generated images")
 	}
 	
 	return images, nil

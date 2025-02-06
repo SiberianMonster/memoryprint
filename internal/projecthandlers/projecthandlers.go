@@ -2537,11 +2537,11 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 
 	ticker := time.NewTicker(config.UpdateInterval*2)
 	var err error
-	var orderList []models.PaidOrderObj
 	var images []string
+	var orderList []models.PaidOrderObj
 	
 
-	jobCh := make(chan models.PaidOrderObj)
+	jobCh := make(chan uint)
 	for i := 0; i < config.WorkersCount; i++ {
 		go func() {
 			for job := range jobCh {
@@ -2589,9 +2589,21 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 			log.Printf("Error happened when retrieving paid orders. Err: %s", err)
 			continue
 		}
-		
+		var projectList [] uint
 		for _, order := range orderList {
-			jobCh <- order
+			var projects []uint
+			projects, err = projectstorage.LoadOrderProject(ctx, storeDB, order.OrdersID) 
+			if err != nil {
+				log.Printf("Error happened when retrieving paid orders projects. Err: %s", err)
+				continue
+			}
+			projectIDs = append(projectIDs, projects)
+
+		}
+		log.Println(projectIDs)
+		
+		for _, project := range projectIDs {
+			jobCh <- project
 
 		}
 
