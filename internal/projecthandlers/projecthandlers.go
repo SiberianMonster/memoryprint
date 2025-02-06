@@ -2557,7 +2557,8 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 				defer service.Stop()
 				caps := selenium.Capabilities{}
 				caps.AddChrome(chrome.Capabilities{Args: []string{
-				"--headless", // comment out this line for testing
+				"--headless", 
+				"--no-sandbox",// comment out this line for testing
 				}})
 
 				// create a new remote client with the specified options
