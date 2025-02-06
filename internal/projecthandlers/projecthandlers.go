@@ -2597,7 +2597,7 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 				log.Printf("Error happened when retrieving paid orders projects. Err: %s", err)
 				continue
 			}
-			projectIDs = append(projectIDs, projects)
+			projectIDs = append(projectIDs, projects...)
 
 		}
 		log.Println(projectIDs)
