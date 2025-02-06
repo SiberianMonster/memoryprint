@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"net"
 	"os/exec"
+	"fmt"
 
 	"github.com/SiberianMonster/memoryprint/internal/config"
 	"github.com/SiberianMonster/memoryprint/internal/models"
@@ -2545,19 +2546,10 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 	for i := 0; i < config.WorkersCount; i++ {
 		go func() {
 			for job := range jobCh {
-				ex, err := os.Executable()
-				if err != nil {
-					panic(err)
-				}
+				
 				log.Println("Trying to print images..")
-				log.Println(ex)
-				exPath := filepath.Dir(ex)
-				log.Println(exPath)
 				browserPath := GetBrowserPath("chrome")
 				port, err := pickUnusedPort()
-				log.Println(filepath.Dir(""))
-				log.Println(filepath.Dir(browserPath))
-				log.Println(filepath.Dir("chromedriver"))
 
 				service, err := selenium.NewChromeDriverService("/usr/local/bin/chromedriver", port)
 				if err != nil {
@@ -2571,7 +2563,7 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 				}})
 
 				// create a new remote client with the specified options
-				driver, err := selenium.NewRemote(caps, "http://localhost")
+				driver, err := selenium.NewRemote(caps, fmt.Sprintf("http://localhost:%d/wd/hub", port))
 				if err != nil {
 					log.Printf("Error happened when creating driver. Err: %s", err)
 					continue
