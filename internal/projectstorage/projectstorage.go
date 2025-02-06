@@ -1994,7 +1994,7 @@ func LoadPublishedProjects(ctx context.Context, storeDB *pgxpool.Pool) ([]uint, 
 
 		for prows.Next() {
 			var pID uint
-			if err = rows.Scan(&pID); err != nil {
+			if err = prows.Scan(&pID); err != nil {
 				log.Printf("Failed to retrieve order number. Err: %s", err)
 			}
 
