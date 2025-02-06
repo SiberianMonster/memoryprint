@@ -1984,8 +1984,7 @@ func RetrieveProjectImages(ctx context.Context, storeDB *pgxpool.Pool, projectID
 		var image string
 		
 		if err = rows.Scan(&image); err != nil {
-			log.Printf("Error happened when scanning pages. Err: %s", err)
-			return nil, err
+			log.Printf("Empty page image. Err: %s", err)
 		}
 		
 		images = append(images, image)
