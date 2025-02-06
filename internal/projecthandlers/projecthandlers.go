@@ -2576,7 +2576,7 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 					continue
 				}
 				if !slices.Contains(images, "") {
-					imagehandlers.CreateProjectFolder(images, job.OrdersID)
+					imagehandlers.CreateProjectFolder(images, job)
 				}
 			}
 		}()
@@ -2589,7 +2589,7 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 			log.Printf("Error happened when retrieving paid orders. Err: %s", err)
 			continue
 		}
-		var projectList [] uint
+		var projectIDs [] uint
 		for _, order := range orderList {
 			var projects []uint
 			projects, err = projectstorage.LoadOrderProject(ctx, storeDB, order.OrdersID) 
