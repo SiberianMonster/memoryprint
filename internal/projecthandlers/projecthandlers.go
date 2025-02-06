@@ -12,7 +12,6 @@ import (
 	"strconv"
 	"strings"
 	"os"
-	"path/filepath"
 	"net"
 	"os/exec"
 	"fmt"
@@ -2548,7 +2547,6 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 			for job := range jobCh {
 				
 				log.Println("Trying to print images..")
-				browserPath := GetBrowserPath("chrome")
 				port, err := pickUnusedPort()
 
 				service, err := selenium.NewChromeDriverService("/usr/local/bin/chromedriver", port)
