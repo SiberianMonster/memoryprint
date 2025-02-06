@@ -1984,13 +1984,13 @@ func RetrieveProjectImages(ctx context.Context, storeDB *pgxpool.Pool, projectID
 		var image string
 		
 		if pageErr := rows.Scan(&image); pageErr != nil {
-			log.Printf("Empty page image. Err: %s", err)
+			log.Printf("Empty page image. Err: %s", pageErr)
 		}
 		
 		images = append(images, image)
 	}
 
-	if err = rows.Err(); err != nil {
+	if err != nil {
 		log.Printf("Error happened when retrieving pages from pgx table. Err: %s", err)
 		return nil, err
 	}
