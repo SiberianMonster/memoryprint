@@ -2558,7 +2558,7 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 					defer service.Stop()
 					caps := selenium.Capabilities{}
 					caps.AddChrome(chrome.Capabilities{Args: []string{
-					"--headless", 
+					"--headless=new", 
 					"--no-sandbox",
 					"--enable-automation",
 					"--enable-javascript", 
