@@ -2043,6 +2043,7 @@ func GenerateImages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint, 
 		log.Printf("Error happened when retrieving images from pgx table. Err: %s", err)
 		return images, err
 	}
+	log.Println(images)
 	if slices.Contains(images, "") {
 		log.Println("Need to generate images")
 		log.Println(projectID)
