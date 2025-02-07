@@ -558,7 +558,7 @@ func CreateProjectFolder(images []string, pID uint) {
 			log.Println(pID)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != 200 && resp.StatusCode != 503 {
             log.Println(resp.StatusCode)
 			log.Printf("Failed to make a request to bucket %s", err)
 			log.Println(pID)
@@ -567,11 +567,7 @@ func CreateProjectFolder(images []string, pID uint) {
 		if err != nil {
 			log.Printf("Failed to decode folder content %s", err)
 			log.Println(pID)
-		}
-		if folderContent.Meta.Total == len(images){
-			log.Println("all pages already copied")
-			log.Println(pID)
-		} else {
+
 			//copy paste images
 			log.Println("missing pages, start to copy")
 			log.Println(pID)
@@ -640,7 +636,12 @@ func CreateProjectFolder(images []string, pID uint) {
 
 			}
 			
-		}
+		} 	else	{
+			if folderContent.Meta.Total == len(images){
+				log.Println("all pages already copied")
+				log.Println(pID)
+			} 
+			}
 		
     }
 	
