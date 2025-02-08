@@ -2536,7 +2536,7 @@ func GetBrowserPath(browser string) string {
 func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 
 	ticker := time.NewTicker(config.UpdateInterval*5)
-	var err error
+	//var err error
 	var images []string	
 
 	jobCh := make(chan uint)
@@ -2590,14 +2590,13 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 
 	for range ticker.C {
 		var projectIDs []uint
-		projectIDs, err = projectstorage.LoadPublishedProjects(ctx, storeDB)
-		if err != nil {
-			log.Printf("Error happened when retrieving published projects. Err: %s", err)
-			continue
-		}
+		// projectIDs, err = projectstorage.LoadPublishedProjects(ctx, storeDB)
+		//if err != nil {
+		//	log.Printf("Error happened when retrieving published projects. Err: %s", err)
+		//	continue
+		//}
 		
 		log.Println(projectIDs)
-		projectIDs = []uint
 		
 		for _, project := range projectIDs {
 			jobCh <- project
