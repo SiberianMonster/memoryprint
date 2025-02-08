@@ -2597,6 +2597,7 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 		}
 		
 		log.Println(projectIDs)
+		projectIDs = []uint
 		
 		for _, project := range projectIDs {
 			jobCh <- project
