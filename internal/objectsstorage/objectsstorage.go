@@ -1158,7 +1158,7 @@ func AddAdminLayout(ctx context.Context, storeDB *pgxpool.Pool, newL models.Layo
 
 }
 
-// DuplicatePage function performs the operation of duplicating existing photobook project page to pgx database with a query.
+// DuplicateLayout function performs the operation of duplicating existing layouts to pgx database with a query.
 func DuplicateLayout(ctx context.Context, storeDB *pgxpool.Pool) error {
 
 	
@@ -1172,7 +1172,7 @@ func DuplicateLayout(ctx context.Context, storeDB *pgxpool.Pool) error {
 	for rows.Next() {
 		var newL models.Layout
 		var strdata string
-		if err = rows.Scan(&newL.Link, &newL.CountImages, &strData, newL.Size, newL.Variant, newL.IsCover); err != nil {
+		if err = rows.Scan(&newL.Link, &newL.CountImages, &strdata, newL.Size, newL.Variant, newL.IsCover); err != nil {
 			log.Printf("Error happened when scanning layouts. Err: %s", err)
 			return err
 		}
