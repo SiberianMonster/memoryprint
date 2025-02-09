@@ -1172,7 +1172,7 @@ func DuplicateLayout(ctx context.Context, storeDB *pgxpool.Pool) error {
 	for rows.Next() {
 		var newL models.Layout
 		var strData sql.NullString
-		if err = rows.Scan(&newL.Link, &newL.CountImages, &strData, newL.Size, newL.Variant, newL.IsCover); err != nil {
+		if err = rows.Scan(&newL.Link, &newL.CountImages, &strData, &newL.Size, &newL.Variant, &newL.IsCover); err != nil {
 			log.Printf("Error happened when scanning layouts. Err: %s", err)
 			return err
 		}
