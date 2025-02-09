@@ -2605,3 +2605,27 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 
 	}
 }
+
+
+func DuplicateLayout(rw http.ResponseWriter, r *http.Request) {
+
+	resp := make(map[string]uint)
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	defer cancel()
+	
+	err = objectsstorage.DuplicateLayout(ctx, config.DB)
+
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
+
+	rw.WriteHeader(http.StatusOK)
+	resp["response"] = 1
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("Error happened in JSON marshal. Err: %s", err)
+		return
+	}
+	rw.Write(jsonResp)
+}

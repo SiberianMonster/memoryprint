@@ -1158,6 +1158,42 @@ func AddAdminLayout(ctx context.Context, storeDB *pgxpool.Pool, newL models.Layo
 
 }
 
+// DuplicatePage function performs the operation of duplicating existing photobook project page to pgx database with a query.
+func DuplicateLayout(ctx context.Context, storeDB *pgxpool.Pool) error {
+
+	
+	rows, err := storeDB.Query(ctx, "SELECT link, count_images, data, size, variant, is_cover FROM layouts WHERE size = ($1) AND variant = ($2) AND is_cover = ($3);", "VERTICAL", "PREMIUM", true)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		log.Printf("Error happened when retrieving duplicate layouts from pgx table. Err: %s", err)
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var newL models.Layout
+		var strdata string
+		if err = rows.Scan(&newL.Link, &newL.CountImages, &strData, newL.Size, newL.Variant, newL.IsCover); err != nil {
+			log.Printf("Error happened when scanning layouts. Err: %s", err)
+			return err
+		}
+		_, err = storeDB.Exec(ctx, "INSERT INTO layouts (link, count_images, data, size, variant, is_cover) VALUES ($1, $2, $3, $4, $5, $6);",
+		newL.Link,
+		newL.CountImages,
+		strdata,
+		newL.Size,
+		newL.Variant,
+		false,
+		)
+		if err != nil {
+			log.Printf("Error happened when inserting a duplicate admin layout entry into pgx table. Err: %s", err)
+			return err
+		}
+	}
+
+	return nil
+
+}
+
 // AdminDeleteLayout function performs the operation of deleting layout from the db.
 func AdminDeleteLayout(ctx context.Context, storeDB *pgxpool.Pool, lID uint) (error) {
 

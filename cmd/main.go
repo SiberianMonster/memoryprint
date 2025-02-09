@@ -204,6 +204,9 @@ func main() {
 	adminRouter.HandleFunc("/api/v1/admin/create-background", projecthandlers.AdminCreateBackground).Methods("POST","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/create-decoration", projecthandlers.AdminCreateDecoration).Methods("POST","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/create-layout", projecthandlers.AdminCreateLayout).Methods("POST","OPTIONS")
+
+	adminRouter.HandleFunc("/api/v1/admin/duplicate-layout", projecthandlers.DuplicateLayout).Methods("POST","OPTIONS")
+
 	adminRouter.HandleFunc("/api/v1/admin/delete-background/{id}", projecthandlers.AdminDeleteBackground).Methods("POST","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/delete-decoration/{id}", projecthandlers.AdminDeleteDecoration).Methods("POST","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/delete-layout/{id}", projecthandlers.AdminDeleteLayout).Methods("POST","OPTIONS")
