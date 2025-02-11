@@ -307,7 +307,7 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, proj
 					return pID, err
 				}
 			} else {
-				_, err = storeDB.Exec(ctx, "INSERT INTO pages (last_edited_at, sort, type, is_template, preview_link, creating_image_link, data, projects_id) VALUES ($1, $2, $3, $4, $5, $6, $7);",
+				_, err = storeDB.Exec(ctx, "INSERT INTO pages (last_edited_at, sort, type, is_template, preview_link, creating_image_link, data, projects_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);",
 				t,
 				page.Sort,
 				page.Type,
@@ -449,7 +449,7 @@ func DuplicateProject(ctx context.Context, storeDB *pgxpool.Pool, projectID uint
 					log.Printf("Error happened when retrieving project page data from db. Err: %s", err)
 					return 0, err
 			}
-			err = storeDB.QueryRow(ctx, "INSERT INTO pages (last_edited_at, sort, type, is_template, preview_link, creating_image_link, data, projects_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING pages_id;",
+			err = storeDB.QueryRow(ctx, "INSERT INTO pages (last_edited_at, sort, type, is_template, preview_link, creating_image_link, data, projects_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING pages_id;",
 			t,
 			page.Sort,
 			page.Type,
@@ -574,7 +574,7 @@ func DuplicateTemplate(ctx context.Context, storeDB *pgxpool.Pool, templateID ui
 					log.Printf("Error happened when retrieving template page data from db. Err: %s", err)
 					return 0, err
 			}
-			err = storeDB.QueryRow(ctx, "INSERT INTO pages (last_edited_at, sort, type, is_template, preview_link, creating_image_link, data, projects_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING pages_id;",
+			err = storeDB.QueryRow(ctx, "INSERT INTO pages (last_edited_at, sort, type, is_template, preview_link, creating_image_link, data, projects_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING pages_id;",
 			t,
 			page.Sort,
 			page.Type,
@@ -2055,6 +2055,7 @@ func GenerateImages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint, 
 		if err != nil {
 			log.Printf("Error happened when generating images for paid project. Err: %s", err)
 		}
+		driver.Close()
 		driver.Quit()
 		log.Println("Generated images")
 	}
