@@ -2589,8 +2589,8 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 	}
 
 	for range ticker.C {
-		//var projectIDs []uint
-		var projectIDs []int{452}
+		var projectIDs []uint
+		projectIDs = append(projectIDs,452)
 		// projectIDs, err = projectstorage.LoadPublishedProjects(ctx, storeDB)
 		//if err != nil {
 		//	log.Printf("Error happened when retrieving published projects. Err: %s", err)
