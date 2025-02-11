@@ -346,6 +346,7 @@ type Page struct {
 	Type string `json:"type"`
 	Sort uint `json:"sort"`
 	PreviewImageLink *string `json:"preview_image_link"`
+	CreatingImageLink *string `json:"creating_image_link"`
 	Data        json.RawMessage      `json:"data"`
 	UsedPhotoIDs []uint `json:"used_photo_ids"`
 	
@@ -360,6 +361,7 @@ type TemplatePage struct {
 	Type string `json:"type"`
 	Sort uint `json:"sort"`
 	PreviewImageLink *string `json:"preview_image_link"`
+	CreatingImageLink *string `json:"creating_image_link"`
 	Data        json.RawMessage      `json:"data"`
 	UsedPhotoIDs []uint `json:"used_photo_ids"`
 	

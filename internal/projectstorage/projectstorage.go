@@ -307,12 +307,13 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, proj
 					return pID, err
 				}
 			} else {
-				_, err = storeDB.Exec(ctx, "INSERT INTO pages (last_edited_at, sort, type, is_template, preview_link, data, projects_id) VALUES ($1, $2, $3, $4, $5, $6, $7);",
+				_, err = storeDB.Exec(ctx, "INSERT INTO pages (last_edited_at, sort, type, is_template, preview_link, creating_image_link, data, projects_id) VALUES ($1, $2, $3, $4, $5, $6, $7);",
 				t,
 				page.Sort,
 				page.Type,
 				false,
 				page.PreviewImageLink,
+				page.CreatingImageLink,
 				strdata,
 				pID,
 				)
@@ -448,12 +449,13 @@ func DuplicateProject(ctx context.Context, storeDB *pgxpool.Pool, projectID uint
 					log.Printf("Error happened when retrieving project page data from db. Err: %s", err)
 					return 0, err
 			}
-			err = storeDB.QueryRow(ctx, "INSERT INTO pages (last_edited_at, sort, type, is_template, preview_link, data, projects_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING pages_id;",
+			err = storeDB.QueryRow(ctx, "INSERT INTO pages (last_edited_at, sort, type, is_template, preview_link, creating_image_link, data, projects_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING pages_id;",
 			t,
 			page.Sort,
 			page.Type,
 			false,
 			page.PreviewImageLink,
+			page.CreatingImageLink,
 			strdata,
 			pID,
 			).Scan(&pageID)
@@ -572,12 +574,13 @@ func DuplicateTemplate(ctx context.Context, storeDB *pgxpool.Pool, templateID ui
 					log.Printf("Error happened when retrieving template page data from db. Err: %s", err)
 					return 0, err
 			}
-			err = storeDB.QueryRow(ctx, "INSERT INTO pages (last_edited_at, sort, type, is_template, preview_link, data, projects_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING pages_id;",
+			err = storeDB.QueryRow(ctx, "INSERT INTO pages (last_edited_at, sort, type, is_template, preview_link, creating_image_link, data, projects_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING pages_id;",
 			t,
 			page.Sort,
 			page.Type,
 			true,
 			page.PreviewImageLink,
+			page.CreatingImageLink,
 			strdata,
 			tID,
 			).Scan(&pageID)
@@ -988,7 +991,7 @@ func AdminLoadTemplate(ctx context.Context, storeDB *pgxpool.Pool, pID uint) (mo
 func RetrieveProjectPages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint, isTemplate bool, leatherID *uint) ([]models.Page, error) {
 
 	var pageslice []models.Page
-	rows, err := storeDB.Query(ctx, "SELECT pages_id, type, sort, preview_link, data FROM pages WHERE projects_id = ($1) AND is_template = ($2) ORDER BY sort;", projectID, isTemplate)
+	rows, err := storeDB.Query(ctx, "SELECT pages_id, type, sort, preview_link, creating_image_link, data FROM pages WHERE projects_id = ($1) AND is_template = ($2) ORDER BY sort;", projectID, isTemplate)
 	if err != nil {
 		log.Printf("Error happened when retrieving pages from pgx table. Err: %s", err)
 		return nil, err
@@ -999,7 +1002,7 @@ func RetrieveProjectPages(ctx context.Context, storeDB *pgxpool.Pool, projectID 
 		var page models.Page
 		var strdata *string
 		
-		if err = rows.Scan(&page.PageID, &page.Type, &page.Sort, &page.PreviewImageLink, &strdata); err != nil {
+		if err = rows.Scan(&page.PageID, &page.Type, &page.Sort, &page.PreviewImageLink, &page.CreatingImageLink, &strdata); err != nil {
 			log.Printf("Error happened when scanning pages. Err: %s", err)
 			return nil, err
 		}
@@ -1053,7 +1056,7 @@ func RetrieveProjectPages(ctx context.Context, storeDB *pgxpool.Pool, projectID 
 func RetrieveTemplatePages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint) ([]models.TemplatePage, error) {
 
 	var pageslice []models.TemplatePage
-	rows, err := storeDB.Query(ctx, "SELECT pages_id, type, sort, preview_link, data FROM pages WHERE projects_id = ($1) AND is_template = ($2) ORDER BY sort;", projectID, true)
+	rows, err := storeDB.Query(ctx, "SELECT pages_id, type, sort, preview_link, creating_image_link, data FROM pages WHERE projects_id = ($1) AND is_template = ($2) ORDER BY sort;", projectID, true)
 	if err != nil {
 		log.Printf("Error happened when retrieving pages from pgx table. Err: %s", err)
 		return nil, err
@@ -1065,7 +1068,7 @@ func RetrieveTemplatePages(ctx context.Context, storeDB *pgxpool.Pool, projectID
 		var strdata *string
 	
 		
-		if err = rows.Scan(&page.PageID, &page.Type, &page.Sort, &page.PreviewImageLink, &strdata); err != nil {
+		if err = rows.Scan(&page.PageID, &page.Type, &page.Sort, &page.PreviewImageLink, &page.CreatingImageLink, &strdata); err != nil {
 			log.Printf("Error happened when scanning pages. Err: %s", err)
 			return nil, err
 		}
