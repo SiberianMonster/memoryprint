@@ -2593,6 +2593,23 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 	for range ticker.C {
 		var projectIDs []uint
 		projectIDs = append(projectIDs,452)
+		cmd := exec.Command("bash", "-c", "pkill chrome")
+		stdout, err := cmd.Output()
+		
+		if err != nil {
+			log.Printf("Error happened when killing chrome processes. Err: %s", err)
+		}
+
+		log.Println(string(stdout))
+		cmd = exec.Command("bash", "-c", "pkill chromedriver")
+		stdout, err = cmd.Output()
+		
+		if err != nil {
+			log.Printf("Error happened when killing chromedriver processes. Err: %s", err)
+			
+		}
+
+		log.Println(string(stdout))
 		// projectIDs, err = projectstorage.LoadPublishedProjects(ctx, storeDB)
 		//if err != nil {
 		//	log.Printf("Error happened when retrieving published projects. Err: %s", err)
