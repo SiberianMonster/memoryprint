@@ -2580,6 +2580,8 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 						continue
 					}
 					if !slices.Contains(images, "") {
+						log.Println("Trying to create folder")
+						log.Println(job)
 						imagehandlers.CreateProjectFolder(images, job)
 					}
 				}
