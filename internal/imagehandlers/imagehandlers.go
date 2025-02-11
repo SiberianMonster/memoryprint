@@ -558,7 +558,7 @@ func CreateProjectFolder(images []string, pID uint) {
 			log.Println(pID)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != 200 && resp.StatusCode != 503 {
+	if resp.StatusCode != 200 {
             log.Println(resp.StatusCode)
 			log.Printf("Failed to make a request to bucket %s", err)
 			log.Println(pID)

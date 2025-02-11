@@ -2034,6 +2034,35 @@ func RetrieveProjectImages(ctx context.Context, storeDB *pgxpool.Pool, projectID
 		log.Printf("Error happened when retrieving pages from pgx table. Err: %s", err)
 		return nil, err
 	}
+
+	var cover string
+	var coverImage string
+	var leatherID *uint
+	err = storeDB.QueryRow(ctx, "SELECT cover, leather_id FROM projects WHERE projects_id = ($1);", projectID).Scan(&cover, &leatherID)
+	if err != nil && err != pgx.ErrNoRows{
+			log.Printf("Error happened when retrieving cover from pgx table. Err: %s", err)
+			return nil, err
+	}
+	if cover == "LEATHERETTE" {
+			if leatherID != nil {
+				err := storeDB.QueryRow(ctx, "SELECT colourlink FROM leather WHERE leather_id = ($1);", leatherID).Scan(&coverImage)
+				if err != nil && err != pgx.ErrNoRows{
+					log.Printf("Error happened when retrieving leather image from pgx table. Err: %s", err)
+					return nil, err
+				}
+				images[0] = coverImage
+				images[len(images)-1] = coverImage
+			} else {
+				err := storeDB.QueryRow(ctx, "SELECT colourlink FROM leather WHERE leather_id = ($1);", 0).Scan(&coverImage)
+				if err != nil && err != pgx.ErrNoRows{
+					log.Printf("Error happened when retrieving leather image from pgx table. Err: %s", err)
+					return nil, err
+				}
+				images[0] = coverImage
+				images[len(images)-1] = coverImage
+			}
+			
+		}
 	return images, nil
 
 }
