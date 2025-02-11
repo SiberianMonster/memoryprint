@@ -568,8 +568,11 @@ func CreateProjectFolder(images []string, pID uint) {
 		if err != nil {
 			log.Printf("Failed to decode folder content %s", err)
 			log.Println(pID)
-
-			//copy paste images
+		}
+		if folderContent.Meta.Total == len(images){
+				log.Println("all pages already copied")
+				log.Println(pID)
+		} else {  //copy paste images
 			log.Println("missing pages, start to copy")
 			log.Println(pID)
 
@@ -636,13 +639,9 @@ func CreateProjectFolder(images []string, pID uint) {
 			log.Println(pID)
 
 			}
+		}
 			
-		} 	else	{
-			if folderContent.Meta.Total == len(images){
-				log.Println("all pages already copied")
-				log.Println(pID)
-			} 
-			}
+		
 		
     }
 	
