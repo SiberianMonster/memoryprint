@@ -564,6 +564,7 @@ func CreateProjectFolder(images []string, pID uint) {
 			log.Println(pID)
     } else {
 		err = json.NewDecoder(resp.Body).Decode(&folderContent)
+		log.Println(folderContent)
 		if err != nil {
 			log.Printf("Failed to decode folder content %s", err)
 			log.Println(pID)
