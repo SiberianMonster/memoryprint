@@ -477,7 +477,7 @@ func CreatePDFVisualization(rw http.ResponseWriter, r *http.Request) {
 	}
 	
 	var leatherID *uint
-	pages, err := projectstorage.RetrieveProjectPages(ctx, config.DB, projectID, false, leatherID)
+	pages, err := projectstorage.RetrieveProjectPages(ctx, config.DB, projectID, false, leatherID, "TEMPLATE")
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)
 		return

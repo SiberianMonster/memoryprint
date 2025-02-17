@@ -280,7 +280,7 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, proj
 		var leatherID *uint
 		leatherID = &projectObj.LeatherID
 		
-		templatePages, err = RetrieveProjectPages(ctx, storeDB, projectObj.TemplateID, true, leatherID)
+		templatePages, err = RetrieveProjectPages(ctx, storeDB, projectObj.TemplateID, true, leatherID, "TEMPLATE")
 		if err != nil {
 			log.Printf("Error happened when retrieving template pages from db. Err: %s", err)
 			return 0, err
@@ -436,7 +436,7 @@ func DuplicateProject(ctx context.Context, storeDB *pgxpool.Pool, projectID uint
 
 	var projectPages []models.Page
 
-	projectPages, err = RetrieveProjectPages(ctx, storeDB, projectID, false, leatherID)
+	projectPages, err = RetrieveProjectPages(ctx, storeDB, projectID, false, leatherID, projectObj.Size)
 	if err != nil {
 			log.Printf("Error happened when retrieving project pages from db. Err: %s", err)
 			return 0, err
@@ -561,7 +561,7 @@ func DuplicateTemplate(ctx context.Context, storeDB *pgxpool.Pool, templateID ui
 	var templatePages []models.Page
 
 	var leatherID *uint
-	templatePages, err = RetrieveProjectPages(ctx, storeDB, templateID, true, leatherID)
+	templatePages, err = RetrieveProjectPages(ctx, storeDB, templateID, true, leatherID, "TEMPLATE")
 	if err != nil {
 			log.Printf("Error happened when retrieving template pages from db. Err: %s", err)
 			return 0, err
@@ -756,7 +756,7 @@ func RetrieveUserProjects(ctx context.Context, storeDB *pgxpool.Pool, userID uin
 		}
 		projectObj.ProjectID = pID
 		if projectObj.Status == "EDITED" || projectObj.Status == "PUBLISHED" {
-			projectObj.Pages, err = RetrieveProjectPages(ctx, storeDB, pID, false, leatherID)
+			projectObj.Pages, err = RetrieveProjectPages(ctx, storeDB, pID, false, leatherID, projectObj.Size)
 			if err != nil {
 				log.Printf("Error happened when retrieving project pages from db. Err: %s", err)
 				return projectset, err
@@ -988,7 +988,7 @@ func AdminLoadTemplate(ctx context.Context, storeDB *pgxpool.Pool, pID uint) (mo
 
 
 // RetrieveProjectPages function performs the operation of retrieving a photobook project from pgx database with a query.
-func RetrieveProjectPages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint, isTemplate bool, leatherID *uint) ([]models.Page, error) {
+func RetrieveProjectPages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint, isTemplate bool, leatherID *uint, size string) ([]models.Page, error) {
 
 	var pageslice []models.Page
 	rows, err := storeDB.Query(ctx, "SELECT pages_id, type, sort, preview_link, creating_image_link, data FROM pages WHERE projects_id = ($1) AND is_template = ($2) ORDER BY sort;", projectID, isTemplate)
@@ -1006,13 +1006,30 @@ func RetrieveProjectPages(ctx context.Context, storeDB *pgxpool.Pool, projectID 
 			log.Printf("Error happened when scanning pages. Err: %s", err)
 			return nil, err
 		}
-		if leatherID != nil && page.Type != "page" {
+		if leatherID != nil && page.Type != "page" && isTemplate == false {
 			if *leatherID != 0 {
+				var verticalImage *string
+				var horizontalImage *string
+				var squareImage *string
+				var smallsquareImage *string
 
-				err := storeDB.QueryRow(ctx, "SELECT colourlink FROM leather WHERE leather_id = ($1);", leatherID).Scan(&page.PreviewImageLink)
-				if err != nil {
-					log.Printf("Error happened when retrieving colour image for leather cover from pgx table. Err: %s", err)
-					return nil, err
+				err = storeDB.QueryRow(ctx, "SELECT vertical_link, horizontal_link, square_link, small_square_link FROM leather WHERE leather_id = ($1);", leatherID).Scan(&verticalImage, &horizontalImage, &squareImage, &smallsquareImage)
+				if err != nil && err != pgx.ErrNoRows{
+						log.Printf("Error happened when retrieving leather image from pgx table. Err: %s", err)
+						return nil, err
+				}
+				
+				if size == "HORIZONTAL" {
+					page.PreviewImageLink = horizontalImage
+				}
+				if size == "VERTICAL" {
+					page.PreviewImageLink = verticalImage
+				}
+				if size == "SQUARE" {
+					page.PreviewImageLink = squareImage
+				}
+				if size == "SMALL_SQUARE" {
+					page.PreviewImageLink = smallsquareImage
 				}
 				
 			}
@@ -1112,7 +1129,11 @@ func RetrieveFrontPage(ctx context.Context, storeDB *pgxpool.Pool, projectID uin
 
 	var page models.FrontPage
 	var cover string
-	var coverImage *string
+	var size string
+	var verticalImage *string
+	var horizontalImage *string
+	var squareImage *string
+	var smallsquareImage *string
 	var leatherID *uint
 	err := storeDB.QueryRow(ctx, "SELECT preview_link FROM pages WHERE projects_id = ($1) AND is_template = ($2) AND type = ($3);", projectID, isTemplate, "front").Scan(&page.PreviewImageLink)
 	if err != nil && err != pgx.ErrNoRows{
@@ -1120,26 +1141,36 @@ func RetrieveFrontPage(ctx context.Context, storeDB *pgxpool.Pool, projectID uin
 		return page, err
 	}
 	if isTemplate == false {
-		err := storeDB.QueryRow(ctx, "SELECT cover, leather_id FROM projects WHERE projects_id = ($1);", projectID).Scan(&cover, &leatherID)
+		err = storeDB.QueryRow(ctx, "SELECT cover, leather_id, size FROM projects WHERE projects_id = ($1);", projectID).Scan(&cover, &leatherID, &size)
 		if err != nil && err != pgx.ErrNoRows{
 			log.Printf("Error happened when retrieving cover from pgx table. Err: %s", err)
 			return page, err
 		}
 		if cover == "LEATHERETTE" {
 			if leatherID != nil {
-				err := storeDB.QueryRow(ctx, "SELECT colourlink FROM leather WHERE leather_id = ($1);", leatherID).Scan(&coverImage)
+				err = storeDB.QueryRow(ctx, "SELECT vertical_link, horizontal_link, square_link, small_square_link FROM leather WHERE leather_id = ($1);", leatherID).Scan(&verticalImage, &horizontalImage, &squareImage, &smallsquareImage)
 				if err != nil && err != pgx.ErrNoRows{
 					log.Printf("Error happened when retrieving leather image from pgx table. Err: %s", err)
 					return page, err
 				}
-				page.PreviewImageLink = coverImage
 			} else {
-				err := storeDB.QueryRow(ctx, "SELECT colourlink FROM leather WHERE leather_id = ($1);", 0).Scan(&coverImage)
+				err := storeDB.QueryRow(ctx, "SELECT vertical_link, horizontal_link, square_link, small_square_link FROM leather WHERE leather_id = ($1);", 0).Scan(&verticalImage, &horizontalImage, &squareImage, &smallsquareImage)
 				if err != nil && err != pgx.ErrNoRows{
 					log.Printf("Error happened when retrieving leather image from pgx table. Err: %s", err)
 					return page, err
 				}
-				page.PreviewImageLink = coverImage
+			}
+			if size == "HORIZONTAL" {
+				page.PreviewImageLink = horizontalImage
+			}
+			if size == "VERTICAL" {
+				page.PreviewImageLink = verticalImage
+			}
+			if size == "SQUARE" {
+				page.PreviewImageLink = squareImage
+			}
+			if size == "SMALL_SQUARE" {
+				page.PreviewImageLink = smallsquareImage
 			}
 			
 		}
