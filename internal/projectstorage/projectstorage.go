@@ -2128,11 +2128,16 @@ func RetrieveProjectImages(ctx context.Context, storeDB *pgxpool.Pool, projectID
 			
 		}
 	var spineImage models.ExportPage
-	err = storeDB.QueryRow(ctx, "SELECT preview_spine_link FROM projects WHERE projects_id = ($1);", projectID).Scan(&spineImage.PreviewImageLink)
+	var spinePreview *string
+	err = storeDB.QueryRow(ctx, "SELECT preview_spine_link FROM projects WHERE projects_id = ($1);", projectID).Scan(&spinePreview)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			log.Printf("Error happened when retrieving project spinefrom pgx table. Err: %s", err)
 			return nil, err
 	}
+	if spinePreview != nil {
+		spineImage.PreviewImageLink = *spinePreview
+	}
+	
 	spineImage.Sort = 1000
 	images = append(images, spineImage)
 	return images, nil
