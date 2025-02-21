@@ -530,7 +530,7 @@ func CreatePrintVersion(pID uint, images []models.ExportPage, variant string) er
 	folderName := "photobook_" + strconv.Itoa(int(pID))
 	// Sort the slice by age in descending order
     sort.Slice(images, func(i, j int) bool {
-        return images[i].Sort > images[j].Sort
+        return images[i].Sort < images[j].Sort
     })
 	
 	
