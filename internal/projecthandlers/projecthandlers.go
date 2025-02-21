@@ -2535,7 +2535,7 @@ func GetBrowserPath(browser string) string {
 
 func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 
-	ticker := time.NewTicker(config.UpdateInterval*5)
+	ticker := time.NewTicker(config.UpdateInterval*2)
 	//var err error
 	
 
