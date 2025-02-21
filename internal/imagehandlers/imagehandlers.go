@@ -550,11 +550,11 @@ func CreatePrintVersion(pID uint, images []models.ExportPage, variant string) er
 		localPath = "./" + folderName + "/" + strconv.Itoa(int(page.Sort)) + ".png"
 		log.Println(localPath)
 		localFolder = "./" + folderName
-		out, err := os.Create(localFolder)
-		if err != nil {
+
+		if err = os.MkdirAll(localFolder, os.ModePerm); err != nil {
+			log.Printf("Error happened in creating folder. Err: %s", err)
 			return err
 		}
-		defer out.Close()
 		err = DownloadFile(localPath, imageURL) 
 		if err != nil {
 			log.Printf("Error happened in loading the creating images. Err: %s", err)
