@@ -549,7 +549,7 @@ func CreatePrintVersion(pID uint, images []models.ExportPage, variant string) er
 		imageURL = config.ImageHost+strCreatingImageLink
 		localPath = "./" + folderName + "/" + strconv.Itoa(int(page.Sort)) + ".png"
 		log.Println(localPath)
-		localFolder = = "./" + folderName
+		localFolder = "./" + folderName
 		out, err := os.Create(localFolder)
 		if err != nil {
 			return err
