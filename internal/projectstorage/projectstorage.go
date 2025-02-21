@@ -2165,6 +2165,7 @@ func GenerateImages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint, 
 		if err != nil {
 			log.Printf("Error happened when generating images for paid project. Err: %s", err)
 		}
+		time.Sleep(60 * time.Second) 
 		driver.Close()
 		driver.Quit()
 		log.Println("Generated images")
