@@ -580,7 +580,7 @@ func CreatePrintVersion(pID uint, images []models.ExportPage, variant string) er
 			stringSlice := strings.Split(localPath, ".")
 			midPath = stringSlice[0] + "_appended.png"
 			frontPath = "/" + folderName + "/" + strconv.Itoa(0) + ".png"
-			err = MergeImages(frontPath, midPath)
+			err = MergeImages(midPath, frontPath)
 			if err != nil {
 				log.Printf("Error happened in merging the images. Err: %s", err)
 				return err
