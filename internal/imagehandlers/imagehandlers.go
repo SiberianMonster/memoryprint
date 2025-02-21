@@ -547,9 +547,9 @@ func CreatePrintVersion(pID uint, images []models.ExportPage, variant string) er
 
 		strCreatingImageLink = page.PreviewImageLink
 		imageURL = config.ImageHost+strCreatingImageLink
-		localPath = "./" + folderName + "/" + strconv.Itoa(int(page.Sort)) + ".png"
+		localPath = "/" + folderName + "/" + strconv.Itoa(int(page.Sort)) + ".png"
 		log.Println(localPath)
-		localFolder = "./" + folderName
+		localFolder = "/" + folderName
 
 		if err = os.MkdirAll(localFolder, os.ModePerm); err != nil {
 			log.Printf("Error happened in creating folder. Err: %s", err)
@@ -563,7 +563,7 @@ func CreatePrintVersion(pID uint, images []models.ExportPage, variant string) er
 		log.Println(imageURL)
 		if i%2 == 0 && i != 0 && i < len(images) - 1 && variant == "PREMIUM" {
 			previousI = i - 1
-			previousPath = "./" + folderName + "/" + strconv.Itoa(previousI) + ".png"
+			previousPath = "/" + folderName + "/" + strconv.Itoa(previousI) + ".png"
 			err = MergeImages(previousPath, localPath)
 			if err != nil {
 				log.Printf("Error happened in merging the images. Err: %s", err)
@@ -571,7 +571,7 @@ func CreatePrintVersion(pID uint, images []models.ExportPage, variant string) er
 			}
 		}
 		if i == len(images) - 1 {
-			spinePath = "./" + folderName + "/" + strconv.Itoa(1000) + ".png"
+			spinePath = "/" + folderName + "/" + strconv.Itoa(1000) + ".png"
 			err = MergeImages(spinePath, localPath)
 			if err != nil {
 				log.Printf("Error happened in merging the images. Err: %s", err)
@@ -579,7 +579,7 @@ func CreatePrintVersion(pID uint, images []models.ExportPage, variant string) er
 			}
 			stringSlice := strings.Split(localPath, ".")
 			midPath = stringSlice[0] + "_appended.png"
-			frontPath = "./" + folderName + "/" + strconv.Itoa(0) + ".png"
+			frontPath = "/" + folderName + "/" + strconv.Itoa(0) + ".png"
 			err = MergeImages(frontPath, midPath)
 			if err != nil {
 				log.Printf("Error happened in merging the images. Err: %s", err)
