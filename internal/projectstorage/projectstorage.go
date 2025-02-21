@@ -2072,7 +2072,10 @@ func RetrieveProjectImages(ctx context.Context, storeDB *pgxpool.Pool, projectID
 		if pageErr := rows.Scan(&previewImage, &image.Sort); pageErr != nil {
 			log.Printf("Empty page image. Err: %s", pageErr)
 		}
-		image.PreviewImageLink = *previewImage
+		if previewImage != nil {
+			image.PreviewImageLink = *previewImage
+		}
+		
 		images = append(images, image)
 	}
 
