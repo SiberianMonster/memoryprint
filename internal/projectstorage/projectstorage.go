@@ -2137,6 +2137,9 @@ func RetrieveProjectImages(ctx context.Context, storeDB *pgxpool.Pool, projectID
 	if spinePreview != nil {
 		spineImage.PreviewImageLink = *spinePreview
 	}
+	if cover == "LEATHERETTE" {
+		spineImage.PreviewImageLink = "spinecolour.png"
+	}
 	
 	spineImage.Sort = 1000
 	images = append(images, spineImage)
@@ -2160,12 +2163,59 @@ func GenerateImages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint, 
 	if slices.Contains(stringImages, "") {
 		log.Println("Need to generate images")
 		log.Println(projectID)
+		start_url :=  "https://front.memoryprint.dev.startup-it.ru/"
+		err = driver.Get(start_url)
+		if err != nil {
+			log.Printf("Error happened when opening start page. Err: %s", err)
+		}
+		time.Sleep(10 * time.Second) 
+		enter_elem, err := driver.FindElement(selenium.ByXPATH, ".//a[contains(text(),'Войт')]")
+		if err != nil {
+			log.Printf("Error finding element by XPath: %v", err)
+		}
+		err = enter_elem.Click()
+		if err != nil {
+			log.Printf("Error clicking enter button:", err)
+		}
+		time.Sleep(2 * time.Second) 
+		email_element, err := driver.FindElement(selenium.ByXPATH, "/html/body/div[4]/div/div/div/div/div/div/div/div/div[2]/div/div[1]/input")
+		if err != nil {
+			log.Printf("Error finding element:", err)
+		}
+
+		// Type into the element
+		err = email_element.SendKeys("elena1@memoryprint.ru")
+		if err != nil {
+			log.Printf("Error sending keys:", err)
+		}
+		pwd_element, err := driver.FindElement(selenium.ByXPATH, "/html/body/div[4]/div/div/div/div/div/div/div/div/div[2]/div/div[2]/input")
+		if err != nil {
+			log.Printf("Error finding element:", err)
+		}
+
+		// Type into the element
+		err = pwd_element.SendKeys("Moscow2010")
+		if err != nil {
+			log.Printf("Error sending keys:", err)
+		}
+
+		// Find and click a button
+		button, err := driver.FindElement(selenium.ByXPATH, "/html/body/div[4]/div/div/div/div/div/div/div/div/div[2]/div/button")
+		if err != nil {
+			log.Printf("Error finding button:", err)
+		}
+
+		err = button.Click()
+		if err != nil {
+			log.Printf("Error clicking button:", err)
+		}
+		time.Sleep(10 * time.Second) 
 		url :=  "https://front.memoryprint.dev.startup-it.ru/preview/generate/" + strconv.Itoa(int(projectID))
 		err = driver.Get(url)
 		if err != nil {
 			log.Printf("Error happened when generating images for paid project. Err: %s", err)
 		}
-		time.Sleep(60 * time.Second) 
+		time.Sleep(10 * time.Second) 
 		driver.Close()
 		driver.Quit()
 		log.Println("Generated images")
