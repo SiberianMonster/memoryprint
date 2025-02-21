@@ -2177,7 +2177,7 @@ func GenerateImages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint, 
 		if err != nil {
 			log.Printf("Error clicking enter button:", err)
 		}
-		time.Sleep(2 * time.Second) 
+		time.Sleep(10 * time.Second) 
 		email_element, err := driver.FindElement(selenium.ByXPATH, "/html/body/div[4]/div/div/div/div/div/div/div/div/div[2]/div/div[1]/input")
 		if err != nil {
 			log.Printf("Error finding element:", err)
@@ -2215,7 +2215,7 @@ func GenerateImages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint, 
 		if err != nil {
 			log.Printf("Error happened when generating images for paid project. Err: %s", err)
 		}
-		time.Sleep(10 * time.Second) 
+		time.Sleep(120 * time.Second) 
 		driver.Close()
 		driver.Quit()
 		log.Println("Generated images")
