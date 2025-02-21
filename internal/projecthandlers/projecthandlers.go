@@ -2537,12 +2537,13 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 
 	ticker := time.NewTicker(config.UpdateInterval*5)
 	//var err error
-	var images []string	
+	
 
 	jobCh := make(chan uint)
 	for i := 0; i < config.WorkersCount; i++ {
 		go func() {
 			for job := range jobCh {
+				var images []models.ExportPage
 				checkBool := imagehandlers.CheckProjectFolder(job) 
 				if checkBool {
 					log.Println("Photobook already printed")
@@ -2579,10 +2580,22 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 						log.Printf("Error happened when updating paid orders. Err: %s", err)
 						continue
 					}
-					if !slices.Contains(images, "") {
+					var stringImages []string
+					for _, v := range images {
+						stringImages = append(stringImages, v.PreviewImageLink)
+					}
+					if !slices.Contains(stringImages, "") {
+						var variant string
 						log.Println("Trying to create folder")
 						log.Println(job)
+						variant, err = projectstorage.LoadProjectVariant(ctx, storeDB, job) 
+
 						imagehandlers.CreateProjectFolder(images, job)
+						err = imagehandlers.CreatePrintVersion(job, images , variant)
+						if err != nil {
+							log.Printf("Error happened when creating print version. Err: %s", err)
+							continue
+						}
 					}
 				}
 				

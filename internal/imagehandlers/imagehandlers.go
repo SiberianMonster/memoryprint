@@ -11,14 +11,15 @@ import (
 	"image"
 	"image/png"
 	"image/jpeg"
+	"image/draw"
     "os"
     "bytes"
 	"strings"
 	"strconv"
 	"io/ioutil"
 	"errors"
-	"github.com/pdfcpu/pdfcpu/pkg/api"
 	"github.com/gorilla/mux"
+	"sort"
 
 	"crypto/md5"
 	"crypto/tls"
@@ -93,6 +94,10 @@ type CopyPasteImage struct {
 	Source      []string `json:"source"`
 }
 
+type RenameImage struct {
+    NewFilename string   `json:"new_filename"`
+	OldFilename      string `json:"old_filename"`
+}
 
 func GetToken(index int) string {
 	result :=  fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprint(time.Now()))))[0:index]
@@ -506,25 +511,7 @@ func CreatePDFVisualization(rw http.ResponseWriter, r *http.Request) {
 		pagesImages = append(pagesImages, localPath)
 		log.Println(imageURL)
 	}
-	
-	err = api.ImportImagesFile(pagesImages, pdfName, nil, nil)
-	if err != nil {
-		log.Printf("Error happened in merging images to pdf. Err: %s", err)
-		handlersfunc.HandleUploadImageError(rw)
-		return
-	}
-	err = bucketPdfUpload(pdfName, config.TimewebToken)
-	if err != nil {
-		log.Printf("Error happened in uploading image to bucket. Err: %s", err)
-		handlersfunc.HandleUploadImageError(rw)
-		return
-	}
-	//err = os.Remove(pdfName) 
-    //if err != nil { 
-    //    log.Printf("Error happened in removing pdf after bucket upload. Err: %s", err)
-	//	handlersfunc.HandleUploadImageError(rw)
-	//	return
-    //} 
+
 
 	rw.WriteHeader(http.StatusOK)
 	rBody.Link = pdfName
@@ -537,7 +524,69 @@ func CreatePDFVisualization(rw http.ResponseWriter, r *http.Request) {
 	rw.Write(jsonResp)
 }
 
-func CreateProjectFolder(images []string, pID uint) {
+func CreatePrintVersion(pID uint, images []models.ExportPage, variant string) error {
+
+
+	folderName := "photobook_" + strconv.Itoa(int(pID))
+	// Sort the slice by age in descending order
+    sort.Slice(images, func(i, j int) bool {
+        return images[i].Sort > images[j].Sort
+    })
+	
+	
+	for i, page := range images {
+		var strCreatingImageLink string
+		var imageURL string
+		var localPath string
+		var previousI int
+		var previousPath string
+		var spinePath string
+		var midPath string
+		var frontPath string
+
+		strCreatingImageLink = page.PreviewImageLink
+		imageURL = config.ImageHost+strCreatingImageLink
+		localPath = "./" + folderName + "/" + strconv.Itoa(int(page.Sort)) + ".png"
+		log.Println(localPath)
+		err = DownloadFile(localPath, imageURL) 
+		if err != nil {
+			log.Printf("Error happened in loading the creating images. Err: %s", err)
+			return err
+		}
+		log.Println(imageURL)
+		if i%2 == 0 && i != 0 && i < len(images) - 1 && variant == "PREMIUM" {
+			previousI = i - 1
+			previousPath = "./" + folderName + "/" + strconv.Itoa(previousI) + ".png"
+			err = MergeImages(previousPath, localPath)
+			if err != nil {
+				log.Printf("Error happened in merging the images. Err: %s", err)
+				return err
+			}
+		}
+		if i == len(images) - 1 {
+			spinePath = "./" + folderName + "/" + strconv.Itoa(1000) + ".png"
+			err = MergeImages(spinePath, localPath)
+			if err != nil {
+				log.Printf("Error happened in merging the images. Err: %s", err)
+				return err
+			}
+			stringSlice := strings.Split(localPath, ".")
+			midPath = stringSlice[0] + "_appended.png"
+			frontPath = "./" + folderName + "/" + strconv.Itoa(0) + ".png"
+			err = MergeImages(frontPath, midPath)
+			if err != nil {
+				log.Printf("Error happened in merging the images. Err: %s", err)
+				return err
+			}
+
+		} 
+
+	}
+	return nil
+
+}
+
+func CreateProjectFolder(images []models.ExportPage, pID uint) {
 
 	folderName := "photobook_" + strconv.Itoa(int(pID))
 	var folderContent FolderContent
@@ -609,7 +658,7 @@ func CreateProjectFolder(images []string, pID uint) {
 					body := &CopyPasteImage{
 						Destination:    folderName,
 					}
-					pathToCopy = "photo/" + image
+					pathToCopy = "photo/" + image.PreviewImageLink
 					body.Source = append(body.Source, pathToCopy)
 
 					payloadBuf = new(bytes.Buffer)
@@ -633,17 +682,36 @@ func CreateProjectFolder(images []string, pID uint) {
 							log.Println(pID)
 							break
 					}
+					oldName := folderName + "/" + image.PreviewImageLink
+					newName := folderName + "/" + strconv.Itoa(int(image.Sort)) + ".png"
+					renameData := &RenameImage{
+						NewFilename: newName,
+						OldFilename: oldName,
+					}
+					payloadBuf = new(bytes.Buffer)
+					json.NewEncoder(payloadBuf).Encode(renameData)
+					
+					req, err := http.NewRequest("POST", "https://api.timeweb.cloud/api/v1/storages/buckets/1051/object-manager/rename", payloadBuf)
+					if err != nil {
+						log.Printf("Failed to createb request to rename page %s", err)
+						log.Println(pID)
+					}
+					req.Header.Set("Content-Type", "application/json")
+					req.Header.Set("Authorization", "Bearer " + config.TimewebToken)
+					resp, err := client.Do(req)
+					if err != nil {
+						log.Printf("Failed to rename page %s", err)
+						log.Println(pID)
+					}
+					defer resp.Body.Close()
+					}
+
+				log.Println("finished copying pages")
+				log.Println(pID)
+
 				}
-
-			log.Println("finished copying pages")
-			log.Println(pID)
-
 			}
 		}
-			
-		
-		
-    }
 	
 	
 }
@@ -686,4 +754,45 @@ func CheckProjectFolder(pID uint) bool {
 		}
 	}
 	return false
+} 
+
+func MergeImages(firstImage string, secondImage string) error {
+
+	imgFile1, err := os.Open(firstImage)
+	if err != nil {
+		log.Printf("Failed to open image for merging %s", err)
+		return err
+	}
+	imgFile2, err := os.Open(secondImage)
+	if err != nil {
+		log.Printf("Failed to open image for merging %s", err)
+		return err
+	}
+	img1, _, err := image.Decode(imgFile1)
+	if err != nil {
+		log.Printf("Failed to decode image for merging %s", err)
+		return err
+	}
+	img2, _, err := image.Decode(imgFile2)
+	if err != nil {
+		log.Printf("Failed to decode image for merging %s", err)
+		return err
+	}
+
+	sp2 := image.Point{img1.Bounds().Dx(), 0}
+	r2 := image.Rectangle{sp2, sp2.Add(img2.Bounds().Size())}
+	r := image.Rectangle{image.Point{0, 0}, r2.Max}
+	rgba := image.NewRGBA(r)
+	draw.Draw(rgba, img1.Bounds(), img1, image.Point{0, 0}, draw.Src)
+	draw.Draw(rgba, r2, img2, image.Point{0, 0}, draw.Src)
+	stringSlice := strings.Split(secondImage, ".")
+	new_name := stringSlice[0] + "_appended.png"
+	out, err := os.Create(new_name)
+	if err != nil {
+		log.Printf("Failed to export merged image  %s", err)
+		return err
+	}
+
+	png.Encode(out, rgba)
+	return nil
 }

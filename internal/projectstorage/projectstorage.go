@@ -870,6 +870,20 @@ func LoadProject(ctx context.Context, storeDB *pgxpool.Pool, pID uint) (models.R
 
 }
 
+// LoadProjectVariant function performs the operation of retrieving project by id from pgx database with a query.
+func LoadProjectVariant(ctx context.Context, storeDB *pgxpool.Pool, pID uint) (string, error) {
+
+	var variant string
+	err := storeDB.QueryRow(ctx, "SELECT variant FROM projects WHERE projects_id = ($1);", pID).Scan(&variant)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		log.Printf("Error happened when retrieving project variant from pgx table. Err: %s", err)
+		return variant, err
+	}
+
+	return variant, nil
+
+}
+
 // RetrieveTemplateData function performs the operation of retrieving template category by id from pgx database with a query.
 func RetrieveTemplateData(ctx context.Context, storeDB *pgxpool.Pool, pID uint) (string, *string, *string, error) {
 
@@ -2041,10 +2055,10 @@ func LoadPublishedProjects(ctx context.Context, storeDB *pgxpool.Pool) ([]uint, 
 }
 
 // RetrieveProjectImages function performs the operation of retrieving images of a published photobook project from pgx database with a query.
-func RetrieveProjectImages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint) ([]string, error) {
+func RetrieveProjectImages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint) ([]models.ExportPage, error) {
 
-	var images []string
-	rows, err := storeDB.Query(ctx, "SELECT preview_link FROM pages WHERE projects_id = ($1) AND is_template = ($2) ORDER BY sort;", projectID, false)
+	var images []models.ExportPage
+	rows, err := storeDB.Query(ctx, "SELECT preview_link, sort FROM pages WHERE projects_id = ($1) AND is_template = ($2) ORDER BY sort;", projectID, false)
 	if err != nil {
 		log.Printf("Error happened when retrieving pages from pgx table. Err: %s", err)
 		return nil, err
@@ -2052,12 +2066,13 @@ func RetrieveProjectImages(ctx context.Context, storeDB *pgxpool.Pool, projectID
 	defer rows.Close()
 
 	for rows.Next() {
-		var image string
+		var image models.ExportPage
+		var previewImage *string
 		
-		if pageErr := rows.Scan(&image); pageErr != nil {
+		if pageErr := rows.Scan(&previewImage, &image.Sort); pageErr != nil {
 			log.Printf("Empty page image. Err: %s", pageErr)
 		}
-		
+		image.PreviewImageLink = *previewImage
 		images = append(images, image)
 	}
 
@@ -2067,39 +2082,62 @@ func RetrieveProjectImages(ctx context.Context, storeDB *pgxpool.Pool, projectID
 	}
 
 	var cover string
-	var coverImage string
+	var coverImage *string
+	var size string
 	var leatherID *uint
-	err = storeDB.QueryRow(ctx, "SELECT cover, leather_id FROM projects WHERE projects_id = ($1);", projectID).Scan(&cover, &leatherID)
+	err = storeDB.QueryRow(ctx, "SELECT cover, leather_id, size FROM projects WHERE projects_id = ($1);", projectID).Scan(&cover, &leatherID, &size)
 	if err != nil && err != pgx.ErrNoRows{
 			log.Printf("Error happened when retrieving cover from pgx table. Err: %s", err)
 			return nil, err
 	}
 	if cover == "LEATHERETTE" {
 			if leatherID != nil {
-				err := storeDB.QueryRow(ctx, "SELECT colourlink FROM leather WHERE leather_id = ($1);", leatherID).Scan(&coverImage)
+				var verticalImage *string
+				var horizontalImage *string
+				var squareImage *string
+				var smallsquareImage *string
+
+				err = storeDB.QueryRow(ctx, "SELECT vertical_link, horizontal_link, square_link, small_square_link FROM leather WHERE leather_id = ($1);", leatherID).Scan(&verticalImage, &horizontalImage, &squareImage, &smallsquareImage)
 				if err != nil && err != pgx.ErrNoRows{
-					log.Printf("Error happened when retrieving leather image from pgx table. Err: %s", err)
-					return nil, err
+						log.Printf("Error happened when retrieving leather image from pgx table. Err: %s", err)
+						return nil, err
 				}
-				images[0] = coverImage
-				images[len(images)-1] = coverImage
-			} else {
-				err := storeDB.QueryRow(ctx, "SELECT colourlink FROM leather WHERE leather_id = ($1);", 0).Scan(&coverImage)
-				if err != nil && err != pgx.ErrNoRows{
-					log.Printf("Error happened when retrieving leather image from pgx table. Err: %s", err)
-					return nil, err
+				
+				if size == "HORIZONTAL" {
+					coverImage = horizontalImage
 				}
-				images[0] = coverImage
-				images[len(images)-1] = coverImage
-			}
+				if size == "VERTICAL" {
+					coverImage = verticalImage
+				}
+				if size == "SQUARE" {
+					coverImage = squareImage
+				}
+				if size == "SMALL_SQUARE" {
+					coverImage = smallsquareImage
+				}
+				for _, asset := range images {
+					if asset.Sort == 0 ||  int(asset.Sort) == (len(images)-1) {
+						asset.PreviewImageLink = *coverImage
+					}
+				}
+			} 
+			
 			
 		}
+	var spineImage models.ExportPage
+	err = storeDB.QueryRow(ctx, "SELECT preview_spine_link FROM projects WHERE projects_id = ($1);", projectID).Scan(&spineImage.PreviewImageLink)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			log.Printf("Error happened when retrieving project spinefrom pgx table. Err: %s", err)
+			return nil, err
+	}
+	spineImage.Sort = 1000
+	images = append(images, spineImage)
 	return images, nil
 
 }
 
 // GenerateImages function checks if a paid project has images for all pages, and if no, triggers their generation
-func GenerateImages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint, driver selenium.WebDriver) ([]string, error) {
+func GenerateImages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint, driver selenium.WebDriver) ([]models.ExportPage, error) {
 
 	images, err := RetrieveProjectImages(ctx, storeDB, projectID)
 	if err != nil {
@@ -2107,7 +2145,11 @@ func GenerateImages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint, 
 		return images, err
 	}
 	log.Println(images)
-	if slices.Contains(images, "") {
+	var stringImages []string
+	for _, v := range images {
+		stringImages = append(stringImages, v.PreviewImageLink)
+	}
+	if slices.Contains(stringImages, "") {
 		log.Println("Need to generate images")
 		log.Println(projectID)
 		url :=  "https://front.memoryprint.dev.startup-it.ru/preview/generate/" + strconv.Itoa(int(projectID))

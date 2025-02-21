@@ -991,3 +991,11 @@ type LimitOffsetVariant struct {
 	IsCover *bool `json:"is_cover"`
 
 }
+
+// swagger:model ExportPage
+type ExportPage struct {
+	// PageID of the project page. The model is used to save changes made on the page
+	// in: int
+	Sort uint `json:"sort"`
+	PreviewImageLink string `json:"preview_image_link"`
+  }
