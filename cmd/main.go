@@ -46,7 +46,7 @@ import (
 )
 
 var err error
-var host, connStr, accrualStr, adminEmail, yandexKey, timewebToken, balaToken, imageHost, bankDomain, bankuserName, bankPassword, deliveryDomain, deliveryClientID, deliverySecret, encryptionString *string
+var host, connStr, accrualStr, adminEmail, yandexKey, timewebToken, balaToken, picsartToken, imageHost, bankDomain, bankuserName, bankPassword, deliveryDomain, deliveryClientID, deliverySecret, encryptionString *string
 var db *pgxpool.Pool
 
 func init() {
@@ -64,6 +64,7 @@ func init() {
 	yandexKey = config.GetEnv("YANDEX_PASSWORD", flag.String("yp", section.Key("yandexkey").String(), "YANDEX_PASSWORD"))
 	timewebToken = config.GetEnv("TW_TOKEN", flag.String("tw", section.Key("timeweb").String(), "TW_TOKEN"))
 	balaToken = config.GetEnv("BL_TOKEN", flag.String("bl", section.Key("bala").String(), "BL_TOKEN"))
+	picsartToken = config.GetEnv("PA_TOKEN", flag.String("pa", section.Key("picsart").String(), "PA_TOKEN"))
 	imageHost = config.GetEnv("IMAGE_HOST", flag.String("img", section.Key("imagehost").String(), "IMAGE_HOST"))
 	bankDomain = config.GetEnv("BANK_DOMAIN", flag.String("bank", section.Key("bankdomain").String(), "BANK_DOMAIN"))
 	bankuserName = config.GetEnv("BANK_USERNAME", flag.String("bankusername", section.Key("bankusername").String(), "BANK_USERNAME"))
@@ -121,6 +122,7 @@ func main() {
 	config.YandexApiKey = *yandexKey
 	config.TimewebToken = *timewebToken
 	config.BalaToken = *balaToken
+	config.PicsartToken = *picsartToken
 	config.ImageHost = *imageHost
 	config.BankDomain = *bankDomain
 	config.BankUsername = *bankuserName

@@ -52,6 +52,7 @@ var DeliveryDomain string
 var DeliveryClientID string
 var DeliverySecret string
 var EncryptionString string
+var PicsartToken string
 
 func GetEnv(key string, fallback *string) *string {
 	if value, ok := os.LookupEnv(key); ok {

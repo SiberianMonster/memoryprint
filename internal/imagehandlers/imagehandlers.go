@@ -73,6 +73,16 @@ type balaResponse struct {
 	Slug string `json:"slug"`
 }
 
+type picsartResponse struct {
+    Status string `json:"status"`
+	Data picsartData `json:"data"`
+	TransactionID uint `json:"transaction_id"`
+}
+type picsartData struct {
+    ID string `json:"id"`
+	Url string `json:"url"`
+}
+
 type ImageRespBody struct {
 	Link string `json:"link"`
 }
@@ -359,6 +369,75 @@ func removeBackground(imgByte []byte, filename string, balaToken string) ([]byte
 	return imgByte, nil
 }
 
+
+func improveQuality(imgByte []byte, filename string, extention string, picsartToken string) ([]byte, error) {
+
+	var pResp picsartResponse
+	mf := &MyFile{
+		Reader: bytes.NewReader(imgByte),
+		mif: myFileInfo{
+			name: filename,
+			data: imgByte,
+		},
+	}
+	
+	var f http.File = mf
+	fileContents, err := ioutil.ReadAll(f)
+	if err != nil {
+		log.Printf("Failed to read file contents %s", err)
+	}
+
+	form := new(bytes.Buffer)
+	writer := multipart.NewWriter(form)
+	fw, err := writer.CreateFormFile("image", filename)
+	if err != nil {
+		log.Printf("Failed to create form file %s", err)
+	}
+	fw.Write(fileContents)
+	if strings.ToUpper(extention) == "PNG" {
+		writer.WriteField("format", strings.ToUpper(extention))
+	}
+	writer.WriteField("upscale_factor", "4")
+
+	writer.Close()
+
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", "https://api.picsart.io/tools/1.0/upscale/ultra", form)
+	if err != nil {
+		log.Printf("Failed to create a request to bucket %s", err)
+	}
+	req.Header.Set("X-Picsart-API-Key", picsartToken)
+	req.Header.Set("accept", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("Failed to make a request to picsart %s", err)
+	}
+	log.Println("response from picsart")
+	log.Println(resp.StatusCode)
+	err = json.NewDecoder(resp.Body).Decode(&pResp)
+	if err != nil {
+		log.Printf("Failed to decode picsart response %s", err)
+	}
+	log.Println(pResp)
+	if pResp.Status == "success" {
+
+		data := pResp.Data
+
+		defer resp.Body.Close()
+		resp, err = http.Get(data.Url)
+		if err != nil {
+			log.Printf("Failed to read the file with improved quality from picsart %s", err)
+		}
+		defer resp.Body.Close()
+
+		imgByte, err = io.ReadAll(resp.Body)
+		if err != nil {
+			log.Printf("Failed to get response from picsart %s", err)
+		}
+	}
+	return imgByte, nil
+}
+
 func LoadImage(rw http.ResponseWriter, r *http.Request) {
 
 	resp := make(map[string]ImageRespBody)
@@ -427,6 +506,10 @@ func LoadImage(rw http.ResponseWriter, r *http.Request) {
 		}
 	}
 	log.Println("removed image background")
+	imageObj.Image, err = improveQuality(imageObj.Image, filename, imageObj.Extention, config.PicsartToken)
+	if err != nil {
+		log.Printf("Error happened in improving image quality. Err: %s", err)
+	}
 	
 	err = bucketUpload(imageObj.Image, filename, config.TimewebToken)
 	if err != nil {
