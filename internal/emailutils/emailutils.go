@@ -175,7 +175,7 @@ func SendMail(mailReq *Mail, ms *SGMailService) error {
 		log.Printf("failed to create conn")
 		return err
 	}
-	conn.StartTLS(tlsconfig)
+	//conn.StartTLS(tlsconfig)
 
     client, err := smtp.NewClient(conn,  "smtp.yandex.ru")
  	if err != nil {
