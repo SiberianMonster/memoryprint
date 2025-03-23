@@ -177,28 +177,46 @@ func SendMail(mailReq *Mail, ms *SGMailService) error {
 	}
 	conn.StartTLS(tlsconfig)
 
-    // Auth
-    if err = conn.Auth(auth); err != nil {
-        log.Panic(err)
-    }
+    client, err := smtp.NewClient(conn,  "smtp.yandex.ru")
+ 	if err != nil {
+ 		log.Printf("failed to create client")
+ 		return err
+ 	}
+ 
+ 	// step 1: Use Auth
+ 	if err = client.Auth(auth); err != nil {
+ 		log.Printf("failed to create auth")
+ 		return err
+ 	}
+	// Auth
+    //if err = conn.Auth(auth); err != nil {
+    //    log.Panic(err)
+    //}
+
+	// step 2: add all from and to
+	if err = client.Mail(mailReq.from); err != nil {
+			log.Printf("failed to create sender")
+			return err
+	}
 
     // To && From
-    if err = conn.Mail(mailReq.from); err != nil {
-        log.Panic(err)
-    }
+    //if err = conn.Mail(mailReq.from); err != nil {
+    //    log.Panic(err)
+    //}
 
 	for _, k := range mailReq.to {
-		if err = conn.Rcpt(k); err != nil {
+		if err = client.Rcpt(k); err != nil {
+		//if err = conn.Rcpt(k); err != nil {
 			log.Printf("failed to create recepient")
 			return err
 		}
 	}
 
     // Data
-    w, err := conn.Data()
-    if err != nil {
-        log.Panic(err)
-    }
+    //w, err := conn.Data()
+    //if err != nil {
+    //    log.Panic(err)
+    //}
 
 
 	//client, err := smtp.NewClient(conn,  "smtp.yandex.ru")
@@ -228,11 +246,11 @@ func SendMail(mailReq *Mail, ms *SGMailService) error {
 	//}
 
 	// Data
-	//w, err := client.Data()
-	//if err != nil {
-	//	log.Printf("failed to create data")
-	//	return err
-	//}
+	w, err := client.Data()
+	if err != nil {
+		log.Printf("failed to create data")
+		return err
+	}
 
 	_, err = w.Write([]byte(msg))
 	if err != nil {
@@ -246,8 +264,8 @@ func SendMail(mailReq *Mail, ms *SGMailService) error {
 		return err
 	}
 
-	//client.Quit()
-	conn.Quit()
+	client.Quit()
+	//conn.Quit()
 
 	log.Printf("mail sent successfully")
 	return nil

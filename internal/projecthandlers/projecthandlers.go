@@ -1600,7 +1600,7 @@ func AddTemplatePages(rw http.ResponseWriter, r *http.Request) {
 
 		var addedPage models.OrderPage
 		if page.CloneID != 0{
-			if !projectstorage.CheckPagesRange(ctx, config.DB, page.CloneID, projectID, true) {
+			if !projectstorage.CheckPagesRange(ctx, config.DB, page.Sort, projectID, true) {
 				handlersfunc.HandleMissingPageError(rw)
 				return
 			}
