@@ -73,10 +73,20 @@ type balaResponse struct {
 	Slug string `json:"slug"`
 }
 
+type picsartErrorResponse struct {
+	    Message string `json:"message"`
+	    Detail string `json:"detail"`
+	}
+
 type picsartResponse struct {
     Status string `json:"status"`
 	Data picsartData `json:"data"`
 	TransactionID uint `json:"transaction_id"`
+}
+
+type picsartErrorResponse struct {
+    Message string `json:"message"`
+	Detail string `json:"detail"`
 }
 type picsartData struct {
     ID string `json:"id"`
@@ -373,6 +383,7 @@ func removeBackground(imgByte []byte, filename string, balaToken string) ([]byte
 func improveQuality(imgByte []byte, filename string, extention string, picsartToken string) ([]byte, error) {
 
 	var pResp picsartResponse
+	var pErrResp picsartErrorResponse
 	mf := &MyFile{
 		Reader: bytes.NewReader(imgByte),
 		mif: myFileInfo{
@@ -402,19 +413,20 @@ func improveQuality(imgByte []byte, filename string, extention string, picsartTo
 	writer.Close()
 
 	client := &http.Client{}
-	req, err := http.NewRequest("POST", "https://api.picsart.io/tools/1.0/upscale/ultra", form)
+	req, err := http.NewRequest("POST", "https://api.picsart.io/tools/1.0/upscale", form)
 	if err != nil {
 		log.Printf("Failed to create a request to bucket %s", err)
 	}
 	req.Header.Set("X-Picsart-API-Key", picsartToken)
 	req.Header.Set("accept", "application/json")
+	req.Header.Set("content-type", writer.FormDataContentType())
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Printf("Failed to make a request to picsart %s", err)
 	}
 	log.Println("response from picsart")
 	log.Println(resp.StatusCode)
-	err = json.NewDecoder(resp.Body).Decode(&pResp)
+	err = json.NewDecoder(resp.Body).Decode(&pErrResp)
 	if err != nil {
 		log.Printf("Failed to decode picsart response %s", err)
 	}

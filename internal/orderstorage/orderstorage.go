@@ -650,6 +650,25 @@ func CancelPayment(ctx context.Context, storeDB *pgxpool.Pool, orderID uint, use
 		
 	}
 
+	// Send cancelled order email to admin
+	from := "support@memoryprint.ru"
+	to := []string{"support@memoryprint.ru"}
+	subject := "Заказ отменен"
+	mailType := emailutils.MailAdminCancelledOrder
+	mailData := &emailutils.MailData{
+		Ordernum: orderID,
+		//Order: orderObj,
+	}
+
+	ms := &emailutils.SGMailService{config.YandexApiKey}
+	mailReq := emailutils.NewMail(from, to, subject, mailType, mailData)
+	err = emailutils.SendMail(mailReq, ms)
+	if err != nil {
+		log.Printf("unable to send mail", "error", err)
+		return err
+	}
+	
+
 	
 	
 	return nil
@@ -1229,6 +1248,7 @@ func UpdateOrderStatus(ctx context.Context, storeDB *pgxpool.Pool, orderID uint,
 
 }
 
+
 // UpdateOrderCommentary function performs the operation of updating the order commentary from pgx database with a query.
 func UpdateOrderCommentary(ctx context.Context, storeDB *pgxpool.Pool, orderID uint, commentaryObj models.RequestUpdateOrderCommentary) (error) {
 
@@ -1549,6 +1569,25 @@ func OrdersToPrint(ctx context.Context, storeDB *pgxpool.Pool, order models.Paid
 			log.Printf("unable to send mail", "error", err)
 			return err
 		}
+
+		// Send paid order email to admin
+		from = "support@memoryprint.ru"
+		to = []string{"support@memoryprint.ru"}
+		subject = "Заказ оплачен"
+		mailType = emailutils.MailAdminPaidOrder
+		mailData = &emailutils.MailData{
+			Ordernum: order.OrdersID,
+			//Order: orderObj,
+		}
+
+		ms = &emailutils.SGMailService{config.YandexApiKey}
+		mailReq = emailutils.NewMail(from, to, subject, mailType, mailData)
+		err = emailutils.SendMail(mailReq, ms)
+		if err != nil {
+			log.Printf("unable to send mail", "error", err)
+			return err
+		}
+
 		_, err = storeDB.Exec(ctx, "UPDATE orders SET status = ($1) WHERE orders_id = ($2);",
 			"IN_PRINT",
 			order.OrdersID,

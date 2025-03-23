@@ -44,6 +44,8 @@ const (
 	MailOrderInDelivery int = 4
 	MailViewerInvitation int = 5
 	MailGiftCertificate int = 6
+	MailAdminPaidOrder int = 7
+	MailAdminCancelledOrder int = 8
 )
 
 // MailData represents the data to be sent to the template of the mail.
@@ -129,6 +131,12 @@ func CreateMail(mailReq *Mail, ms *SGMailService) error {
 	} else if mailReq.mtype == MailGiftCertificate {
 		err = mailReq.ParseTemplate("gift_certificate.html", mailReq.data)
 	
+	} else if mailReq.mtype == MailAdminPaidOrder {
+			err = mailReq.ParseTemplate("paid_order_admin_mail.html", mailReq.data)
+		
+	} else if mailReq.mtype == MailAdminCancelledOrder {
+			err = mailReq.ParseTemplate("cancelled_order_admin_mail.html", mailReq.data)
+			
 	}
 
 	if err != nil{
@@ -142,8 +150,8 @@ func CreateMail(mailReq *Mail, ms *SGMailService) error {
 func SendMail(mailReq *Mail, ms *SGMailService) error {
 
 	var auth smtp.Auth
-	//auth = smtp.PlainAuth("", mailReq.from, ms.YandexApiKey, "smtp.yandex.ru")
-	auth = smtp.PlainAuth("", mailReq.from, "smtp-tls-key", "0.0.0.0")
+	auth = smtp.PlainAuth("", mailReq.from, ms.YandexApiKey, "smtp.yandex.ru")
+	//auth = smtp.PlainAuth("", mailReq.from, "smtp-tls-key", "0.0.0.0")
 	print(ms.YandexApiKey)
 
 	err := CreateMail(mailReq, ms)
@@ -152,17 +160,17 @@ func SendMail(mailReq *Mail, ms *SGMailService) error {
 		return err
 	}
 	msg := mailReq.BuildMessage()
-	//addr := "smtp.yandex.ru:465"
-	addr := "0.0.0.0:1025"
+	addr := "smtp.yandex.ru:465"
+	//addr := "0.0.0.0:1025"
 
 	tlsconfig := &tls.Config{
 		InsecureSkipVerify: true,
-		ServerName:         "0.0.0.0",
-		//ServerName:         "smtp.yandex.ru",
+		//ServerName:         "0.0.0.0",
+		ServerName:         "smtp.yandex.ru",
 	}
 
-	//conn, err := tls.Dial("tcp", addr, tlsconfig)
-	conn, err := smtp.Dial(addr)
+	conn, err := tls.Dial("tcp", addr, tlsconfig)
+	//conn, err := smtp.Dial(addr)
 	if err != nil {
 		log.Printf("failed to create conn")
 		return err
