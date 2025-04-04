@@ -916,10 +916,10 @@ func CalculateDelivery(rw http.ResponseWriter, r *http.Request) {
 	log.Println(rCost)
 	log.Println(ApiPaymentObj.PeriodMin)
 	log.Println(ApiPaymentObj.PeriodMax)
-	daysFrom := 4 + ApiPaymentObj.PeriodMin
+	daysFrom := 10 + ApiPaymentObj.PeriodMin
 	dateFrom := AddWorkdays(time.Now(), int(daysFrom))
 	PaymentObj.ExpectedDeliveryFrom = dateFrom.Format("02-01-2006")
-	daysTo := 4 + ApiPaymentObj.PeriodMax
+	daysTo := 10 + ApiPaymentObj.PeriodMax
 	dateTo := AddWorkdays(time.Now(), int(daysTo))
 	PaymentObj.ExpectedDeliveryTo = dateTo.Format("02-01-2006")
 	rw.WriteHeader(http.StatusOK)
