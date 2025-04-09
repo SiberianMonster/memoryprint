@@ -653,7 +653,7 @@ func CancelPayment(ctx context.Context, storeDB *pgxpool.Pool, orderID uint, use
 	// Send cancelled order email to admin
 	from := "support@memoryprint.ru"
 	to := []string{"support@memoryprint.ru"}
-	subject := "Заказ отменен"
+	subject := "Order Cancelled"
 	mailType := emailutils.MailAdminCancelledOrder
 	mailData := &emailutils.MailData{
 		Ordernum: orderID,
@@ -1554,7 +1554,7 @@ func OrdersToPrint(ctx context.Context, storeDB *pgxpool.Pool, order models.Paid
 		// Send paid order email
 		from := "support@memoryprint.ru"
 		to := []string{order.Email}
-		subject := "Ваш заказ передан в печать!"
+		subject := "=?koi8-r?B?98HbINrBy8HaINDF0sXEwc4g1yDQxd7B1Ngh==?="
 		mailType := emailutils.MailPaidOrder
 		mailData := &emailutils.MailData{
 			Username: order.Username,
@@ -1573,7 +1573,7 @@ func OrdersToPrint(ctx context.Context, storeDB *pgxpool.Pool, order models.Paid
 		// Send paid order email to admin
 		from = "support@memoryprint.ru"
 		to = []string{"support@memoryprint.ru"}
-		subject = "Заказ оплачен"
+		subject = "Order paid"
 		mailType = emailutils.MailAdminPaidOrder
 		mailData = &emailutils.MailData{
 			Ordernum: order.OrdersID,

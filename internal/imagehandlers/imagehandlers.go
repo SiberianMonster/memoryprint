@@ -84,10 +84,7 @@ type picsartResponse struct {
 	TransactionID uint `json:"transaction_id"`
 }
 
-type picsartErrorResponse struct {
-    Message string `json:"message"`
-	Detail string `json:"detail"`
-}
+
 type picsartData struct {
     ID string `json:"id"`
 	Url string `json:"url"`
@@ -837,17 +834,20 @@ func CheckProjectFolder(pID uint) bool {
 	if err != nil {
 			log.Printf("Failed to make a request to bucket %s", err)
 			log.Println(pID)
+			return true
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
             log.Println(resp.StatusCode)
 			log.Printf("Failed to make a request to bucket %s", err)
 			log.Println(pID)
+			return true
     } else {
 		err = json.NewDecoder(resp.Body).Decode(&folderContent)
 		if err != nil {
 			log.Printf("Failed to decode folder content %s", err)
 			log.Println(pID)
+			return true
 		}
 		if folderContent.Meta.Total > 0 {
 			log.Println("pages already copied")

@@ -242,7 +242,7 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, proj
 		"EDITED",
 		projectObj.Size,
 		projectObj.Variant,
-		23,
+		24,
 		userID,
 		userID,
 		templateCategory,
@@ -274,7 +274,7 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, proj
 		return 0, err
 	}
 
-	pagesRange := makeRange(0, 22)
+	pagesRange := makeRange(0, 23)
 	if projectObj.TemplateID != 0 {
 		var templatePages []models.Page
 		var leatherID *uint
@@ -329,7 +329,7 @@ func CreateProject(ctx context.Context, storeDB *pgxpool.Pool, userID uint, proj
 
 			var ptype string
 	
-			if num == 22 {
+			if num == 23 {
 				ptype = "back"
 			} else {
 				ptype = "page"
@@ -499,12 +499,12 @@ func CreateTemplate(ctx context.Context, storeDB *pgxpool.Pool, name string, siz
 		return tID, err
 	}
 
-	pagesRange := makeRange(0, 22)
+	pagesRange := makeRange(0, 23)
 
 	for _, num := range pagesRange {
 		var ptype string
 
-		if num == 22 {
+		if num == 23 {
 			ptype = "back"
 		} else {
 			ptype = "page"
@@ -1334,6 +1334,73 @@ func AddProjectPage(ctx context.Context, storeDB *pgxpool.Pool, projectID uint, 
 		}
 	}
 	return newPage, nil
+
+}
+
+// AddExtraPageTempFix function performs the operation of adding a photobook project page to pgx database with a query.
+func AddExtraPageTempFix(ctx context.Context, storeDB *pgxpool.Pool) (error) {
+
+	rows, err := storeDB.Query(ctx, "SELECT projects_id FROM projects;")
+	if err != nil {
+		log.Printf("Error happened when retrieving projects from pgx table. Err: %s", err)
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var projectID uint
+		if err = rows.Scan(&projectID); err != nil {
+			log.Printf("Error happened when scanning project id Err: %s", err)
+			return err
+		}
+		var oldCount uint
+		var newCount uint
+		err = storeDB.QueryRow(ctx, "SELECT count_pages FROM projects WHERE projects_id = ($1);", projectID).Scan(&oldCount)
+		if err != nil && err != pgx.ErrNoRows {
+					log.Printf("Error happened when retrieving count pages data from db. Err: %s", err)
+					return err
+		}
+		if newCount%2 != 0 {
+				_, err = AddProjectPage(ctx, storeDB, projectID, 2, false)
+			if err != nil {
+				log.Printf("Error happened when adding fix page sort. Err: %s", err)
+				return err
+			}
+
+			newCount = oldCount + 1
+			_, err = storeDB.Exec(ctx, "UPDATE projects SET count_pages = ($1) WHERE projects_id = ($2);",
+						newCount,
+						projectID,
+						)
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+							log.Printf("Error happened when updating page sort in pgx table. Err: %s", err)
+							return err
+			}
+		}
+		
+	}
+	trows, err := storeDB.Query(ctx, "SELECT templates_id FROM templates;")
+	if err != nil {
+		log.Printf("Error happened when retrieving templates from pgx table. Err: %s", err)
+		return err
+	}
+	defer trows.Close()
+
+	for trows.Next() {
+		var projectID uint
+		if err = trows.Scan(&projectID); err != nil {
+			log.Printf("Error happened when scanning template id sort. Err: %s", err)
+			return err
+		}
+		_, err = AddProjectPage(ctx, storeDB, projectID, 2, true)
+		if err != nil {
+			log.Printf("Error happened when adding fix page sort for template. Err: %s", err)
+			return err
+		}
+	}
+
+
+	return nil
 
 }
 

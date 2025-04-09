@@ -668,7 +668,7 @@ func UpdateOrderStatus(rw http.ResponseWriter, r *http.Request) {
 		// Send paid order email
 		from := "support@memoryprint.ru"
 		to := []string{contactData.Email}
-		subject := "Ваш заказ передан в службу доставки!"
+		subject := "=?koi8-r?B?98HbINrBy8HaINDF0sXEwc4g1yDTzNXWwtUgxM/T1MHXy8kh==?="
 		mailType := emailutils.MailOrderInDelivery
 		mailData := &emailutils.MailData{
 			Username: contactData.FirstName,

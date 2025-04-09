@@ -110,7 +110,7 @@ func Register(rw http.ResponseWriter, r *http.Request) {
 	// Send welcome email
 	from := "support@memoryprint.ru"
 	to := []string{user.Email}
-	subject := "Welcome to MemoryPrint"
+	subject := "=?koi8-r?B?5M/C0s8g0M/WwczP18HU2CDOwSBNZW1vcnlQcmludA==?="
 	mailType := emailutils.MailWelcome
 	mailData := &emailutils.MailData{
 		Username: user.Name,

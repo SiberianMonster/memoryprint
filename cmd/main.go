@@ -264,6 +264,7 @@ func main() {
 	authRouter.HandleFunc("/api/v1/calculate-delivery", orderhandlers.CalculateDelivery).Methods("POST","OPTIONS")
 
 	authRouter.HandleFunc("/api/v1/cancel-order/{id}", orderhandlers.CancelPayment).Methods("POST","OPTIONS")
+	authRouter.HandleFunc("/api/v1/add-extra-page", projecthandlers.AddExtraPageTempFix).Methods("POST","OPTIONS")
 
 	srv := &http.Server{
 		Handler: router,

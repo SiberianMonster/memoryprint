@@ -2140,7 +2140,7 @@ func ShareLink(rw http.ResponseWriter, r *http.Request) {
 	// Send email with the link
 	from := "support@memoryprint.ru"
 	to := []string{ViewerObj.Email}
-	subject := "С вами поделились ссылкой на фотокнигу!"
+	subject := "=?koi8-r?B?8yDXwc3JINDPxMXMyczJ09gg09PZzMvPyiDOwSDGz9TPy87Jx9Uh==?="
 	mailType := emailutils.MailViewerInvitation
 	mailData := &emailutils.MailData{
 		Username: ViewerObj.Name,
@@ -2647,6 +2647,29 @@ func DuplicateLayout(rw http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	
 	err = objectsstorage.DuplicateLayout(ctx, config.DB)
+
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
+
+	rw.WriteHeader(http.StatusOK)
+	resp["response"] = 1
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("Error happened in JSON marshal. Err: %s", err)
+		return
+	}
+	rw.Write(jsonResp)
+}
+
+func AddExtraPageTempFix(rw http.ResponseWriter, r *http.Request) {
+
+	resp := make(map[string]uint)
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	defer cancel()
+	
+	err = projectstorage.AddExtraPageTempFix(ctx, config.DB)
 
 	if err != nil {
 		handlersfunc.HandleDatabaseServerError(rw)

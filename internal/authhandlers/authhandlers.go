@@ -87,7 +87,7 @@ func GenerateTempPass(rw http.ResponseWriter, r *http.Request) {
 	// Send verification mail
 	from := "support@memoryprint.ru"
 	to := []string{user.Email}
-	subject := "Temporary Login Details for MemoryPrint"
+	subject := "=?koi8-r?B?98/T09TBzs/XzMXOycUgxM/T1NXQwSDLIMHLy8HVztTVIE1lbW9yeVByaW50==?="
 	mailType := emailutils.MailPassTemp
 	mailData := &emailutils.MailData{
 		Username: dbUser.Name,

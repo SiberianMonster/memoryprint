@@ -78,7 +78,6 @@ func (mail *Mail) BuildMessage() string {
 	if len(mail.to) > 0 {
 		message += fmt.Sprintf("To: %s\r\n", strings.Join(mail.to, ";"))
 	}
-
 	message += fmt.Sprintf("Subject: %s\r\n", mail.subject)
 	message += "MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\n\n"
 	message += "\r\n" + mail.body
