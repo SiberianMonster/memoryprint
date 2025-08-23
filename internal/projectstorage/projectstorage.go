@@ -542,12 +542,12 @@ func DuplicateTemplate(ctx context.Context, storeDB *pgxpool.Pool, templateID ui
 	}
 	projectObj.Name = "Копия_" + projectObj.Name 
 
-	err = storeDB.QueryRow(ctx, "INSERT INTO templates (name, created_at, last_edited_at, status, size, category, variant, creating_spine_link, preview_spine_link) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING templates_id;",
+	err = storeDB.QueryRow(ctx, "INSERT INTO templates (name, created_at, last_edited_at, status, size, category, variant, creating_spine_link, preview_spine_link) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING templates_id;",
 		projectObj.Name,
 		t,
 		t,
 		"EDITED",
-		projectObj.Size,
+		"SMALL_SQUARE",
 		tCategory,
 		projectObj.Variant,
 		projectObj.CreatingSpineLink,
@@ -1360,7 +1360,7 @@ func AddExtraPageTempFix(ctx context.Context, storeDB *pgxpool.Pool) (error) {
 					log.Printf("Error happened when retrieving count pages data from db. Err: %s", err)
 					return err
 		}
-		if newCount%2 != 0 {
+		if oldCount%2 != 0 {
 				_, err = AddProjectPage(ctx, storeDB, projectID, 2, false)
 			if err != nil {
 				log.Printf("Error happened when adding fix page sort. Err: %s", err)
@@ -1379,26 +1379,7 @@ func AddExtraPageTempFix(ctx context.Context, storeDB *pgxpool.Pool) (error) {
 		}
 		
 	}
-	trows, err := storeDB.Query(ctx, "SELECT templates_id FROM templates;")
-	if err != nil {
-		log.Printf("Error happened when retrieving templates from pgx table. Err: %s", err)
-		return err
-	}
-	defer trows.Close()
-
-	for trows.Next() {
-		var projectID uint
-		if err = trows.Scan(&projectID); err != nil {
-			log.Printf("Error happened when scanning template id sort. Err: %s", err)
-			return err
-		}
-		_, err = AddProjectPage(ctx, storeDB, projectID, 2, true)
-		if err != nil {
-			log.Printf("Error happened when adding fix page sort for template. Err: %s", err)
-			return err
-		}
-	}
-
+	
 
 	return nil
 
@@ -2234,53 +2215,63 @@ func GenerateImages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint, 
 		err = driver.Get(start_url)
 		if err != nil {
 			log.Printf("Error happened when opening start page. Err: %s", err)
+			return images, err
 		}
 		time.Sleep(10 * time.Second) 
 		enter_elem, err := driver.FindElement(selenium.ByXPATH, ".//a[contains(text(),'Войт')]")
 		if err != nil {
 			log.Printf("Error finding element by XPath: %v", err)
+			return images, err
 		}
 		err = enter_elem.Click()
 		if err != nil {
 			log.Printf("Error clicking enter button:", err)
+			return images, err
 		}
 		time.Sleep(10 * time.Second) 
 		email_element, err := driver.FindElement(selenium.ByXPATH, "/html/body/div[4]/div/div/div/div/div/div/div/div/div[2]/div/div[1]/input")
 		if err != nil {
 			log.Printf("Error finding element:", err)
+			return images, err
 		}
 
 		// Type into the element
 		err = email_element.SendKeys("elena1@memoryprint.ru")
 		if err != nil {
 			log.Printf("Error sending keys:", err)
+			return images, err
 		}
 		pwd_element, err := driver.FindElement(selenium.ByXPATH, "/html/body/div[4]/div/div/div/div/div/div/div/div/div[2]/div/div[2]/input")
 		if err != nil {
 			log.Printf("Error finding element:", err)
+			return images, err
 		}
 
 		// Type into the element
 		err = pwd_element.SendKeys("Moscow2010")
 		if err != nil {
 			log.Printf("Error sending keys:", err)
+			return images, err
 		}
 
 		// Find and click a button
 		button, err := driver.FindElement(selenium.ByXPATH, "/html/body/div[4]/div/div/div/div/div/div/div/div/div[2]/div/button")
 		if err != nil {
 			log.Printf("Error finding button:", err)
+			return images, err
 		}
 
 		err = button.Click()
 		if err != nil {
 			log.Printf("Error clicking button:", err)
+			return images, err
 		}
 		time.Sleep(10 * time.Second) 
 		url :=  "https://front.memoryprint.dev.startup-it.ru/preview/generate/" + strconv.Itoa(int(projectID))
 		err = driver.Get(url)
 		if err != nil {
 			log.Printf("Error happened when generating images for paid project. Err: %s", err)
+			return images, err
 		}
 		time.Sleep(120 * time.Second) 
 		driver.Close()
