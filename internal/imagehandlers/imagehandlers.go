@@ -28,6 +28,8 @@ import (
 	"io"
 	"mime/multipart"
 	"path/filepath"
+	"github.com/aws/aws-sdk-go/aws"
+    "github.com/aws/aws-sdk-go/service/s3"
 
 	"github.com/SiberianMonster/memoryprint/internal/config"
 	"github.com/SiberianMonster/memoryprint/internal/models"
@@ -218,50 +220,286 @@ func bucketUpload(img []byte, filename string, timewebToken string) error {
 		return err
 	}
 	log.Println("saved image")
-	form := new(bytes.Buffer)
-	writer := multipart.NewWriter(form)
-	fw, err := writer.CreateFormFile(filename, filepath.Base(filename))
+	file, err := os.Open(filename)
 	if err != nil {
-		log.Printf("Failed to create form file %s", err)
+		log.Printf("Failed to upload file %s", err)
 		return err
 	}
-	fd, err := os.Open(filename)
+	defer file.Close()
+	
+	// Read the contents of the file into a buffer
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, file)
 	if err != nil {
-		log.Printf("Failed to open file %s", err)
+		log.Printf("Failed to copy file %s", err)
 		return err
 	}
-	defer fd.Close()
-	_, err = io.Copy(fw, fd)
+	folderName := "photo/" + filepath.Base(filename)
+	// This uploads the contents of the buffer to S3
+	_, err = config.Svc.PutObject(&s3.PutObjectInput{
+	Bucket: aws.String("55ad0489-946d2ae4-c74f-4d36-9b1a-b63081d8f869"),
+	Key:    aws.String(folderName),
+	Body:   bytes.NewReader(buf.Bytes()),
+	})
 	if err != nil {
-		log.Printf("Failed to copy file content %s", err)
+		log.Printf("Failed to upload file %s", err)
 		return err
-	}
-
-	writer.Close()
-
-	client := &http.Client{}
-	req, err := http.NewRequest("POST", "https://api.timeweb.cloud/api/v1/storages/buckets/225285/object-manager/upload?;path=photo/", form)
-	if err != nil {
-		log.Printf("Failed to create a request to bucket %s", err)
-	}
-	req.Header.Set("Authorization", "Bearer " + timewebToken)
-	req.Header.Set("Content-Type", writer.FormDataContentType())
-	resp, err := client.Do(req)
-	if err != nil {
-			log.Printf("Failed to make a request to bucket %s", err)
-			return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 204 {
-            log.Println(resp.StatusCode)
-			err = errors.New("error uploading image to bucket")
-            return err
     } else {
 			log.Println("successful upload")
     }
 	return nil
 	
 }
+
+type SubImager interface {
+	SubImage(r image.Rectangle) image.Image
+}
+
+func CreateCroppedPreview(filename string) (string, error) {
+    
+	var newUploadedPreview string
+	var croppedfilename string
+	folderName := "photo/" + filename
+    output, err := config.Svc.GetObject(&s3.GetObjectInput{
+        Bucket: aws.String("55ad0489-946d2ae4-c74f-4d36-9b1a-b63081d8f869"),
+        Key:    aws.String(folderName),
+    })
+    if err != nil {
+		log.Printf("error downloading file: %w", err)
+        return newUploadedPreview, err
+    }
+    defer output.Body.Close()
+
+	ffilepath := "./temp_photo/"+filename
+    destFile, err := os.Create(ffilepath)
+    if err != nil {
+		log.Printf("error creating destination file: %w", err)
+        return newUploadedPreview, err
+    }
+    defer destFile.Close()
+
+    if _, err := io.Copy(destFile, output.Body); err != nil {
+		log.Printf("error saving file: %w", err)
+        return newUploadedPreview, err
+    }
+
+	originalImageFile, err := os.Open(ffilepath)
+	if err != nil {
+		log.Printf("error opening file for preview generation: %w", err)
+		return newUploadedPreview, err
+	}
+	defer originalImageFile.Close()
+
+	originalImage, err := png.Decode(originalImageFile)
+	if err != nil {
+		log.Printf("error decoding file for preview generation: %w", err)
+		return newUploadedPreview, err
+	}
+
+	bounds := originalImage.Bounds()
+	w := bounds.Dx()
+
+	// standard and premium 20 cover
+	if w == 2611 {
+		cropSize := image.Rect(0, 190, 2421, 2645)
+		croppedImage := originalImage.(SubImager).SubImage(cropSize)
+		code := GetToken(10)
+		croppedfilename = "./temp_photo/"+code+"_img.png"
+		newUploadedPreview = code+"_img.png"
+		croppedImageFile, err := os.Create(croppedfilename)
+		if err != nil {
+			log.Printf("error creating cropped: %w", err)
+			return newUploadedPreview, err
+		}
+
+		defer croppedImageFile.Close()
+		if err := png.Encode(croppedImageFile, croppedImage); err != nil {
+			log.Printf("error encoding cropped: %w", err)
+			return newUploadedPreview, err
+		}
+	}
+
+	// standard 20 page
+	if w == 2469 {
+		cropSize := image.Rect(12,60,2374,2422)
+		croppedImage := originalImage.(SubImager).SubImage(cropSize)
+		code := GetToken(10)
+		croppedfilename = "./temp_photo/"+code+"_img.png"
+		newUploadedPreview = code+"_img.png"
+		croppedImageFile, err := os.Create(croppedfilename)
+		if err != nil {
+			log.Printf("error creating cropped: %w", err)
+			return newUploadedPreview, err
+		}
+
+		defer croppedImageFile.Close()
+		if err := png.Encode(croppedImageFile, croppedImage); err != nil {
+			log.Printf("error encoding cropped: %w", err)
+			return newUploadedPreview, err
+		}
+	}
+
+	// standard and premium 25 cover
+	if w == 3261 {
+		cropSize := image.Rect(0, 190, 3071, 3353)
+		croppedImage := originalImage.(SubImager).SubImage(cropSize)
+		code := GetToken(10)
+		croppedfilename = "./temp_photo/"+code+"_img.png"
+		newUploadedPreview = code+"_img.png"
+		croppedImageFile, err := os.Create(croppedfilename)
+		if err != nil {
+			log.Printf("error creating cropped: %w", err)
+			return newUploadedPreview, err
+		}
+
+		defer croppedImageFile.Close()
+		if err := png.Encode(croppedImageFile, croppedImage); err != nil {
+			log.Printf("error encoding cropped: %w", err)
+			return newUploadedPreview, err
+		}
+	}
+
+	// standard 25 page
+	if w == 3060 {
+		cropSize := image.Rect(12, 60, 2965, 3013)
+		croppedImage := originalImage.(SubImager).SubImage(cropSize)
+		code := GetToken(10)
+		croppedfilename = "./temp_photo/"+code+"_img.png"
+		newUploadedPreview = code+"_img.png"
+		croppedImageFile, err := os.Create(croppedfilename)
+		if err != nil {
+			log.Printf("error creating cropped: %w", err)
+			return newUploadedPreview, err
+		}
+
+		defer croppedImageFile.Close()
+		if err := png.Encode(croppedImageFile, croppedImage); err != nil {
+			log.Printf("error encoding cropped: %w", err)
+			return newUploadedPreview, err
+		}
+	}
+
+	// premium 20 page
+	if w == 2481 {
+		cropSize := image.Rect(0, 83, 2398, 2481)
+		croppedImage := originalImage.(SubImager).SubImage(cropSize)
+		code := GetToken(10)
+		croppedfilename = "./temp_photo/"+code+"_img.png"
+		newUploadedPreview = code+"_img.png"
+		croppedImageFile, err := os.Create(croppedfilename)
+		if err != nil {
+			log.Printf("error creating cropped: %w", err)
+			return newUploadedPreview, err
+		}
+
+		defer croppedImageFile.Close()
+		if err := png.Encode(croppedImageFile, croppedImage); err != nil {
+			log.Printf("error encoding cropped: %w", err)
+			return newUploadedPreview, err
+		}
+	}
+
+	// premium 25 page
+	if w == 3083 {
+		cropSize := image.Rect(0, 83, 3000, 3083)
+		croppedImage := originalImage.(SubImager).SubImage(cropSize)
+		code := GetToken(10)
+		croppedfilename = "./temp_photo/"+code+"_img.png"
+		newUploadedPreview = code+"_img.png"
+		croppedImageFile, err := os.Create(croppedfilename)
+		if err != nil {
+			log.Printf("error creating cropped: %w", err)
+			return newUploadedPreview, err
+		}
+
+		defer croppedImageFile.Close()
+		if err := png.Encode(croppedImageFile, croppedImage); err != nil {
+			log.Printf("error encoding cropped: %w", err)
+			return newUploadedPreview, err
+		}
+	}
+
+	// horizontal cover
+	if w == 3910 {
+		cropSize := image.Rect(0, 190, 3720, 2763)
+		croppedImage := originalImage.(SubImager).SubImage(cropSize)
+		code := GetToken(10)
+		croppedfilename = "./temp_photo/"+code+"_img.png"
+		newUploadedPreview = code+"_img.png"
+		croppedImageFile, err := os.Create(croppedfilename)
+		if err != nil {
+			log.Printf("error creating cropped: %w", err)
+			return newUploadedPreview, err
+		}
+
+		defer croppedImageFile.Close()
+		if err := png.Encode(croppedImageFile, croppedImage); err != nil {
+			log.Printf("error encoding cropped: %w", err)
+			return newUploadedPreview, err
+		}
+	}
+
+	// horizontal page
+	if w == 3686 {
+		cropSize := image.Rect(0, 83, 3603, 2481)
+		croppedImage := originalImage.(SubImager).SubImage(cropSize)
+		code := GetToken(10)
+		croppedfilename = "./temp_photo/"+code+"_img.png"
+		newUploadedPreview = code+"_img.png"
+		croppedImageFile, err := os.Create(croppedfilename)
+		if err != nil {
+			log.Printf("error creating cropped: %w", err)
+			return newUploadedPreview, err
+		}
+
+		defer croppedImageFile.Close()
+		if err := png.Encode(croppedImageFile, croppedImage); err != nil {
+			log.Printf("error encoding cropped: %w", err)
+			return newUploadedPreview, err
+		}
+	}
+
+
+	file, err := os.Open(croppedfilename)
+	if err != nil {
+		log.Printf("Failed to upload file %s", err)
+		return newUploadedPreview, err
+	}
+	defer file.Close()
+
+	// Read the contents of the file into a buffer
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, file)
+	if err != nil {
+		log.Printf("Failed to copy file %s", err)
+		return newUploadedPreview, err
+	}
+	newfolderName := "photo/" + filepath.Base(croppedfilename)
+	// This uploads the contents of the buffer to S3
+	_, err = config.Svc.PutObject(&s3.PutObjectInput{
+	Bucket: aws.String("55ad0489-946d2ae4-c74f-4d36-9b1a-b63081d8f869"),
+	Key:    aws.String(newfolderName),
+	Body:   bytes.NewReader(buf.Bytes()),
+	})
+	if err != nil {
+		log.Printf("Failed to upload file %s", err)
+		return newUploadedPreview, err
+    } else {
+			log.Println("successful upload")
+    }
+	err = os.Remove(ffilepath) 
+    if err != nil { 
+        log.Printf("Error happened in removing image after preview bucket upload. Err: %s", err)
+		return newUploadedPreview, err
+    } 
+	err = os.Remove(croppedfilename) 
+    if err != nil { 
+        log.Printf("Error happened in removing cropped image after preview bucket upload. Err: %s", err)
+		return newUploadedPreview, err
+    } 
+    return newUploadedPreview, nil
+}
+
 
 func bucketPdfUpload(filename string, timewebToken string) error {
 
@@ -328,6 +566,7 @@ func removeBackground(imgByte []byte, filename string, balaToken string) ([]byte
 	fileContents, err := ioutil.ReadAll(f)
 	if err != nil {
 		log.Printf("Failed to read file contents %s", err)
+		return nil, err
 	}
 
 	form := new(bytes.Buffer)
@@ -335,6 +574,7 @@ func removeBackground(imgByte []byte, filename string, balaToken string) ([]byte
 	fw, err := writer.CreateFormFile("mediaFile", filename)
 	if err != nil {
 		log.Printf("Failed to create form file %s", err)
+		return nil, err
 	}
 	fw.Write(fileContents)
 
@@ -344,18 +584,21 @@ func removeBackground(imgByte []byte, filename string, balaToken string) ([]byte
 	req, err := http.NewRequest("POST", "https://api.ba-la.ru/api/remove", form)
 	if err != nil {
 		log.Printf("Failed to create a request to bucket %s", err)
+		return nil, err
 	}
 	req.Header.Set("api-key", balaToken)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Printf("Failed to make a request to bala %s", err)
+		return nil, err
 	}
 	log.Println("response from bala")
 	log.Println(resp.StatusCode)
 	err = json.NewDecoder(resp.Body).Decode(&bResp)
 	if err != nil {
 		log.Printf("Failed to decode bala response %s", err)
+		return nil, err
 	}
 	log.Println(bResp)
 	balaLinkContainer := bResp[1]
@@ -372,10 +615,10 @@ func removeBackground(imgByte []byte, filename string, balaToken string) ([]byte
 	imgByte, err = io.ReadAll(resp.Body)
 	if err != nil {
 		log.Printf("Failed to get response from bala %s", err)
+		return nil, err
 	}
 	return imgByte, nil
 }
-
 
 func improveQuality(imgByte []byte, filename string, extention string, picsartToken string) ([]byte, error) {
 

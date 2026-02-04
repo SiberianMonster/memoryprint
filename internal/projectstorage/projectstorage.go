@@ -547,9 +547,9 @@ func DuplicateTemplate(ctx context.Context, storeDB *pgxpool.Pool, templateID ui
 		t,
 		t,
 		"EDITED",
-		"SMALL_SQUARE",
+		"SQUARE",
 		tCategory,
-		projectObj.Variant,
+		"STANDARD",
 		projectObj.CreatingSpineLink,
 		projectObj.PreviewSpineLink,
 	).Scan(&tID)
@@ -1035,15 +1035,19 @@ func RetrieveProjectPages(ctx context.Context, storeDB *pgxpool.Pool, projectID 
 				
 				if size == "HORIZONTAL" {
 					page.PreviewImageLink = horizontalImage
+					page.CreatingImageLink = horizontalImage
 				}
 				if size == "VERTICAL" {
 					page.PreviewImageLink = verticalImage
+					page.CreatingImageLink = verticalImage
 				}
 				if size == "SQUARE" {
 					page.PreviewImageLink = squareImage
+					page.CreatingImageLink = squareImage
 				}
 				if size == "SMALL_SQUARE" {
 					page.PreviewImageLink = smallsquareImage
+					page.CreatingImageLink = smallsquareImage
 				}
 				
 			}
@@ -2069,7 +2073,7 @@ func LoadPromocodeTemplates(ctx context.Context, storeDB *pgxpool.Pool, tcategor
 func LoadPublishedProjects(ctx context.Context, storeDB *pgxpool.Pool) ([]uint, error) {
 
 	var projectIDs []uint
-	rows, err := storeDB.Query(ctx, "SELECT orders_id FROM orders WHERE status IN ('AWAITING_PAYMENT', 'PAID');")
+	rows, err := storeDB.Query(ctx, "SELECT orders_id FROM orders WHERE status IN ('PAID');")
 	if err != nil {
 		log.Printf("Error happened when retrieving orders from pgx table. Err: %s", err)
 		return projectIDs, err
@@ -2211,7 +2215,7 @@ func GenerateImages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint, 
 	if slices.Contains(stringImages, "") {
 		log.Println("Need to generate images")
 		log.Println(projectID)
-		start_url :=  "https://front.memoryprint.dev.startup-it.ru/"
+		start_url :=  "https://memoryprint.ru/"
 		err = driver.Get(start_url)
 		if err != nil {
 			log.Printf("Error happened when opening start page. Err: %s", err)
@@ -2267,7 +2271,7 @@ func GenerateImages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint, 
 			return images, err
 		}
 		time.Sleep(10 * time.Second) 
-		url :=  "https://front.memoryprint.dev.startup-it.ru/preview/generate/" + strconv.Itoa(int(projectID))
+		url :=  "https://memoryprint.ru/preview/generate/" + strconv.Itoa(int(projectID))
 		err = driver.Get(url)
 		if err != nil {
 			log.Printf("Error happened when generating images for paid project. Err: %s", err)
@@ -2280,5 +2284,99 @@ func GenerateImages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint, 
 	}
 	
 	return images, nil
+
+}
+
+// GetPageNumber function performs the operation of retrieving photobook page type and order from pgx database with a query.
+func GetPageNumber(ctx context.Context, storeDB *pgxpool.Pool, filename string) (string, error) {
+
+	var stype string
+	var sort uint
+	var respString string
+	err = storeDB.QueryRow(ctx, "SELECT sort, type FROM pages WHERE preview_link = ($1);", filename).Scan(&sort, &stype)
+	if err != nil && err != pgx.ErrNoRows{
+			log.Printf("Error happened when retrieving cover from pgx table. Err: %s", err)
+			return "", err
+	}
+	if stype == "page" {
+		sortString := strconv.FormatUint(uint64(sort), 10)
+		respString = stype +"_"+sortString
+	} else {
+		respString = stype
+	}
+	return respString, nil
+}
+
+
+// RetrievePublishedTemplatesIDs function performs the operation of retrieving templates from pgx database with a query.
+func RetrievePublishedTemplatesIDs(ctx context.Context, storeDB *pgxpool.Pool) ([]uint, error) {
+
+	var templateIDs []uint
+
+	rows, err := storeDB.Query(ctx, "SELECT templates_id FROM templates WHERE status = ($1);", "PUBLISHED")
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			log.Printf("Error happened when retrieving templates from pgx table. Err: %s", err)
+			return templateIDs, err
+	}
+	defer rows.Close()
+	
+	for rows.Next() {
+		var tID uint
+		if err = rows.Scan(&tID); err != nil {
+				log.Printf("Error happened when scanning projects. Err: %s", err)
+				return templateIDs, err
+		}
+		templateIDs = append(templateIDs, tID)
+
+	}
+	return templateIDs, err
+}
+
+// RetrieveTemplatePreviewPages function performs the operation of retrieving a photobook preview pages from pgx database with a query.
+func RetrieveTemplatePreviewPages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint) ([]models.TemplatePage, error) {
+
+	var imagesToGenerate []models.TemplatePage
+	rows, err := storeDB.Query(ctx, "SELECT pages_id, preview_link, template_preview FROM pages WHERE projects_id = ($1) AND is_template = ($2) ORDER BY sort;", projectID, true)
+	if err != nil {
+		log.Printf("Error happened when retrieving pages from pgx table. Err: %s", err)
+		return imagesToGenerate, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var page models.TemplatePage
+	
+		if err = rows.Scan(&page.PageID, &page.PreviewImageLink, &page.CreatingImageLink); err != nil {
+			log.Printf("Error happened when scanning pages. Err: %s", err)
+			return imagesToGenerate, err
+		}
+
+		if err != nil {
+			log.Printf("Error happened when setting empty value for preview link. Err: %s", err)
+			return imagesToGenerate, err
+		}
+		if page.CreatingImageLink == nil {
+			imagesToGenerate = append(imagesToGenerate, page)
+
+		} 
+	}
+	
+	return imagesToGenerate, nil
+
+}
+
+// SaveTemplatePagePreview function performs the operation of updating template preview image to the db.
+func SaveTemplatePagePreview(ctx context.Context, storeDB *pgxpool.Pool, newS string, pID uint) (error) {
+
+	_, err = storeDB.Exec(ctx, "UPDATE pages SET template_preview = ($1) WHERE pages_id = ($2);",
+		newS,
+		pID,
+	)
+	if err != nil {
+		log.Printf("Error happened when updating project template preview into pgx table. Err: %s", err)
+		return err
+	}
+	
+	return nil
 
 }

@@ -653,7 +653,7 @@ func CheckPromocode(ctx context.Context, storeDB *pgxpool.Pool, code string, use
 		return promooffer, status, nil
 	}
 	if code == "WELCOME10" {
-		err := storeDB.QueryRow(ctx, "SELECT EXISTS (SELECT * FROM orders WHERE users_id = ($1) AND status IN ('AWAITING_PAYMENT', 'PAYMENT_IN_PROGRESS', 'PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY', 'COMPLETED));", usersID).Scan(&checkWelcome)
+		err := storeDB.QueryRow(ctx, "SELECT EXISTS (SELECT * FROM orders WHERE users_id = ($1) AND status IN ('PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY', 'COMPLETED'));", usersID).Scan(&checkWelcome)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			log.Printf("Error happened when retrieving welcome promooffer data from the db. Err: %s", err)
 			return promooffer, status, err

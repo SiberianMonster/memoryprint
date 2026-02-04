@@ -237,7 +237,7 @@ func CalculateDelivery(OrderObj models.RequestDeliveryCost) (models.ApiResponseD
 	accessToken, _ := AuthorizeDelivery()
 
 	
-	calculateURL := "https://api.edu.cdek.ru/v2/calculator/tariff"
+	calculateURL := "https://api.cdek.ru/v2/calculator/tariff"
 	bodyBytes, _ := json.Marshal(OrderObj)
 	body := bytes.NewBuffer(bodyBytes)
 	log.Println(body)
@@ -351,7 +351,7 @@ func OrderDelivery(orderID uint) (error) {
 	delivery.Packages = packages
 
 	
-	orderURL := "https://api.edu.cdek.ru/v2/orders"
+	orderURL := "https://api.cdek.ru/v2/orders"
 	bodyBytes, _ := json.Marshal(orderURL)
 	body := bytes.NewBuffer(bodyBytes)
 	log.Println(body)

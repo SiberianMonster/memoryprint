@@ -42,8 +42,8 @@ func CreateTransaction(orderID uint, finalPrice float64, goodType string) (strin
     }
 	rand.Seed(time.Now().UnixNano())
 	uniqueNumber := goodType + strconv.Itoa(int(orderID)) + "attempt" + randomString(8)
-	successURL := "https://front.memoryprint.dev.startup-it.ru/payment/success?id=" + strconv.Itoa(int(orderID))
-	failureURL := "https://front.memoryprint.dev.startup-it.ru/payment/fail?id=" + strconv.Itoa(int(orderID))
+	successURL := "https://memoryprint.ru/payment/success?id=" + strconv.Itoa(int(orderID))
+	failureURL := "https://memoryprint.ru/payment/fail?id=" + strconv.Itoa(int(orderID))
     queryValues := url.Values{}
     queryValues.Add("userName", config.BankUsername)
     queryValues.Add("password", config.BankPassword)

@@ -2584,6 +2584,8 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 					for _, v := range images {
 						stringImages = append(stringImages, v.PreviewImageLink)
 					}
+					log.Println("Images for generation")
+					log.Println(stringImages)
 					if !slices.Contains(stringImages, "") {
 						var variant string
 						log.Println("Trying to create folder")
@@ -2605,7 +2607,9 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 
 	for range ticker.C {
 		var projectIDs []uint
-		projectIDs = append(projectIDs,452)
+		//projectIDs = append(projectIDs,538)
+		//projectIDs = append(projectIDs,539)
+		
 		cmd := exec.Command("bash", "-c", "pkill chrome")
 		stdout, err := cmd.Output()
 		
@@ -2623,12 +2627,13 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 		}
 
 		log.Println(string(stdout))
-		// projectIDs, err = projectstorage.LoadPublishedProjects(ctx, storeDB)
+		//projectIDs, err = projectstorage.LoadPublishedProjects(ctx, storeDB)
 		//if err != nil {
 		//	log.Printf("Error happened when retrieving published projects. Err: %s", err)
 		//	continue
 		//}
-		
+		projectIDs = append(projectIDs,555)
+		projectIDs = append(projectIDs,632)
 		log.Println(projectIDs)
 		
 		for _, project := range projectIDs {
@@ -2685,3 +2690,86 @@ func AddExtraPageTempFix(rw http.ResponseWriter, r *http.Request) {
 	}
 	rw.Write(jsonResp)
 }
+
+func GetPageNumber(rw http.ResponseWriter, r *http.Request) {
+
+	resp := make(map[string]string)
+	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+	defer cancel()
+	image := mux.Vars(r)["filename"]
+	defer r.Body.Close()
+
+	pageName, err := projectstorage.GetPageNumber(ctx, config.DB, image)
+
+	if err != nil {
+		handlersfunc.HandleDatabaseServerError(rw)
+		return
+	}
+
+	rw.WriteHeader(http.StatusOK)
+	resp["response"] = pageName
+	jsonResp, err := json.Marshal(resp)
+	if err != nil {
+		log.Printf("Error happened in JSON marshal. Err: %s", err)
+		return
+	}
+	rw.Write(jsonResp)
+}
+
+func GeneratePreviewTemplateLinks(ctx context.Context, storeDB *pgxpool.Pool) {
+
+	ticker := time.NewTicker(config.UpdateInterval*4)
+	//var err error
+	
+
+	jobCh := make(chan uint)
+	for i := 0; i < config.WorkersCount; i++ {
+		go func() {
+			for job := range jobCh {
+			    if job > 96 {
+    				var missingPreview []models.TemplatePage
+    				var previewCropped string 
+    				missingPreview, err = projectstorage.RetrieveTemplatePreviewPages(ctx, storeDB, job)
+    				log.Println(missingPreview)
+    				if err != nil {
+    						log.Printf("Error happened when generating template preview. Err: %s", err)
+    						continue
+    				}
+    				for _, image := range missingPreview {
+    						previewCropped, err = imagehandlers.CreateCroppedPreview(*image.PreviewImageLink) 
+    						if err != nil {
+    								log.Printf("Error happened when cropped template preview. Err: %s", err)
+    								continue
+    						}
+    						err = projectstorage.SaveTemplatePagePreview(ctx, storeDB, previewCropped, image.PageID)
+    						if err != nil {
+    								log.Printf("Error happened when saving cropped template preview. Err: %s", err)
+    								continue
+    						}
+    
+    					}
+			    }
+    				
+    				
+			}
+		}()
+	}
+
+	for range ticker.C {
+		var projectIDs []uint
+		log.Println("started cropping")
+		projectIDs, err = projectstorage.RetrievePublishedTemplatesIDs(ctx, storeDB)
+		if err != nil {
+			log.Printf("Error happened when retrieving published templates ids. Err: %s", err)
+			continue
+		}
+		
+		log.Println(projectIDs)
+
+		for _, project := range projectIDs {
+				jobCh <- project
+
+			}
+	}
+}
+

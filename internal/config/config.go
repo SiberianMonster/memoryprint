@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/aws/aws-sdk-go/service/s3"
 )
 
 type contextKey string
@@ -53,6 +54,7 @@ var DeliveryClientID string
 var DeliverySecret string
 var EncryptionString string
 var PicsartToken string
+var Svc *s3.S3
 
 func GetEnv(key string, fallback *string) *string {
 	if value, ok := os.LookupEnv(key); ok {

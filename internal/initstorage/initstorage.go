@@ -364,6 +364,12 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 	//		log.Printf("Error happened when creating subscription column. Err: %s", err)
 	//		return nil, false
 	//}
+	
+	//_, err = db.Exec(ctx, "ALTER TABLE pages ADD COLUMN template_preview varchar;")
+	//////if err != nil {
+	////		log.Printf("Error happened when creating template preview column. Err: %s", err)
+	//		return nil, false
+	//}
 
 
 

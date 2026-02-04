@@ -246,6 +246,15 @@ func OrderPayment(rw http.ResponseWriter, r *http.Request) {
 	}
 	if OrderObj.Promocode != "" {
 		var status string
+		
+		if OrderObj.Promocode == "WELCOME10" {
+			var checkBool bool
+			checkBool = orderstorage.CheckCompletedOrder(ctx, config.DB, userID)
+			if checkBool {
+				handlersfunc.HandleAlreadyUsedError(rw)
+				return
+			}
+		}
 		_, status, err = userstorage.CheckPromocode(ctx, config.DB, OrderObj.Promocode, userID)
 		if err != nil {
 			handlersfunc.HandleDatabaseServerError(rw)

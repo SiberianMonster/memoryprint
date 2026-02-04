@@ -581,7 +581,7 @@ func CancelPayment(ctx context.Context, storeDB *pgxpool.Pool, orderID uint, use
 		return err
 	}
 
-	err = storeDB.QueryRow(ctx, "SELECT transaction_id FROM orders_has_transactions WHERE orders_id = ($1) ORDER BY transactions_id DESC LIMIT 1;", orderID).Scan(&transactionID)
+	err = storeDB.QueryRow(ctx, "SELECT transactions_id FROM orders_has_transactions WHERE orders_id = ($1) ORDER BY transactions_id DESC LIMIT 1;", orderID).Scan(&transactionID)
 	if err = rows.Err(); err != nil {
 		log.Printf("Error happened when retrieving transaction info from pgx table. Err: %s", err)
 		return err
@@ -1476,12 +1476,20 @@ func UpdateUnSuccessfulTransaction(ctx context.Context, storeDB *pgxpool.Pool, o
 			log.Printf("Error happened when scanning project ID. Err: %s", err)
 			return err
 		}
-		_, err = storeDB.Exec(ctx, "INSERT INTO orders_has_projects (orders_id, projects_id) VALUES ($1, $2);",
+		var existAwaiting bool 
+		err = storeDB.QueryRow(ctx, "SELECT CASE WHEN EXISTS (SELECT * FROM orders_has_projects WHERE orders_id = ($1) AND projects_id = ($2)) THEN TRUE ELSE FALSE END;", awaitedOrderID, projectID).Scan(&existAwaiting)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			log.Printf("Error happened when checking if project active. Err: %s", err)
+			return err
+		}
+		if !existAwaiting {
+			_, err = storeDB.Exec(ctx, "INSERT INTO orders_has_projects (orders_id, projects_id) VALUES ($1, $2);",
 			awaitedOrderID,
 			projectID) 
-		if err != nil {
-				log.Printf("Error happened when rolling back project to draft order into pgx table. Err: %s", err)
-				return err
+			if err != nil {
+					log.Printf("Error happened when rolling back project to draft order into pgx table. Err: %s", err)
+					return err
+			}
 		}
 	}
 	
@@ -1629,5 +1637,19 @@ func LoadPaymentInProgressOrders(ctx context.Context, storeDB *pgxpool.Pool) ([]
 	return orders, nil
 
 }
+
+// CheckCompletedOrder function performs the operation of checking if user already has completed orders from pgx database with a query.
+func CheckCompletedOrder(ctx context.Context, storeDB *pgxpool.Pool, userID uint) bool {
+
+	var statusExists bool
+	err = storeDB.QueryRow(ctx, "SELECT CASE WHEN EXISTS (SELECT * FROM orders WHERE users_id = ($1) AND status IN ('PAID', 'IN_PRINT', 'READY_FOR_DELIVERY', 'IN_DELIVERY', 'COMPLETED')) THEN TRUE ELSE FALSE END;", userID).Scan(&statusExists)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		log.Printf("Error happened when checking if order exists. Err: %s", err)
+		return false
+	}
+
+	return statusExists
+}
+
 
 
