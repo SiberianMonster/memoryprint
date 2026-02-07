@@ -9,7 +9,7 @@ import (
 	
 	"github.com/SiberianMonster/memoryprint/internal/config"
 	"github.com/SiberianMonster/memoryprint/internal/emailutils"
-	"github.com/SiberianMonster/memoryprint/internal/fixturestorage"
+	//"github.com/SiberianMonster/memoryprint/internal/fixturestorage"
 	"github.com/SiberianMonster/memoryprint/internal/models"
 	"github.com/SiberianMonster/memoryprint/internal/userstorage"
 	"github.com/SiberianMonster/memoryprint/internal/projectstorage"
@@ -899,26 +899,26 @@ func SentGiftCertificateMail(ctx context.Context, storeDB *pgxpool.Pool) {
 	}
 }
 
-func RenewFixtures(rw http.ResponseWriter, r *http.Request) {
+//func RenewFixtures(rw http.ResponseWriter, r *http.Request) {
+//
+////	resp := make(map[string]uint)
+//	
 
-	resp := make(map[string]uint)
-	
-
-	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
-	defer cancel()
-	err := fixturestorage.RenewFixtures(ctx, config.DB)
-		
-	if err != nil {
-		handlersfunc.HandleDatabaseServerError(rw)
-		return
-	}
-
-    
-	rw.WriteHeader(http.StatusOK)
-	resp["response"] = 1
-	jsonResp, err := json.Marshal(resp)
-	if err != nil {
-		return
-	}
-	rw.Write(jsonResp)
-}
+//	ctx, cancel := context.WithTimeout(r.Context(), config.ContextDBTimeout)
+//	defer cancel()
+//	err := fixturestorage.RenewFixtures(ctx, config.DB)
+//		
+//	if err != nil {
+////		handlersfunc.HandleDatabaseServerError(rw)
+//		return
+//	}
+//
+ //   
+//	rw.WriteHeader(http.StatusOK)
+//	resp["response"] = 1
+//	jsonResp, err := json.Marshal(resp)
+//	if err != nil {
+//		return
+//	}
+//	rw.Write(jsonResp)
+//}
