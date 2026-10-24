@@ -747,21 +747,21 @@ func LoadImage(rw http.ResponseWriter, r *http.Request) {
 	filename = "./temp_photo/"+code+"_img."+imageObj.Extention
 	log.Println(filename)
 	
-	if imageObj.RemoveBackground && imageObj.Extention != "svg" {
-		filename = "./temp_photo/"+code+"_img.png"
-
-		imageObj.Image, err = removeBackground(imageObj.Image, filename, config.BalaToken)
-		if err != nil {
-			log.Printf("Error happened in removing image background. Err: %s", err)
-			handlersfunc.HandleRemoveBackgroundError(rw)
-			return
-		}
-	}
+	//if imageObj.RemoveBackground && imageObj.Extention != "svg" {
+	//	filename = "./temp_photo/"+code+"_img.png"
+   // 
+	//	imageObj.Image, err = removeBackground(imageObj.Image, filename, config.BalaToken)
+	//	if err != nil {
+	//		log.Printf("Error happened in removing image background. Err: %s", err)
+	//		handlersfunc.HandleRemoveBackgroundError(rw)
+	//		return
+	//	}
+	//}
 	log.Println("removed image background")
-	imageObj.Image, err = improveQuality(imageObj.Image, filename, imageObj.Extention, config.PicsartToken)
-	if err != nil {
-		log.Printf("Error happened in improving image quality. Err: %s", err)
-	}
+	//imageObj.Image, err = improveQuality(imageObj.Image, filename, imageObj.Extention, config.PicsartToken)
+	//if err != nil {
+	//	log.Printf("Error happened in improving image quality. Err: %s", err)
+	//}
 	
 	err = bucketUpload(imageObj.Image, filename, config.TimewebToken)
 	if err != nil {
@@ -941,6 +941,7 @@ func CreateProjectFolder(images []models.ExportPage, pID uint) {
 		log.Printf("Failed to create a request to bucket %s", err)
 		log.Println(pID)
 	}
+	log.Println(config.TimewebToken)
 	req.Header.Set("Authorization", "Bearer " + config.TimewebToken)
 	req.Header.Set("Content-Type","application/json")
 	resp, err := client.Do(req)
@@ -950,6 +951,8 @@ func CreateProjectFolder(images []models.ExportPage, pID uint) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
+	        bodyBytes, err := io.ReadAll(resp.Body)
+	        log.Println(string(bodyBytes))
             log.Println(resp.StatusCode)
 			log.Printf("Failed to make a request to bucket %s", err)
 			log.Println(pID)
@@ -1067,6 +1070,8 @@ func CheckProjectFolder(pID uint) bool {
 	urlCheck := "https://api.timeweb.cloud/api/v1/storages/buckets/225285/object-manager/list?prefix=" + folderName + "/"
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", urlCheck, nil)
+	log.Println(urlCheck)
+	log.Println(config.TimewebToken)
 	if err != nil {
 		log.Printf("Failed to create a request to bucket %s", err)
 		log.Println(pID)
@@ -1082,6 +1087,8 @@ func CheckProjectFolder(pID uint) bool {
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
             log.Println(resp.StatusCode)
+            bodyBytes, err := io.ReadAll(resp.Body)
+	        log.Println(string(bodyBytes))
 			log.Printf("Failed to make a request to bucket %s", err)
 			log.Println(pID)
 			return true

@@ -32,6 +32,11 @@ import (
 	"github.com/SiberianMonster/memoryprint/internal/transactions"
 	rotatelogs "github.com/lestrrat/go-file-rotatelogs"
 	"fmt"
+	
+	"github.com/aws/aws-sdk-go/aws"
+    "github.com/aws/aws-sdk-go/aws/session"
+    "github.com/aws/aws-sdk-go/service/s3"
+    "github.com/aws/aws-sdk-go/aws/credentials"
 
 	"github.com/gorilla/mux"
 	// "github.com/rs/cors"
@@ -46,7 +51,7 @@ import (
 )
 
 var err error
-var host, connStr, accrualStr, adminEmail, yandexKey, timewebToken, balaToken, picsartToken, imageHost, bankDomain, bankuserName, bankPassword, deliveryDomain, deliveryClientID, deliverySecret, encryptionString *string
+var host, connStr, accrualStr, adminEmail, yandexKey, timewebToken, balaToken, picsartToken, imageHost, bankDomain, bankuserName, bankPassword, deliveryDomain, deliveryClientID, deliverySecret, encryptionString, awsAccesskey, awsSecretkey *string
 var db *pgxpool.Pool
 
 func init() {
@@ -73,6 +78,8 @@ func init() {
 	deliveryClientID = config.GetEnv("DELIVERY_CLIENTID", flag.String("deliveryClientID", section.Key("deliveryclientid").String(), "DELIVERY_CLIENTID"))
 	deliverySecret = config.GetEnv("DELIVERY_SECRET", flag.String("deliverySecret", section.Key("deliverysecret").String(), "DELIVERY_SECRET"))
 	encryptionString = config.GetEnv("ENCRYPTION_STRING", flag.String("encryptionString", section.Key("encryptionstring").String(), "ENCRYPTION_STRING"))
+	awsAccesskey = config.GetEnv("AWS_ACCESS_KEY", flag.String("awsAccesskey", section.Key("awsaccesskey").String(), "AWS_ACCESS_KEY"))
+    awsSecretkey = config.GetEnv("AWS_SECRET_KEY", flag.String("awsSecretKey", section.Key("awssecretKey").String(), "AWS_SECRET_KEY"))
 
 }
 
@@ -131,6 +138,20 @@ func main() {
 	config.DeliveryClientID = *deliveryClientID
 	config.DeliverySecret = *deliverySecret
 	config.EncryptionString = *encryptionString
+	
+	creds := credentials.NewStaticCredentials(*awsAccesskey, *awsSecretkey, "")
+
+    sess, err := session.NewSession(&aws.Config{
+        Credentials: creds,
+        Endpoint:    aws.String("https://s3.twcstorage.ru"),
+        Region:      aws.String("ru-1"),
+    })
+
+    if err != nil {
+               fmt.Println("Error creating session:", err)
+               return
+    }
+    config.Svc = s3.New(sess)
 
 	go orderhandlers.SentOrdersToPrint(ctx, config.DB)
 	//go userhandlers.SentGiftCertificateMail(ctx, config.DB)
@@ -138,6 +159,8 @@ func main() {
 	// go update transaction status
 	go transactions.RoutineUpdateTransactionsStatus(ctx, config.DB)
 	go projecthandlers.GenerateCreatingImageLinks(ctx, config.DB) 
+	//go projecthandlers.GeneratePreviewTemplateLinks(ctx, config.DB) 
+	//go projecthandlers.ImageDeletionWorker(config.DB)
 
 	router := mux.NewRouter()
 	router.Use(middleware.MiddlewareCORSHeaders)
@@ -206,6 +229,7 @@ func main() {
 	adminRouter.HandleFunc("/api/v1/admin/create-background", projecthandlers.AdminCreateBackground).Methods("POST","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/create-decoration", projecthandlers.AdminCreateDecoration).Methods("POST","OPTIONS")
 	adminRouter.HandleFunc("/api/v1/admin/create-layout", projecthandlers.AdminCreateLayout).Methods("POST","OPTIONS")
+	adminRouter.HandleFunc("/api/v1/admin/get-page-number/{filename}", projecthandlers.GetPageNumber).Methods("POST","OPTIONS")
 
 	adminRouter.HandleFunc("/api/v1/admin/duplicate-layout", projecthandlers.DuplicateLayout).Methods("POST","OPTIONS")
 

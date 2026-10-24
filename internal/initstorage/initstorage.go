@@ -150,6 +150,7 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 	
 	}
 
+
 	// photoalbums table
 	_, err = db.Exec(ctx,
 		"CREATE TABLE IF NOT EXISTS albums (albums_id int GENERATED ALWAYS AS IDENTITY PRIMARY KEY, name varchar, last_edited_at timestamp NOT NULL, created_at timestamp NOT NULL, users_id int REFERENCES users(users_id))")
@@ -167,6 +168,16 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 		return nil, false
 
 	}
+	
+	// update pages
+    _, err = db.Exec(ctx,
+			"UPDATE pages SET data = REPLACE(data, 'https://front.memoryprint.dev.startup-it.ru/','https://memoryprint.ru/')")
+    if err != nil {
+			log.Printf("Error happened when updating pages table. Err: %s", err)
+			return nil, false
+	
+    }
+
 
 	// mapping photobooks and users with editing permission
 	_, err = db.Exec(ctx,
@@ -370,6 +381,15 @@ func SetUpDBConnection(ctx context.Context, connStr *string) (*pgxpool.Pool, boo
 	////		log.Printf("Error happened when creating template preview column. Err: %s", err)
 	//		return nil, false
 	//}
+	
+	// queue for deleting old images
+	_, err = db.Exec(ctx,
+	"CREATE TABLE IF NOT EXISTS image_deletion_queue (id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, image_url VARCHAR NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT NOW(),attempts INT NOT NULL DEFAULT 0,last_error VARCHAR)")
+	if err != nil {
+				log.Printf("Error happened when creating image_deletion_queue table. Err: %s", err)
+				return nil, false
+	
+	}
 
 
 

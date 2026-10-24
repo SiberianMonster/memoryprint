@@ -33,11 +33,11 @@ func makeRange(min, max int) []int {
     return a
 }
 func DeleteImage(filename string) error {
-	if filename != "" {
+	if filename != "" && len(filename) < 100 {
 
-		newStr := `{"source":["`+filename+`"]}`
+		newStr := `{"source":["photo/`+filename+`"]}`
 		var data = strings.NewReader(newStr)
-		req, err := http.NewRequest("DELETE", "https://api.timeweb.cloud/api/v1/storages/buckets/1051/object-manager/remove", data)
+		req, err := http.NewRequest("DELETE", "https://api.timeweb.cloud/api/v1/storages/buckets/225285/object-manager/remove", data)
 		if err != nil {
 			return err
 		}
@@ -49,7 +49,8 @@ func DeleteImage(filename string) error {
 			return err
 		}
 		defer resp.Body.Close()
-		if resp.StatusCode != 204 {
+		if resp.StatusCode != 204 && resp.StatusCode != 413 {
+		    log.Println(newStr)
 			log.Println(resp.StatusCode)
 			err = errors.New("error deleting image from bucket")
 			return err
@@ -547,7 +548,7 @@ func DuplicateTemplate(ctx context.Context, storeDB *pgxpool.Pool, templateID ui
 		t,
 		t,
 		"EDITED",
-		"SQUARE",
+		"SMALL_SQUARE",
 		tCategory,
 		"STANDARD",
 		projectObj.CreatingSpineLink,
@@ -1075,7 +1076,6 @@ func RetrieveProjectPages(ctx context.Context, storeDB *pgxpool.Pool, projectID 
 			page.UsedPhotoIDs = append(page.UsedPhotoIDs, photoID)
 
 		}
-		log.Println(page)
 		pageslice = append(pageslice, page)
 	}
 
@@ -1224,35 +1224,56 @@ func RetrieveTemplateFrontPage(ctx context.Context, storeDB *pgxpool.Pool, proje
 func SavePage(ctx context.Context, storeDB *pgxpool.Pool, page models.SavePage) (error) {
 
 	strdata := string(page.Data)
-	var oldImage string
-	var imageHolder *string
-	err := storeDB.QueryRow(ctx, "SELECT creating_image_link FROM pages WHERE pages_id = ($1);", page.PageID).Scan(&imageHolder)
-	if err != nil && err != pgx.ErrNoRows{
-		log.Printf("Error happened when retrieving old image from pgx table. Err: %s", err)
-		return err
-	}
-	if imageHolder != nil {
-		oldImage = *imageHolder
-		err = DeleteImage(oldImage) 
-		if err != nil {
-			log.Printf("Error happened when deleting image from bucket. Err: %s", err)
-		}
-	}
-	err = storeDB.QueryRow(ctx, "SELECT preview_link FROM pages WHERE pages_id = ($1);", page.PageID).Scan(&imageHolder)
-	if err != nil && err != pgx.ErrNoRows{
-		log.Printf("Error happened when retrieving old image from pgx table. Err: %s", err)
-		return err
-	}
-	if imageHolder != nil {
-		oldImage = *imageHolder
-		err = DeleteImage(oldImage) 
-		if err != nil {
-			log.Printf("Error happened when deleting image from bucket. Err: %s", err)
-		}
-	}
+	//var oldImage string
+	//var imageHolder *string
+	//err := storeDB.QueryRow(ctx, "SELECT creating_image_link FROM pages WHERE pages_id = ($1);", page.PageID).Scan(&imageHolder)
+	//if err != nil && err != pgx.ErrNoRows{
+	//	log.Printf("Error happened when retrieving old image from pgx table. Err: %s", err)
+	//}
+	//if imageHolder != nil {
+	//	oldImage = *imageHolder
+	//	err = DeleteImage(oldImage) 
+	//	if err != nil {
+	//		log.Printf("Error happened when deleting image from bucket. Err: %s", err)
+	//	}
+	//}
+	//err = storeDB.QueryRow(ctx, "SELECT preview_link FROM pages WHERE pages_id = ($1);", page.PageID).Scan(&imageHolder)
+	//if err != nil && err != pgx.ErrNoRows{
+	//	log.Printf("Error happened when retrieving old image from pgx table. Err: %s", err)
+	//}
+	//if imageHolder != nil {
+	//	oldImage = *imageHolder
+	//	err = DeleteImage(oldImage) 
+	//	if err != nil {
+	//		log.Printf("Error happened when deleting image from bucket. Err: %s", err)
+	//	}
+	//}
 	
 	
-	_, err = storeDB.Exec(ctx, "UPDATE pages SET preview_link = ($1), creating_image_link = ($2), data = ($3) WHERE pages_id = ($4);",
+	tx, err := storeDB.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	var oldPreview *string
+	var oldCreating *string
+
+	err = tx.QueryRow(
+		ctx,
+		`
+		SELECT preview_link, creating_image_link
+		FROM pages
+		WHERE pages_id = $1
+		`,
+		page.PageID,
+	).Scan(&oldPreview, &oldCreating)
+
+	if err != nil {
+		return err
+	}
+	
+		_, err = storeDB.Exec(ctx, "UPDATE pages SET preview_link = ($1), creating_image_link = ($2), data = ($3) WHERE pages_id = ($4);",
 	page.PreviewImageLink,
 	page.CreatingImageLink,
 	strdata,
@@ -1263,6 +1284,46 @@ func SavePage(ctx context.Context, storeDB *pgxpool.Pool, page models.SavePage) 
 		return err
 	}
 	
+	
+	// Queue old preview only if it actually changed.
+	if oldPreview != nil &&
+		*oldPreview != "" &&
+		oldPreview != page.PreviewImageLink {
+
+		_, err = tx.Exec(
+			ctx,
+			`
+			INSERT INTO image_deletion_queue (image_url)
+			VALUES ($1)
+			`,
+			*oldPreview,
+		)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	// Same for creating image.
+	if oldCreating != nil &&
+		*oldCreating != "" &&
+		oldCreating != page.CreatingImageLink {
+
+		_, err = tx.Exec(
+			ctx,
+			`
+			INSERT INTO image_deletion_queue (image_url)
+			VALUES ($1)
+			`,
+			*oldCreating,
+		)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit(ctx)
 	return nil
 
 }
@@ -1972,6 +2033,29 @@ func UpdateSurface(ctx context.Context, storeDB *pgxpool.Pool, pID uint, newS mo
 // SaveSpine function performs the operation of updating project spine to the db.
 func SaveSpine(ctx context.Context, storeDB *pgxpool.Pool, newS models.SavedSpine, pID uint) (error) {
 
+	tx, err := storeDB.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	var oldPreview *string
+	var oldCreating *string
+
+	err = tx.QueryRow(
+		ctx,
+		`
+		SELECT preview_spine_link, creating_spine_link
+		FROM projects
+		WHERE projects_id = $1
+		`,
+		pID,
+	).Scan(&oldPreview, &oldCreating)
+
+	if err != nil {
+		return err
+	}
+	
 	_, err = storeDB.Exec(ctx, "UPDATE projects SET creating_spine_link = ($1), preview_spine_link = ($2) WHERE projects_id = ($3);",
 		newS.CreatingSpineLink,
 		newS.PreviewSpineLink,
@@ -1982,8 +2066,47 @@ func SaveSpine(ctx context.Context, storeDB *pgxpool.Pool, newS models.SavedSpin
 		return err
 	}
 	
-	return nil
+	
+	// Queue old preview only if it actually changed.
+	if oldPreview != nil &&
+		*oldPreview != "" &&
+		oldPreview != newS.PreviewSpineLink {
 
+		_, err = tx.Exec(
+			ctx,
+			`
+			INSERT INTO image_deletion_queue (image_url)
+			VALUES ($1)
+			`,
+			*oldPreview,
+		)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	// Same for creating image.
+	if oldCreating != nil &&
+		*oldCreating != "" &&
+		oldCreating != newS.CreatingSpineLink {
+
+		_, err = tx.Exec(
+			ctx,
+			`
+			INSERT INTO image_deletion_queue (image_url)
+			VALUES ($1)
+			`,
+			*oldCreating,
+		)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit(ctx)
+	
 }
 
 // SaveTemplateSpine function performs the operation of updating template spine to the db.
@@ -2233,7 +2356,7 @@ func GenerateImages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint, 
 			return images, err
 		}
 		time.Sleep(10 * time.Second) 
-		email_element, err := driver.FindElement(selenium.ByXPATH, "/html/body/div[4]/div/div/div/div/div/div/div/div/div[2]/div/div[1]/input")
+		email_element, err := driver.FindElement(selenium.ByXPATH, "//*[@id='templateModal']/div/div/div/div/div/div[2]/div/div[1]/input")
 		if err != nil {
 			log.Printf("Error finding element:", err)
 			return images, err
@@ -2245,7 +2368,7 @@ func GenerateImages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint, 
 			log.Printf("Error sending keys:", err)
 			return images, err
 		}
-		pwd_element, err := driver.FindElement(selenium.ByXPATH, "/html/body/div[4]/div/div/div/div/div/div/div/div/div[2]/div/div[2]/input")
+		pwd_element, err := driver.FindElement(selenium.ByXPATH, "//*[@id='templateModal']/div/div/div/div/div/div[2]/div/div[2]/input")
 		if err != nil {
 			log.Printf("Error finding element:", err)
 			return images, err
@@ -2259,7 +2382,7 @@ func GenerateImages(ctx context.Context, storeDB *pgxpool.Pool, projectID uint, 
 		}
 
 		// Find and click a button
-		button, err := driver.FindElement(selenium.ByXPATH, "/html/body/div[4]/div/div/div/div/div/div/div/div/div[2]/div/button")
+		button, err := driver.FindElement(selenium.ByXPATH, "//*[@id='templateModal']/div/div/div/div/div/div[2]/div/button")
 		if err != nil {
 			log.Printf("Error finding button:", err)
 			return images, err

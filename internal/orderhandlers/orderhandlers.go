@@ -892,23 +892,24 @@ func CalculateDelivery(rw http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 	if rCost.Method == "DOOR" {
-		rApiCost.TariffCode = 139
+		rApiCost.TariffCode = 482
 	} else if rCost.Method == "POSTAMAT" {
-		rApiCost.TariffCode = 138
+		rApiCost.TariffCode = 486
 	} else if rCost.Method == "PVZ" {
-		rApiCost.TariffCode = 138
+		rApiCost.TariffCode = 483
 	}
 
 	toLoc.Address = rCost.Address
 	toLoc.PostalCode = rCost.PostalCode
 	toLoc.City = rCost.City
 	rApiCost.ToLocation = toLoc
-
-	p.Weight = (300 * rCost.CountProjects)
-	p.Height = 3 * rCost.CountProjects
-	p.Width = 30 
-	p.Length = 30 
-	rApiCost.Packages = append(rApiCost.Packages, p)
+    for i := 0; i < rCost.CountProjects; i++ {
+    	p.Weight = 2500
+    	p.Height = 10
+    	p.Width = 38 
+    	p.Length = 38 
+    	rApiCost.Packages = append(rApiCost.Packages, p)
+    }
 	fromLoc.PostalCode = "141016"
 	fromLoc.City = "Мытищи"
 	fromLoc.Address = "Тенистый бульвар, 11"

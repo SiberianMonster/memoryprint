@@ -2136,7 +2136,7 @@ func ShareLink(rw http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("Sharing preview link for project %d",pID)
 
-	previewLink := "https://front.memoryprint.dev.startup-it.ru/preview/" + mux.Vars(r)["id"]
+	previewLink := "https://memoryprint.ru/preview/" + mux.Vars(r)["id"]
 	// Send email with the link
 	from := "support@memoryprint.ru"
 	to := []string{ViewerObj.Email}
@@ -2607,7 +2607,8 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 
 	for range ticker.C {
 		var projectIDs []uint
-		//projectIDs = append(projectIDs,538)
+		projectIDs = append(projectIDs,779)
+
 		//projectIDs = append(projectIDs,539)
 		
 		cmd := exec.Command("bash", "-c", "pkill chrome")
@@ -2632,8 +2633,6 @@ func GenerateCreatingImageLinks(ctx context.Context, storeDB *pgxpool.Pool) {
 		//	log.Printf("Error happened when retrieving published projects. Err: %s", err)
 		//	continue
 		//}
-		projectIDs = append(projectIDs,555)
-		projectIDs = append(projectIDs,632)
 		log.Println(projectIDs)
 		
 		for _, project := range projectIDs {
@@ -2666,6 +2665,115 @@ func DuplicateLayout(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rw.Write(jsonResp)
+}
+
+func ImageDeletionWorker(db *pgxpool.Pool) {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		processImageDeletionQueue(db)
+	}
+}
+
+func processImageDeletionQueue(db *pgxpool.Pool) {
+
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		30*time.Second,
+	)
+	defer cancel()
+
+	rows, err := db.Query(
+		ctx,
+		`
+		SELECT id, image_url
+		FROM image_deletion_queue
+		ORDER BY id
+		LIMIT 20
+		`,
+	)
+
+	if err != nil {
+		//log.Printf("Could not load image deletion queue: %v", err)
+		return
+	}
+	defer rows.Close()
+
+	type deletion struct {
+		ID  int64
+		URL string
+	}
+
+	var items []deletion
+
+	for rows.Next() {
+		var item deletion
+
+		if err := rows.Scan(&item.ID, &item.URL); err != nil {
+			log.Printf("Queue scan error: %v", err)
+			continue
+		}
+
+		items = append(items, item)
+	}
+
+	for _, item := range items {
+        time.Sleep(2 * time.Second)
+		err := projectstorage.DeleteImage(item.URL)
+
+		if err != nil {
+
+			//log.Printf(
+			//	"Could not delete S3 image %s: %v",
+			//	item.URL,
+			//	err,
+			//)
+			log.Printf(
+				"Could not delete S3 image : %v",
+				err,
+			)
+
+			//_, dbErr := db.Exec(
+			_, dbErr := db.Exec(
+				context.Background(),
+				`
+				UPDATE image_deletion_queue
+				SET attempts = attempts + 1,
+				    last_error = $1
+				WHERE id = $2
+				`,
+				err.Error(),
+				item.ID,
+			)
+
+			if dbErr != nil {
+				log.Printf(
+					"Could not update deletion queue: %v",
+					dbErr,
+				)
+			}
+
+			continue
+		}
+
+		_, err = db.Exec(
+			context.Background(),
+			`
+			DELETE FROM image_deletion_queue
+			WHERE id = $1
+			`,
+			item.ID,
+		)
+
+		if err != nil {
+			log.Printf(
+				"Image deleted but could not remove queue item %d: %v",
+				item.ID,
+				err,
+			)
+		}
+	}
 }
 
 func AddExtraPageTempFix(rw http.ResponseWriter, r *http.Request) {

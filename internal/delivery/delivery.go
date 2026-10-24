@@ -320,10 +320,10 @@ func OrderDelivery(orderID uint) (error) {
         var p FullPackage
 		var i Item
 		p.Number = num
-		p.Weight = 0.2 
-		p.Height = 0.2 
-		p.Width = 0.2
-		p.Length = 0.2 
+		p.Weight = 2700
+		p.Height = 10 
+		p.Width = 38
+		p.Length = 38
 		i.Name = "photobook"
 		i.WareKey = "1"
 		i.Payment = 0
